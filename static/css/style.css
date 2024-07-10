@@ -774,7 +774,9 @@ main {
   font-size: var(--fs-6);
   font-weight: var(--fw-300);
   line-height: 1.6;
-  text-align: center;
+  text-align: left;
+  margin-left: 50px;
+  cursor: default;
 }
 
 /* Clients */
@@ -1512,7 +1514,7 @@ textarea.form-input::-webkit-resizer { display: none; }
   }
   .testimonial-modal-avatar-box img { width: 80px; }
 
-  .modal-avatar-box img { width: 400px; }
+  .modal-avatar-box img { width: 600px; }
 
   /**
    * PORTFOLIO
