@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CtrlAltJay Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+</head>
+<body>
+  <main class="admin-layout">
+    <header class="admin-header">
+      <h1>CtrlAltJay Admin Dashboard</h1>
+      <div class="header-actions">
+        <a href="{{ url_for('index') }}" target="_blank" rel="noopener noreferrer">Open Portfolio</a>
+        <a href="{{ url_for('admin_logout') }}">Log Out</a>
+      </div>
+    </header>
+
+    <section class="admin-tabs">
+      <button class="admin-tab active" data-admin-tab="items">Projects & Experiences</button>
+      <button class="admin-tab" data-admin-tab="resume">Resume Timeline</button>
+      <button class="admin-tab" data-admin-tab="skills">Skills</button>
+    </section>
+
+    <section class="admin-panel active" id="items-panel">
+      <h2>Create or Edit Card Item</h2>
+      <form id="item-form" enctype="multipart/form-data" class="admin-form">
+        <input type="hidden" name="id" id="item-id">
+        <div class="grid-2">
+          <div>
+            <label>Section</label>
+            <select name="section" id="item-section" required>
+              <option value="project">Project</option>
+              <option value="experience">Experience</option>
+            </select>
+          </div>
+          <div>
+            <label>Category</label>
+            <input type="text" name="category" id="item-category" placeholder="Examples: App Development, Certifications" required>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div>
+            <label>Title</label>
+            <input type="text" name="title" id="item-title" required>
+          </div>
+          <div>
+            <label>By</label>
+            <input type="text" name="byline" id="item-byline" placeholder="Person or organization">
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div>
+            <label>Tag</label>
+            <input type="text" name="tag" id="item-tag" placeholder="Example: Events - Dialogue">
+          </div>
+          <div>
+            <label>External Link (optional)</label>
+            <input type="url" name="external_link" id="item-link" placeholder="https://...">
+          </div>
+        </div>
+
+        <label>Summary (short card context)</label>
+        <textarea name="summary" id="item-summary"></textarea>
+
+        <label>Description</label>
+        <textarea name="description" id="item-description"></textarea>
+
+        <div class="grid-2">
+          <div>
+            <label>Date Label</label>
+            <input type="text" name="date_label" id="item-date-label" placeholder="Certified Date / Joined / Event Date">
+          </div>
+          <div>
+            <label>Date Value</label>
+            <input type="text" name="date_value" id="item-date-value" placeholder="Jun 2025">
+          </div>
+        </div>
+
+        <label>Deliverables</label>
+        <textarea name="deliverables" id="item-deliverables"></textarea>
+
+        <label>Challenges</label>
+        <textarea name="challenges" id="item-challenges"></textarea>
+
+        <label>Future Improvements</label>
+        <textarea name="future_improvements" id="item-future"></textarea>
+
+        <label>Extra Notes</label>
+        <textarea name="extra_notes" id="item-notes"></textarea>
+
+        <div class="grid-2">
+          <div>
+            <label>Image Path (optional)</label>
+            <input type="text" name="image_path" id="item-image-path" placeholder="../static/images/...">
+          </div>
+          <div>
+            <label>Upload Image (optional)</label>
+            <input type="file" name="image" id="item-image-file" accept="image/*">
+          </div>
+        </div>
+
+        <div class="action-row">
+          <button type="submit" class="primary">Save Item</button>
+          <button type="button" id="item-reset">Reset Form</button>
+        </div>
+      </form>
+
+      <h3>Existing Items</h3>
+      <div class="toolbar-row">
+        <select id="item-filter-section">
+          <option value="all">All</option>
+          <option value="project">Project</option>
+          <option value="experience">Experience</option>
+        </select>
+      </div>
+      <div id="item-list" class="admin-list"></div>
+    </section>
+
+    <section class="admin-panel" id="resume-panel">
+      <h2>Resume Timeline Editor</h2>
+      <form id="resume-form" class="admin-form">
+        <input type="hidden" id="resume-id" name="id">
+        <div class="grid-2">
+          <div>
+            <label>Lane</label>
+            <select name="lane" id="resume-lane" required>
+              <option value="education">Education</option>
+              <option value="work">Work</option>
+            </select>
+          </div>
+          <div>
+            <label>Sort Order</label>
+            <input type="number" name="sort_order" id="resume-sort" value="0" required>
+          </div>
+        </div>
+
+        <label>Title</label>
+        <input type="text" name="title" id="resume-title" required>
+
+        <label>Subtitle</label>
+        <input type="text" name="subtitle" id="resume-subtitle" placeholder="Role or certification summary">
+
+        <label>Period</label>
+        <input type="text" name="period" id="resume-period" placeholder="Apr 2025 - Mar 2026" required>
+
+        <label>Description</label>
+        <textarea name="description" id="resume-description"></textarea>
+
+        <div class="action-row">
+          <button type="submit" class="primary">Save Resume Item</button>
+          <button type="button" id="resume-reset">Reset Form</button>
+        </div>
+      </form>
+
+      <h3>Current Resume Items</h3>
+      <div id="resume-list" class="admin-list"></div>
+    </section>
+
+    <section class="admin-panel" id="skills-panel">
+      <h2>Skills Editor</h2>
+      <form id="skill-form" class="admin-form">
+        <input type="hidden" id="skill-id" name="id">
+
+        <div class="grid-3">
+          <div>
+            <label>Name</label>
+            <input type="text" name="name" id="skill-name" required>
+          </div>
+          <div>
+            <label>Level (%)</label>
+            <input type="number" name="level" id="skill-level" min="0" max="100" required>
+          </div>
+          <div>
+            <label>Sort Order</label>
+            <input type="number" name="sort_order" id="skill-sort" value="0" required>
+          </div>
+        </div>
+
+        <label>Focus</label>
+        <input type="text" name="focus" id="skill-focus">
+
+        <div class="action-row">
+          <button type="submit" class="primary">Save Skill</button>
+          <button type="button" id="skill-reset">Reset Form</button>
+        </div>
+      </form>
+
+      <h3>Current Skills</h3>
+      <div id="skill-list" class="admin-list"></div>
+    </section>
+
+    <p id="toast" class="toast" aria-live="polite"></p>
+  </main>
+
+  <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+</body>
+</html>
