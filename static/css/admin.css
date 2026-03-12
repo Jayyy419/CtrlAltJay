@@ -1,0 +1,274 @@
+:root {
+  --bg: #0b1320;
+  --panel: #101b2e;
+  --panel-2: #16253e;
+  --text: #eef2f8;
+  --muted: #a9b8d2;
+  --line: #2b3f61;
+  --accent: #22c55e;
+  --accent-2: #3b82f6;
+  --danger: #ef4444;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  font-family: "Manrope", sans-serif;
+  background: radial-gradient(circle at top right, #15325d, #09101a 45%);
+  color: var(--text);
+}
+
+a {
+  color: #8ec5ff;
+}
+
+.admin-login-page {
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.login-card {
+  width: min(460px, 100%);
+  background: rgba(16, 27, 46, 0.88);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.login-card h1 {
+  margin: 0;
+}
+
+.login-card p {
+  margin: 6px 0 18px;
+  color: var(--muted);
+}
+
+.login-card label {
+  display: block;
+  margin-top: 10px;
+  margin-bottom: 6px;
+}
+
+input,
+select,
+textarea,
+button {
+  font: inherit;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  background: #0d1728;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px;
+}
+
+textarea {
+  min-height: 86px;
+  resize: vertical;
+}
+
+button {
+  border-radius: 10px;
+  border: 1px solid transparent;
+  padding: 10px 13px;
+  cursor: pointer;
+}
+
+.login-card button {
+  margin-top: 14px;
+  width: 100%;
+  background: var(--accent-2);
+  color: #fff;
+  font-weight: 700;
+}
+
+.flash-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 12px;
+}
+
+.flash-item {
+  border: 1px solid #5d2e2e;
+  background: rgba(239, 68, 68, 0.12);
+  color: #ffd8d8;
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.admin-layout {
+  max-width: 1320px;
+  margin: 20px auto;
+  padding: 0 16px 22px;
+}
+
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  background: rgba(16, 27, 46, 0.92);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.admin-header h1 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.admin-tabs {
+  margin-top: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-tab {
+  background: rgba(16, 27, 46, 0.9);
+  color: var(--muted);
+  border-color: var(--line);
+}
+
+.admin-tab.active {
+  color: #fff;
+  border-color: #5ea5ff;
+  background: #17325a;
+}
+
+.admin-panel {
+  margin-top: 12px;
+  display: none;
+  background: rgba(16, 27, 46, 0.94);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.admin-panel.active {
+  display: block;
+}
+
+.admin-form {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.action-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.primary {
+  background: var(--accent);
+  color: #051a09;
+  font-weight: 800;
+}
+
+.admin-list {
+  display: grid;
+  gap: 8px;
+}
+
+.list-item {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel-2);
+  padding: 10px;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.list-main h4 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.list-main p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.list-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.list-actions button {
+  background: #0b1a30;
+  color: #fff;
+  border-color: #2e4f79;
+}
+
+.list-actions button.delete {
+  border-color: #6b2d2d;
+  color: #ffd8d8;
+}
+
+.toolbar-row {
+  margin-bottom: 10px;
+  max-width: 280px;
+}
+
+.toast {
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  background: #102742;
+  border: 1px solid #3566a5;
+  color: #e7f2ff;
+  border-radius: 10px;
+  padding: 9px 12px;
+  display: none;
+}
+
+.toast.show {
+  display: block;
+}
+
+@media (max-width: 880px) {
+  .grid-2,
+  .grid-3 {
+    grid-template-columns: 1fr;
+  }
+
+  .list-item {
+    flex-direction: column;
+  }
+}
