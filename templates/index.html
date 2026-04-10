@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="scroll-smooth">
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -8,95 +8,125 @@
   <link rel="shortcut icon" href="../static/images/PersonalLogo.ico" type="image/x-icon">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            display: ['Space Grotesk', 'system-ui', 'sans-serif'],
+          },
+          colors: {
+            surface: { 50: '#1a1a2e', 100: '#16162a', 200: '#121226', 300: '#0e0e1f', 400: '#0a0a18' },
+            accent: { DEFAULT: '#f59e0b', light: '#fbbf24', dark: '#d97706', muted: 'rgba(245,158,11,0.15)' },
+            ink: { DEFAULT: '#e2e8f0', soft: '#94a3b8', muted: '#64748b' },
+          },
+          animation: {
+            'fade-up': 'fadeUp 0.4s ease-out',
+            'glow': 'glow 2s ease-in-out infinite alternate',
+          },
+          keyframes: {
+            fadeUp: { '0%': { opacity: '0', transform: 'translateY(12px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+            glow: { '0%': { boxShadow: '0 0 5px rgba(245,158,11,0.2)' }, '100%': { boxShadow: '0 0 20px rgba(245,158,11,0.4)' } },
+          },
+        },
+      },
+    }
+  </script>
   <link rel="stylesheet" href="../static/css/style.css">
 </head>
-<body>
-  <div class="page-bg"></div>
-  <main class="layout">
-    <aside class="sidebar">
-      <div class="portrait-wrap">
-        <img src="../static/images/Portrait_ZoomedIn.JPG" alt="{{ profile.name }}" class="portrait">
-      </div>
-      <h1>{{ profile.name }}</h1>
-      <p class="headline">{{ profile.headline }}</p>
+<body class="bg-surface-400 text-ink font-sans min-h-screen flex flex-col antialiased">
 
-      <div class="contact-cluster">
-        <a href="mailto:{{ profile.email }}" class="chip">
-          <ion-icon name="mail-outline"></ion-icon>
+  <main class="layout max-w-[1440px] mx-auto w-full px-5 py-10 gap-8 flex-1">
+    <!-- Sidebar -->
+    <aside class="sidebar bg-surface-50/80 backdrop-blur-xl border border-white/[0.06] rounded-2xl p-8 sticky top-10 h-fit shadow-2xl">
+      <div class="relative mx-auto w-36 h-36 rounded-2xl overflow-hidden ring-2 ring-accent/60 ring-offset-2 ring-offset-surface-400 mb-6">
+        <img src="../static/images/Portrait_ZoomedIn.JPG" alt="{{ profile.name }}" class="w-full h-full object-cover portrait">
+      </div>
+      <h1 class="text-2xl font-bold text-white text-center tracking-tight">{{ profile.name }}</h1>
+      <p class="headline mt-2 mb-6 text-ink-soft text-center text-sm leading-relaxed">{{ profile.headline }}</p>
+
+      <div class="contact-cluster grid gap-2.5 mb-6">
+        <a href="mailto:{{ profile.email }}" class="chip group flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-100 border border-white/[0.06] text-ink-soft text-sm no-underline transition-all duration-300 hover:bg-accent hover:text-surface-400 hover:border-accent">
+          <ion-icon name="mail-outline" class="text-lg text-accent group-hover:text-surface-400 transition-colors"></ion-icon>
           <span>{{ profile.email }}</span>
         </a>
-        <a href="tel:{{ profile.phone|replace(' ', '') }}" class="chip">
-          <ion-icon name="call-outline"></ion-icon>
+        <a href="tel:{{ profile.phone|replace(' ', '') }}" class="chip group flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-100 border border-white/[0.06] text-ink-soft text-sm no-underline transition-all duration-300 hover:bg-accent hover:text-surface-400 hover:border-accent">
+          <ion-icon name="call-outline" class="text-lg text-accent group-hover:text-surface-400 transition-colors"></ion-icon>
           <span>{{ profile.phone }}</span>
         </a>
-        <span class="chip">
-          <ion-icon name="location-outline"></ion-icon>
+        <span class="chip group flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-100 border border-white/[0.06] text-ink-soft text-sm">
+          <ion-icon name="location-outline" class="text-lg text-accent"></ion-icon>
           <span>{{ profile.location }}</span>
         </span>
-        <a href="{{ profile.credly }}" class="chip" target="_blank" rel="noopener noreferrer">
-          <ion-icon name="ribbon-outline"></ion-icon>
+        <a href="{{ profile.credly }}" class="chip group flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-100 border border-white/[0.06] text-ink-soft text-sm no-underline transition-all duration-300 hover:bg-accent hover:text-surface-400 hover:border-accent" target="_blank" rel="noopener noreferrer">
+          <ion-icon name="ribbon-outline" class="text-lg text-accent group-hover:text-surface-400 transition-colors"></ion-icon>
           <span>Credly</span>
         </a>
-        <a href="{{ profile.github }}" class="chip" target="_blank" rel="noopener noreferrer">
-          <ion-icon name="logo-github"></ion-icon>
+        <a href="{{ profile.github }}" class="chip group flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-100 border border-white/[0.06] text-ink-soft text-sm no-underline transition-all duration-300 hover:bg-accent hover:text-surface-400 hover:border-accent" target="_blank" rel="noopener noreferrer">
+          <ion-icon name="logo-github" class="text-lg text-accent group-hover:text-surface-400 transition-colors"></ion-icon>
           <span>GitHub</span>
         </a>
-        <a href="{{ profile.linkedin }}" class="chip" target="_blank" rel="noopener noreferrer">
-          <ion-icon name="logo-linkedin"></ion-icon>
+        <a href="{{ profile.linkedin }}" class="chip group flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-100 border border-white/[0.06] text-ink-soft text-sm no-underline transition-all duration-300 hover:bg-accent hover:text-surface-400 hover:border-accent" target="_blank" rel="noopener noreferrer">
+          <ion-icon name="logo-linkedin" class="text-lg text-accent group-hover:text-surface-400 transition-colors"></ion-icon>
           <span>LinkedIn</span>
         </a>
       </div>
 
-      <button type="button" id="open-admin-auth" class="admin-link">Admin Dashboard</button>
-      <button type="button" id="admin-logout-btn" class="admin-link admin-logout" hidden>Log Out</button>
+      <button type="button" id="open-admin-auth" class="admin-link w-full text-center mt-4 bg-gradient-to-r from-accent to-accent-dark text-surface-400 font-semibold rounded-xl px-4 py-3 text-sm transition-all duration-300 hover:shadow-[0_0_24px_rgba(245,158,11,0.4)] border-none cursor-pointer">Admin Dashboard</button>
+      <button type="button" id="admin-logout-btn" class="admin-link admin-logout w-full text-center mt-3 bg-transparent text-ink-muted font-semibold rounded-xl px-4 py-3 text-sm border border-white/[0.06] transition-all duration-300 hover:border-red-500/60 hover:text-red-400 cursor-pointer" hidden>Log Out</button>
     </aside>
 
-    <section class="content">
-      <nav class="main-nav">
-        <button class="tab-btn active" data-tab="about">About</button>
-        <button class="tab-btn" data-tab="projects">Projects</button>
-        <button class="tab-btn" data-tab="experiences">Experiences</button>
-        <button class="tab-btn" data-tab="resume">Resume</button>
-        <button class="tab-btn" data-tab="contact">Contact</button>
+    <!-- Content -->
+    <section class="content bg-surface-50/80 backdrop-blur-xl border border-white/[0.06] rounded-2xl p-8 shadow-2xl">
+      <nav class="main-nav flex flex-wrap gap-3 mb-8 pb-5 border-b border-white/[0.06]">
+        <button class="tab-btn active px-5 py-2.5 bg-surface-100 text-ink-soft border-2 border-white/[0.06] rounded-xl cursor-pointer font-medium text-sm transition-all duration-300 hover:border-accent/60 hover:text-accent" data-tab="about">About</button>
+        <button class="tab-btn px-5 py-2.5 bg-surface-100 text-ink-soft border-2 border-white/[0.06] rounded-xl cursor-pointer font-medium text-sm transition-all duration-300 hover:border-accent/60 hover:text-accent" data-tab="projects">Projects</button>
+        <button class="tab-btn px-5 py-2.5 bg-surface-100 text-ink-soft border-2 border-white/[0.06] rounded-xl cursor-pointer font-medium text-sm transition-all duration-300 hover:border-accent/60 hover:text-accent" data-tab="experiences">Experiences</button>
+        <button class="tab-btn px-5 py-2.5 bg-surface-100 text-ink-soft border-2 border-white/[0.06] rounded-xl cursor-pointer font-medium text-sm transition-all duration-300 hover:border-accent/60 hover:text-accent" data-tab="resume">Resume</button>
+        <button class="tab-btn px-5 py-2.5 bg-surface-100 text-ink-soft border-2 border-white/[0.06] rounded-xl cursor-pointer font-medium text-sm transition-all duration-300 hover:border-accent/60 hover:text-accent" data-tab="contact">Contact</button>
       </nav>
 
-      <article id="about" class="tab-panel active">
-        <header class="panel-head">
-          <h2>About Me</h2>
-          <p>Building practical systems that blend software, cloud, and AI.</p>
+      <!-- About -->
+      <article id="about" class="tab-panel active animate-fade-up">
+        <header class="panel-head mb-6">
+          <h2 class="font-display text-3xl font-bold text-white tracking-tight">About Me</h2>
+          <p class="mt-2 text-ink-muted">Building practical systems that blend software, cloud, and AI.</p>
         </header>
 
-        <p class="lead-copy">{{ profile.bio }}</p>
+        <p class="lead-copy text-ink-soft leading-relaxed max-w-3xl mb-8">{{ profile.bio }}</p>
 
         <section>
-          <h3>Current Focus</h3>
-          <div class="focus-grid">
+          <h3 class="font-display text-xl font-semibold text-white mb-4">Current Focus</h3>
+          <div class="focus-grid grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-4">
             {% for item in profile.now_building %}
-            <article class="focus-card">
-              <h4>{{ item.title }}</h4>
-              <p>{{ item.description }}</p>
+            <article class="focus-card group bg-surface-100/60 border border-white/[0.06] rounded-2xl p-5 transition-all duration-300 hover:border-accent/40 hover:shadow-[0_0_30px_rgba(245,158,11,0.08)]">
+              <h4 class="font-display font-semibold text-white mb-2 group-hover:text-accent transition-colors">{{ item.title }}</h4>
+              <p class="text-ink-soft text-sm leading-relaxed">{{ item.description }}</p>
             </article>
             {% endfor %}
           </div>
         </section>
       </article>
 
-      <article id="projects" class="tab-panel">
-        <header class="panel-head">
-          <div class="panel-head-top">
-            <h2>Projects</h2>
-            <button type="button" id="create-project-btn" class="admin-inline-btn admin-only" hidden>Create New Project</button>
+      <!-- Projects -->
+      <article id="projects" class="tab-panel animate-fade-up">
+        <header class="panel-head mb-6">
+          <div class="panel-head-top flex items-center justify-between gap-3">
+            <h2 class="font-display text-3xl font-bold text-white tracking-tight">Projects</h2>
+            <button type="button" id="create-project-btn" class="admin-inline-btn admin-only border-2 border-accent bg-transparent text-accent rounded-xl px-4 py-2 cursor-pointer text-sm font-semibold transition-all duration-200 hover:bg-accent-muted" hidden>Create New Project</button>
           </div>
-          <p>Latest projects first. Filter and sort to explore the full build history.</p>
+          <p class="mt-2 text-ink-muted">Latest projects first. Filter and sort to explore the full build history.</p>
         </header>
 
-        <div class="subsection-nav" id="projects-subsection-nav">
+        <div class="subsection-nav flex gap-3 flex-wrap mb-5 pb-4 border-b border-white/[0.06]" id="projects-subsection-nav">
           <button class="subsection-btn active" data-subsection="all">All</button>
         </div>
 
-        <div class="controls-row">
-          <select id="projects-sort">
+        <div class="controls-row flex gap-3 flex-wrap items-center my-5">
+          <select id="projects-sort" class="bg-surface-100 border border-white/[0.06] rounded-xl px-4 py-2.5 text-ink-soft text-sm focus:outline-none focus:border-accent transition-colors">
             <option value="created_desc">Newest Created</option>
             <option value="created_asc">Oldest Created</option>
             <option value="updated_desc">Recently Updated</option>
@@ -105,19 +135,20 @@
             <option value="title_desc">Title Z to A</option>
           </select>
         </div>
-        <div id="projects-grid" class="card-grid"></div>
+        <div id="projects-grid" class="card-grid grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-5 py-2"></div>
       </article>
 
-      <article id="experiences" class="tab-panel">
-        <header class="panel-head">
-          <div class="panel-head-top">
-            <h2>Experiences</h2>
-            <button type="button" id="create-experience-btn" class="admin-inline-btn admin-only" hidden>Create New Experience</button>
+      <!-- Experiences -->
+      <article id="experiences" class="tab-panel animate-fade-up">
+        <header class="panel-head mb-6">
+          <div class="panel-head-top flex items-center justify-between gap-3">
+            <h2 class="font-display text-3xl font-bold text-white tracking-tight">Experiences</h2>
+            <button type="button" id="create-experience-btn" class="admin-inline-btn admin-only border-2 border-accent bg-transparent text-accent rounded-xl px-4 py-2 cursor-pointer text-sm font-semibold transition-all duration-200 hover:bg-accent-muted" hidden>Create New Experience</button>
           </div>
-          <p>Achievements, certifications, events, and more moments that shaped my journey.</p>
+          <p class="mt-2 text-ink-muted">Achievements, certifications, events, and more moments that shaped my journey.</p>
         </header>
 
-        <div class="subsection-nav">
+        <div class="subsection-nav flex gap-3 flex-wrap mb-5 pb-4 border-b border-white/[0.06]">
           <button class="subsection-btn active" data-subsection="all">All</button>
           <button class="subsection-btn" data-subsection="Achievements">Achievements</button>
           <button class="subsection-btn" data-subsection="Career">Career</button>
@@ -128,8 +159,8 @@
           <button class="subsection-btn" data-subsection="Volunteer">Volunteer</button>
         </div>
 
-        <div class="controls-row">
-          <select id="experiences-sort">
+        <div class="controls-row flex gap-3 flex-wrap items-center my-5">
+          <select id="experiences-sort" class="bg-surface-100 border border-white/[0.06] rounded-xl px-4 py-2.5 text-ink-soft text-sm focus:outline-none focus:border-accent transition-colors">
             <option value="created_desc">Newest Created</option>
             <option value="created_asc">Oldest Created</option>
             <option value="updated_desc">Recently Updated</option>
@@ -138,151 +169,130 @@
             <option value="title_desc">Title Z to A</option>
           </select>
         </div>
-        <div id="experiences-grid" class="card-grid"></div>
+        <div id="experiences-grid" class="card-grid grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-5 py-2"></div>
       </article>
 
-      <article id="resume" class="tab-panel">
-        <header class="panel-head">
-          <h2>Resume</h2>
-          <p>Timeline is dynamically managed from admin, including additions to education and work lanes.</p>
+      <!-- Resume -->
+      <article id="resume" class="tab-panel animate-fade-up">
+        <header class="panel-head mb-6">
+          <h2 class="font-display text-3xl font-bold text-white tracking-tight">Resume</h2>
+          <p class="mt-2 text-ink-muted">Timeline is dynamically managed from admin, including additions to education and work lanes.</p>
         </header>
 
-        <section class="timeline-wrap">
+        <section class="timeline-wrap grid grid-cols-2 gap-10 max-lg:grid-cols-1">
           <div>
-            <h3>Education</h3>
+            <h3 class="font-display text-xl font-semibold text-white mb-4">Education</h3>
             <ol id="resume-education" class="timeline"></ol>
           </div>
           <div>
-            <h3>Work Experience</h3>
+            <h3 class="font-display text-xl font-semibold text-white mb-4">Work Experience</h3>
             <ol id="resume-work" class="timeline"></ol>
           </div>
         </section>
 
-        <section>
-          <h3>Skill Radar</h3>
-          <div id="skills-grid" class="skills-grid"></div>
+        <section class="mt-10">
+          <h3 class="font-display text-xl font-semibold text-white mb-4">Skill Radar</h3>
+          <div id="skills-grid" class="skills-grid grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4 mt-4"></div>
         </section>
       </article>
 
-      <article id="contact" class="tab-panel">
-        <header class="panel-head">
-          <h2>Contact</h2>
-          <p>If you are hiring, collaborating, or proposing a challenge, let us talk.</p>
+      <!-- Contact -->
+      <article id="contact" class="tab-panel animate-fade-up">
+        <header class="panel-head mb-6">
+          <h2 class="font-display text-3xl font-bold text-white tracking-tight">Contact</h2>
+          <p class="mt-2 text-ink-muted">If you are hiring, collaborating, or proposing a challenge, let us talk.</p>
         </header>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
-            <ul class="flash-list">
+            <ul class="flash-list list-none my-3 grid gap-2">
               {% for category, message in messages %}
-                <li class="flash-item {{ category }}">{{ message }}</li>
+                <li class="flash-item {{ category }} rounded-xl px-4 py-3 border border-white/[0.06] text-sm">{{ message }}</li>
               {% endfor %}
             </ul>
           {% endif %}
         {% endwith %}
 
-        <form action="/send_message" method="POST" class="contact-form" id="contact-form">
-          <div class="field-grid">
-            <input 
-              type="text" 
-              name="fullname" 
-              placeholder="Full name" 
-              required
-              minlength="2"
-              maxlength="100"
-              pattern="[a-zA-Z\s'-]+"
-              title="Name should contain only letters, spaces, hyphens, and apostrophes">
-            <input 
-              type="email" 
-              name="email" 
-              placeholder="Email address" 
-              required
-              title="Please enter a valid email address">
+        <form action="/send_message" method="POST" class="contact-form mt-4 space-y-4" id="contact-form">
+          <div class="field-grid grid grid-cols-2 gap-3 max-sm:grid-cols-1">
+            <input type="text" name="fullname" placeholder="Full name" required minlength="2" maxlength="100" pattern="[a-zA-Z\s'-]+" title="Name should contain only letters, spaces, hyphens, and apostrophes"
+              class="w-full px-4 py-3 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm placeholder:text-ink-muted focus:outline-none focus:border-accent transition-colors">
+            <input type="email" name="email" placeholder="Email address" required title="Please enter a valid email address"
+              class="w-full px-4 py-3 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm placeholder:text-ink-muted focus:outline-none focus:border-accent transition-colors">
           </div>
-          <div class="field-grid">
-            <input 
-              type="text" 
-              name="company" 
-              placeholder="Company (optional)" 
-              maxlength="100">
-            <input 
-              type="text" 
-              name="subject" 
-              placeholder="Subject" 
-              required
-              minlength="5"
-              maxlength="100"
-              title="Subject should be between 5 and 100 characters">
+          <div class="field-grid grid grid-cols-2 gap-3 max-sm:grid-cols-1">
+            <input type="text" name="company" placeholder="Company (optional)" maxlength="100"
+              class="w-full px-4 py-3 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm placeholder:text-ink-muted focus:outline-none focus:border-accent transition-colors">
+            <input type="text" name="subject" placeholder="Subject" required minlength="5" maxlength="100" title="Subject should be between 5 and 100 characters"
+              class="w-full px-4 py-3 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm placeholder:text-ink-muted focus:outline-none focus:border-accent transition-colors">
           </div>
-          <textarea 
-            name="message" 
-            placeholder="Tell me what you are building or hiring for" 
-            required
-            minlength="10"
-            maxlength="5000"
-            title="Message should be between 10 and 5000 characters"
-            rows="6"></textarea>
+          <textarea name="message" placeholder="Tell me what you are building or hiring for" required minlength="10" maxlength="5000" title="Message should be between 10 and 5000 characters" rows="6"
+            class="w-full px-4 py-3 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm placeholder:text-ink-muted focus:outline-none focus:border-accent transition-colors resize-y min-h-[160px]"></textarea>
           <div class="field-row">
-            <label class="checkbox-label">
-              <input type="checkbox" name="newsletter-opt-in" value="yes">
-              <span>Subscribe me to updates about new projects</span>
+            <label class="checkbox-label flex items-center gap-2.5 cursor-pointer text-ink-muted text-sm">
+              <input type="checkbox" name="newsletter-opt-in" value="yes" class="w-4 h-4 cursor-pointer accent-accent rounded">
+              <span class="select-none">Subscribe me to updates about new projects</span>
             </label>
           </div>
-          <button type="submit" class="btn-primary">Send Message</button>
-          <p class="form-note">I'll get back to you within 24-48 hours.</p>
+          <button type="submit" class="btn-primary bg-gradient-to-r from-accent to-accent-dark text-surface-400 font-bold rounded-xl px-6 py-3 text-sm border-none cursor-pointer transition-all duration-300 hover:shadow-[0_0_24px_rgba(245,158,11,0.4)] active:scale-[0.98]">Send Message</button>
+          <p class="form-note text-xs text-ink-muted mt-3">I'll get back to you within 24-48 hours.</p>
         </form>
       </article>
     </section>
   </main>
 
-  <footer class="site-footer">
-    <p>CtrlAltJay Portfolio</p>
+  <footer class="max-w-[1440px] w-full mx-auto px-5 py-4 text-ink-muted text-xs flex justify-between items-center border-t border-white/[0.04] max-sm:flex-col max-sm:gap-1">
+    <p>&copy; {{ 2026 }} CtrlAltJay</p>
     <p>Built with Flask, cloud-native thinking, and practical AI workflows.</p>
   </footer>
 
+  <!-- Admin Auth Modal -->
   <div class="modal-shell" id="admin-auth-modal" aria-hidden="true">
     <div class="modal-backdrop" data-close-admin-auth></div>
-    <section class="auth-card" role="dialog" aria-modal="true" aria-labelledby="admin-auth-title">
+    <section class="auth-card relative w-[min(92vw,460px)] bg-surface-50/95 backdrop-blur-2xl border border-white/[0.08] rounded-2xl p-7 shadow-2xl z-[201]" role="dialog" aria-modal="true" aria-labelledby="admin-auth-title">
       <button class="modal-close" data-close-admin-auth aria-label="Close admin login">
         <ion-icon name="close-outline"></ion-icon>
       </button>
-      <h3 id="admin-auth-title">Admin Access</h3>
-      <p>Enter your private passcode to unlock editing directly in this portfolio.</p>
-      <form id="admin-auth-form" class="admin-auth-form">
-        <label for="admin-passcode">Passcode</label>
-        <input id="admin-passcode" type="password" name="passcode" autocomplete="current-password" required>
-        <button type="submit" class="btn-primary">Verify & Enable Editing</button>
+      <h3 id="admin-auth-title" class="text-lg font-bold text-white mb-1">Admin Access</h3>
+      <p class="text-ink-muted text-sm mb-5">Enter your private passcode to unlock editing directly in this portfolio.</p>
+      <form id="admin-auth-form" class="admin-auth-form grid gap-3">
+        <label for="admin-passcode" class="text-sm text-ink-soft">Passcode</label>
+        <input id="admin-passcode" type="password" name="passcode" autocomplete="current-password" required
+          class="w-full px-4 py-3 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent transition-colors">
+        <button type="submit" class="btn-primary bg-gradient-to-r from-accent to-accent-dark text-surface-400 font-bold rounded-xl px-6 py-3 text-sm border-none cursor-pointer transition-all duration-300 hover:shadow-[0_0_24px_rgba(245,158,11,0.4)]">Verify & Enable Editing</button>
       </form>
-      <p id="admin-auth-feedback" class="form-note" aria-live="polite"></p>
+      <p id="admin-auth-feedback" class="form-note text-xs text-ink-muted mt-3" aria-live="polite"></p>
     </section>
   </div>
 
+  <!-- Admin Item Modal -->
   <div class="modal-shell" id="admin-item-modal" aria-hidden="true">
     <div class="modal-backdrop" data-close-admin-item></div>
     <section class="modal-card admin-item-card" role="dialog" aria-modal="true" aria-labelledby="admin-item-title">
       <button class="modal-close" data-close-admin-item aria-label="Close item editor">
         <ion-icon name="close-outline"></ion-icon>
       </button>
-      <h3 id="admin-item-title">Create Item</h3>
-      <form id="admin-item-form" class="admin-item-form">
+      <h3 id="admin-item-title" class="text-xl font-bold text-white mb-4">Create Item</h3>
+      <form id="admin-item-form" class="admin-item-form grid gap-3">
         <input type="hidden" id="admin-item-id" name="id">
-        <div class="field-grid" id="section-field-group">
+        <div class="field-grid grid grid-cols-2 gap-3 max-sm:grid-cols-1" id="section-field-group">
           <div>
-            <label for="admin-item-section">Section <span class="required-star">*</span></label>
-            <select id="admin-item-section" name="section" required>
+            <label for="admin-item-section" class="text-sm text-ink-soft">Section <span class="required-star text-red-400 font-bold">*</span></label>
+            <select id="admin-item-section" name="section" required class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent">
               <option value="">Select an option</option>
               <option value="project">Project</option>
               <option value="experience">Experience</option>
             </select>
           </div>
           <div>
-            <label for="admin-item-category">Category <span class="required-star">*</span></label>
-            <input id="admin-item-category" type="text" name="category" required>
+            <label for="admin-item-category" class="text-sm text-ink-soft">Category <span class="required-star text-red-400 font-bold">*</span></label>
+            <input id="admin-item-category" type="text" name="category" required class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent">
           </div>
         </div>
-        <div class="field-grid">
+        <div class="field-grid grid grid-cols-2 gap-3 max-sm:grid-cols-1">
           <div>
-            <label for="admin-item-subsection">Subsection</label>
-            <select id="admin-item-subsection" name="subsection">
+            <label for="admin-item-subsection" class="text-sm text-ink-soft">Subsection</label>
+            <select id="admin-item-subsection" name="subsection" class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent">
               <option value="">None</option>
               <option value="Achievements">Achievements</option>
               <option value="Career">Career</option>
@@ -294,60 +304,73 @@
             </select>
           </div>
           <div>
-            <label for="admin-item-title-input">Title <span class="required-star">*</span></label>
-            <input id="admin-item-title-input" type="text" name="title" required>
+            <label for="admin-item-title-input" class="text-sm text-ink-soft">Title <span class="required-star text-red-400 font-bold">*</span></label>
+            <input id="admin-item-title-input" type="text" name="title" required class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent">
           </div>
         </div>
-        <div class="field-grid">
+        <div class="field-grid grid grid-cols-2 gap-3 max-sm:grid-cols-1">
           <div>
-            <label for="admin-item-byline">Byline</label>
-            <input id="admin-item-byline" type="text" name="byline">
+            <label for="admin-item-byline" class="text-sm text-ink-soft">Byline</label>
+            <input id="admin-item-byline" type="text" name="byline" class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent">
           </div>
           <div>
-            <label for="admin-item-tag">Tag</label>
-            <input id="admin-item-tag" type="text" name="tag">
-          </div>
-        </div>
-        <label for="admin-item-summary">Summary</label>
-        <textarea id="admin-item-summary" name="summary" rows="2"></textarea>
-        <label for="admin-item-description">Description</label>
-        <textarea id="admin-item-description" name="description" rows="4"></textarea>
-        <div class="field-grid">
-          <div>
-            <label for="admin-item-date-label">Date Label</label>
-            <input id="admin-item-date-label" type="text" name="date_label">
-          </div>
-          <div>
-            <label for="admin-item-date-value">Date Value</label>
-            <input id="admin-item-date-value" type="text" name="date_value">
+            <label for="admin-item-tag" class="text-sm text-ink-soft">Tag</label>
+            <input id="admin-item-tag" type="text" name="tag" class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent">
           </div>
         </div>
-        <label for="admin-item-deliverables">Deliverables</label>
-        <textarea id="admin-item-deliverables" name="deliverables" rows="2"></textarea>
-        <label for="admin-item-challenges">Challenges</label>
-        <textarea id="admin-item-challenges" name="challenges" rows="2"></textarea>
-        <label for="admin-item-future">Future Improvements</label>
-        <textarea id="admin-item-future" name="future_improvements" rows="2"></textarea>
-        <label for="admin-item-extra">Extra Notes</label>
-        <textarea id="admin-item-extra" name="extra_notes" rows="2"></textarea>
-        <div class="field-grid">
+        <div>
+          <label for="admin-item-summary" class="text-sm text-ink-soft">Summary</label>
+          <textarea id="admin-item-summary" name="summary" rows="2" class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent resize-y"></textarea>
+        </div>
+        <div>
+          <label for="admin-item-description" class="text-sm text-ink-soft">Description</label>
+          <textarea id="admin-item-description" name="description" rows="4" class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent resize-y"></textarea>
+        </div>
+        <div class="field-grid grid grid-cols-2 gap-3 max-sm:grid-cols-1">
           <div>
-            <label for="admin-item-image-path">Image Path</label>
-            <input id="admin-item-image-path" type="text" name="image_path" placeholder="../static/images/...">
+            <label for="admin-item-date-label" class="text-sm text-ink-soft">Date Label</label>
+            <input id="admin-item-date-label" type="text" name="date_label" class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent">
           </div>
           <div>
-            <label for="admin-item-link">External Link</label>
-            <input id="admin-item-link" type="url" name="external_link" placeholder="https://...">
+            <label for="admin-item-date-value" class="text-sm text-ink-soft">Date Value</label>
+            <input id="admin-item-date-value" type="text" name="date_value" class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent">
           </div>
         </div>
-        <div class="admin-item-actions">
-          <button type="submit" class="btn-primary" id="admin-item-submit">Save Item</button>
+        <div>
+          <label for="admin-item-deliverables" class="text-sm text-ink-soft">Deliverables</label>
+          <textarea id="admin-item-deliverables" name="deliverables" rows="2" class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent resize-y"></textarea>
+        </div>
+        <div>
+          <label for="admin-item-challenges" class="text-sm text-ink-soft">Challenges</label>
+          <textarea id="admin-item-challenges" name="challenges" rows="2" class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent resize-y"></textarea>
+        </div>
+        <div>
+          <label for="admin-item-future" class="text-sm text-ink-soft">Future Improvements</label>
+          <textarea id="admin-item-future" name="future_improvements" rows="2" class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent resize-y"></textarea>
+        </div>
+        <div>
+          <label for="admin-item-extra" class="text-sm text-ink-soft">Extra Notes</label>
+          <textarea id="admin-item-extra" name="extra_notes" rows="2" class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent resize-y"></textarea>
+        </div>
+        <div class="field-grid grid grid-cols-2 gap-3 max-sm:grid-cols-1">
+          <div>
+            <label for="admin-item-image-path" class="text-sm text-ink-soft">Image Path</label>
+            <input id="admin-item-image-path" type="text" name="image_path" placeholder="../static/images/..." class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm placeholder:text-ink-muted focus:outline-none focus:border-accent">
+          </div>
+          <div>
+            <label for="admin-item-link" class="text-sm text-ink-soft">External Link</label>
+            <input id="admin-item-link" type="url" name="external_link" placeholder="https://..." class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm placeholder:text-ink-muted focus:outline-none focus:border-accent">
+          </div>
+        </div>
+        <div class="admin-item-actions flex justify-end gap-3 mt-4">
+          <button type="submit" class="btn-primary bg-gradient-to-r from-accent to-accent-dark text-surface-400 font-bold rounded-xl px-6 py-3 text-sm border-none cursor-pointer transition-all duration-300 hover:shadow-[0_0_24px_rgba(245,158,11,0.4)]" id="admin-item-submit">Save Item</button>
         </div>
       </form>
-      <p id="admin-item-feedback" class="form-note" aria-live="polite"></p>
+      <p id="admin-item-feedback" class="form-note text-xs text-ink-muted mt-3" aria-live="polite"></p>
     </section>
   </div>
 
+  <!-- Detail Modal -->
   <div class="modal-shell" id="detail-modal" aria-hidden="true">
     <div class="modal-backdrop" data-close-modal></div>
     <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
@@ -355,16 +378,16 @@
         <ion-icon name="close-outline"></ion-icon>
       </button>
       <img id="modal-image" alt="Detail image">
-      <div class="modal-title-row">
-        <h3 id="modal-title"></h3>
+      <div class="modal-title-row flex items-center justify-between gap-3">
+        <h3 id="modal-title" class="text-xl font-bold text-white flex-1"></h3>
         <button type="button" id="modal-edit-btn" class="icon-edit-btn admin-only" aria-label="Edit this card" hidden>
           <ion-icon name="pencil-outline"></ion-icon>
         </button>
       </div>
-      <p id="modal-byline" class="modal-byline"></p>
+      <p id="modal-byline" class="modal-byline text-ink-soft text-sm mt-2 mb-3"></p>
       <div id="modal-tag" class="modal-tag"></div>
       <div id="modal-body" class="modal-body"></div>
-      <a id="modal-link" target="_blank" rel="noopener noreferrer" class="modal-link">Open external link</a>
+      <a id="modal-link" target="_blank" rel="noopener noreferrer" class="modal-link inline-block mt-4 text-accent font-bold no-underline hover:text-accent-light transition-colors">Open external link</a>
     </section>
   </div>
 
