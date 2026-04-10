@@ -1,5 +1,6 @@
 #!/bin/bash
-set -e
+# Non-fatal: don't let certbot failure block deployment
+set +e
 
 DOMAIN="ctrlaltjay.dev"
 EMAIL="rone_peh@hotmail.com"
@@ -12,11 +13,13 @@ if ! command -v certbot &> /dev/null; then
     ln -sf /opt/certbot/bin/certbot /usr/local/bin/certbot
 fi
 
-# Get or renew certificate
+# Get or renew certificate (non-fatal)
 if [ ! -d "/etc/letsencrypt/live/$DOMAIN" ]; then
     certbot --nginx -d "$DOMAIN" -d "www.$DOMAIN" \
         --non-interactive --agree-tos --email "$EMAIL" \
-        --redirect
+        --redirect || echo "Certbot failed — will retry on next deploy or via cron."
 else
-    certbot renew --no-self-upgrade --cert-name "$DOMAIN" --post-hook "systemctl reload nginx"
+    certbot renew --no-self-upgrade --cert-name "$DOMAIN" --post-hook "systemctl reload nginx" || true
 fi
+
+exit 0
