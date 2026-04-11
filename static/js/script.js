@@ -120,7 +120,7 @@ function renderSection(items, categoryId, sortId, targetGridId, subsectionFilter
   );
 
   // Apply subsection filter if provided
-  if (subsectionFilter && subsectionFilter !== "all") {
+  if (subsectionFilter && subsectionFilter.toLowerCase() !== "all") {
     filtered = filtered.filter((item) => item.subsection === subsectionFilter);
   }
 

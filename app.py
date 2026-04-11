@@ -180,7 +180,7 @@ def index():
         "location": "Singapore",
         "email": "Rone_peh@hotmail.com",
         "phone": "+65 8808 1760",
-        "credly": "https://www.credly.com/",
+        "credly": "https://www.credly.com/users/ronepeh",
         "github": "https://github.com/Jayyy419",
         "linkedin": "https://www.linkedin.com/in/ronepeh",
         "bio": (
