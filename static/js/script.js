@@ -121,7 +121,7 @@ function renderSection(items, categoryId, sortId, targetGridId, subsectionFilter
 
   // Apply subsection filter if provided
   if (subsectionFilter && subsectionFilter.toLowerCase() !== "all") {
-    filtered = filtered.filter((item) => item.subsection === subsectionFilter);
+    filtered = filtered.filter((item) => item.category === subsectionFilter || item.subsection === subsectionFilter);
   }
 
   // For experiences with no subsection filter specified but we have subsection buttons,
