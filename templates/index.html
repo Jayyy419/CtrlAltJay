@@ -75,8 +75,7 @@
         </a>
       </div>
 
-      <button type="button" id="open-admin-auth" class="admin-link w-full text-center mt-4 bg-gradient-to-r from-accent to-accent-dark text-surface-400 font-semibold rounded-xl px-4 py-3 text-sm transition-all duration-300 hover:shadow-[0_0_24px_rgba(245,158,11,0.4)] border-none cursor-pointer">Admin Dashboard</button>
-      <button type="button" id="admin-logout-btn" class="admin-link admin-logout w-full text-center mt-3 bg-transparent text-ink-muted font-semibold rounded-xl px-4 py-3 text-sm border border-white/[0.06] transition-all duration-300 hover:border-red-500/60 hover:text-red-400 cursor-pointer" hidden>Log Out</button>
+      <button type="button" id="admin-logout-btn" class="admin-link admin-logout w-full text-center mt-4 bg-transparent text-ink-muted font-semibold rounded-xl px-4 py-3 text-sm border border-white/[0.06] transition-all duration-300 hover:border-red-500/60 hover:text-red-400 cursor-pointer" hidden>Exit Admin Mode</button>
     </aside>
 
     <!-- Content -->
@@ -245,25 +244,6 @@
     <p>&copy; {{ 2026 }} CtrlAltJay</p>
     <p>Built with Flask, cloud-native thinking, and practical AI workflows.</p>
   </footer>
-
-  <!-- Admin Auth Modal -->
-  <div class="modal-shell" id="admin-auth-modal" aria-hidden="true">
-    <div class="modal-backdrop" data-close-admin-auth></div>
-    <section class="auth-card relative w-[min(92vw,460px)] bg-surface-50/95 backdrop-blur-2xl border border-white/[0.08] rounded-2xl p-7 shadow-2xl z-[201]" role="dialog" aria-modal="true" aria-labelledby="admin-auth-title">
-      <button class="modal-close" data-close-admin-auth aria-label="Close admin login">
-        <ion-icon name="close-outline"></ion-icon>
-      </button>
-      <h3 id="admin-auth-title" class="text-lg font-bold text-white mb-1">Admin Access</h3>
-      <p class="text-ink-muted text-sm mb-5">Enter your private passcode to unlock editing directly in this portfolio.</p>
-      <form id="admin-auth-form" class="admin-auth-form grid gap-3">
-        <label for="admin-passcode" class="text-sm text-ink-soft">Passcode</label>
-        <input id="admin-passcode" type="password" name="passcode" autocomplete="current-password" required
-          class="w-full px-4 py-3 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent transition-colors">
-        <button type="submit" class="btn-primary bg-gradient-to-r from-accent to-accent-dark text-surface-400 font-bold rounded-xl px-6 py-3 text-sm border-none cursor-pointer transition-all duration-300 hover:shadow-[0_0_24px_rgba(245,158,11,0.4)]">Verify & Enable Editing</button>
-      </form>
-      <p id="admin-auth-feedback" class="form-note text-xs text-ink-muted mt-3" aria-live="polite"></p>
-    </section>
-  </div>
 
   <!-- Admin Item Modal -->
   <div class="modal-shell" id="admin-item-modal" aria-hidden="true">
