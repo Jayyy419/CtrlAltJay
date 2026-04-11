@@ -14,27 +14,39 @@
     <h1>Admin Login</h1>
     <p>CtrlAltJay content manager</p>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <ul class="flash-list">
-          {% for category, message in messages %}
-            <li class="flash-item {{ category }}">{{ message }}</li>
-          {% endfor %}
-        </ul>
-      {% endif %}
-    {% endwith %}
-
-    <form method="POST">
-      <label>Username</label>
-      <input type="text" name="username" required>
-
-      <label>Password</label>
-      <input type="password" name="password" required>
-
+    <form id="admin-login-form">
+      <label>Passcode</label>
+      <input type="password" id="admin-passcode" name="passcode" autocomplete="current-password" required>
       <button type="submit">Sign In</button>
     </form>
+    <p id="login-feedback" style="color: #f87171; font-size: 0.85rem; margin-top: 0.5rem;"></p>
 
     <a href="{{ url_for('index') }}">Back to portfolio</a>
   </main>
+
+  <script>
+    document.getElementById("admin-login-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const feedback = document.getElementById("login-feedback");
+      const passcode = document.getElementById("admin-passcode").value.trim();
+      if (!passcode) { feedback.textContent = "Passcode is required."; return; }
+      feedback.textContent = "Verifying...";
+      try {
+        const res = await fetch("/admin/auth", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ passcode }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          window.location.href = data.redirect_url || "/admin";
+        } else {
+          feedback.textContent = data.error || "Authentication failed.";
+        }
+      } catch (_) {
+        feedback.textContent = "Could not verify right now. Please try again.";
+      }
+    });
+  </script>
 </body>
 </html>

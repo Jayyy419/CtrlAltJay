@@ -298,8 +298,9 @@ def admin_logout():
 
 
 @app.route("/admin")
-@login_required
 def admin_dashboard():
+    if not session.get("is_admin"):
+        return render_template("admin_login.html")
     return render_template("admin.html")
 
 
