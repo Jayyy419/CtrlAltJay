@@ -1,6 +1,7 @@
 .git
 .gitignore
 .vscode
+LinkedIn_Export/
 __pycache__
 *.pyc
 venv/
