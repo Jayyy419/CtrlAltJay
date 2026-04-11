@@ -1,10 +1,14 @@
 import os
-import sqlite3
 import time
 import hmac
+import uuid
 from datetime import datetime
+from decimal import Decimal
 from functools import wraps
 from pathlib import Path
+
+import boto3
+from boto3.dynamodb.conditions import Attr
 
 from seed_data import get_all_items, get_all_resume, get_all_skills
 
@@ -26,8 +30,13 @@ from werkzeug.utils import secure_filename
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent
-DB_PATH = BASE_DIR / "portfolio.db"
 UPLOAD_DIR = BASE_DIR / "static" / "uploads"
+
+AWS_REGION = os.getenv("AWS_REGION", "ap-southeast-1")
+dynamodb = boto3.resource("dynamodb", region_name=AWS_REGION)
+table_items = dynamodb.Table("ctrlaltjay-portfolio-items")
+table_resume = dynamodb.Table("ctrlaltjay-resume-items")
+table_skills = dynamodb.Table("ctrlaltjay-skills")
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "change-this-secret")
@@ -44,11 +53,12 @@ DEFAULT_ADMIN_PASSCODE_HASH = generate_password_hash("controlalternatejay")
 MAX_ADMIN_ATTEMPTS = 5
 ADMIN_LOCK_SECONDS = 600
 
-
-def get_db_connection():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+PORTFOLIO_ITEM_FIELDS = [
+    "section", "category", "subsection", "title", "byline", "tag",
+    "summary", "description", "date_label", "date_value", "deliverables",
+    "challenges", "future_improvements", "extra_notes", "image_path",
+    "external_link",
+]
 
 
 def now_iso():
@@ -99,113 +109,60 @@ def save_uploaded_image(upload):
 def initialize_database():
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-    with get_db_connection() as conn:
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS portfolio_items (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                section TEXT NOT NULL,
-                category TEXT NOT NULL,
-                subsection TEXT,
-                title TEXT NOT NULL,
-                byline TEXT,
-                tag TEXT,
-                summary TEXT,
-                description TEXT,
-                date_label TEXT,
-                date_value TEXT,
-                deliverables TEXT,
-                challenges TEXT,
-                future_improvements TEXT,
-                extra_notes TEXT,
-                image_path TEXT,
-                external_link TEXT,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-            )
-            """
-        )
+    # Check if portfolio items table is empty
+    response = table_items.scan(Limit=1)
+    if response.get("Count", 0) == 0:
+        seed_now = now_iso()
 
-        # Add subsection column if it doesn't exist
-        try:
-            conn.execute("ALTER TABLE portfolio_items ADD COLUMN subsection TEXT")
-        except:
-            pass  # Column already exists
+        # Seed portfolio items
+        all_items = get_all_items()
+        with table_items.batch_writer() as batch:
+            for tup in all_items:
+                item = {"id": str(uuid.uuid4()), "created_at": seed_now, "updated_at": seed_now}
+                for i, field in enumerate(PORTFOLIO_ITEM_FIELDS):
+                    item[field] = tup[i] if tup[i] is not None else ""
+                batch.put_item(Item=item)
 
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS resume_items (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                lane TEXT NOT NULL,
-                title TEXT NOT NULL,
-                subtitle TEXT,
-                period TEXT NOT NULL,
-                description TEXT,
-                sort_order INTEGER NOT NULL DEFAULT 0,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-            )
-            """
-        )
+        # Seed resume items
+        all_resume = get_all_resume()
+        with table_resume.batch_writer() as batch:
+            for lane, title, sub, period, desc, sort in all_resume:
+                batch.put_item(Item={
+                    "id": str(uuid.uuid4()),
+                    "lane": lane,
+                    "title": title,
+                    "subtitle": sub or "",
+                    "period": period,
+                    "description": desc or "",
+                    "sort_order": Decimal(str(sort)),
+                    "created_at": seed_now,
+                    "updated_at": seed_now,
+                })
 
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS skills (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                level INTEGER NOT NULL,
-                focus TEXT,
-                sort_order INTEGER NOT NULL DEFAULT 0,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-            )
-            """
-        )
-
-        has_data = conn.execute("SELECT COUNT(*) AS count FROM portfolio_items").fetchone()["count"]
-
-        if has_data == 0:
-            seed_now = now_iso()
-
-            conn.executemany(
-                """
-                INSERT INTO portfolio_items (
-                    section, category, subsection, title, byline, tag,
-                    summary, description, date_label, date_value,
-                    deliverables, challenges, future_improvements,
-                    extra_notes, image_path, external_link,
-                    created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                get_all_items(),
-            )
-
-            conn.executemany(
-                """
-                INSERT INTO resume_items (
-                    lane, title, subtitle, period, description, sort_order,
-                    created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                [(lane, title, sub, period, desc, sort, seed_now, seed_now)
-                 for lane, title, sub, period, desc, sort in get_all_resume()],
-            )
-
-            conn.executemany(
-                """
-                INSERT INTO skills (
-                    name, level, focus, sort_order, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?)
-                """,
-                [(name, level, focus, sort, seed_now, seed_now)
-                 for name, level, focus, sort in get_all_skills()],
-            )
-
-        conn.commit()
+        # Seed skills
+        all_skills = get_all_skills()
+        with table_skills.batch_writer() as batch:
+            for name, level, focus, sort in all_skills:
+                batch.put_item(Item={
+                    "id": str(uuid.uuid4()),
+                    "name": name,
+                    "level": Decimal(str(level)),
+                    "focus": focus or "",
+                    "sort_order": Decimal(str(sort)),
+                    "created_at": seed_now,
+                    "updated_at": seed_now,
+                })
 
 
-def row_to_dict(row):
-    return {key: row[key] for key in row.keys()}
+def dynamo_to_dict(item):
+    """Convert DynamoDB item (with Decimals) to JSON-safe dict."""
+    result = {}
+    for k, v in item.items():
+        if isinstance(v, Decimal):
+            result[k] = int(v) if v == int(v) else float(v)
+        else:
+            result[k] = v
+    return result
 
 
 @app.before_request
@@ -257,26 +214,30 @@ def index():
 
 @app.route("/api/public-data")
 def api_public_data():
-    with get_db_connection() as conn:
-        projects = conn.execute(
-            "SELECT * FROM portfolio_items WHERE section = 'project'"
-        ).fetchall()
-        experiences = conn.execute(
-            "SELECT * FROM portfolio_items WHERE section = 'experience'"
-        ).fetchall()
-        resume_items = conn.execute(
-            "SELECT * FROM resume_items ORDER BY lane ASC, sort_order ASC, id DESC"
-        ).fetchall()
-        skills = conn.execute(
-            "SELECT * FROM skills ORDER BY sort_order ASC, id ASC"
-        ).fetchall()
+    items_resp = table_items.scan()
+    all_items = [dynamo_to_dict(i) for i in items_resp.get("Items", [])]
+
+    projects = [i for i in all_items if i.get("section") == "project"]
+    experiences = [i for i in all_items if i.get("section") == "experience"]
+
+    resume_resp = table_resume.scan()
+    resume_items = sorted(
+        [dynamo_to_dict(i) for i in resume_resp.get("Items", [])],
+        key=lambda x: (x.get("lane", ""), x.get("sort_order", 0), x.get("id", "")),
+    )
+
+    skills_resp = table_skills.scan()
+    skills = sorted(
+        [dynamo_to_dict(i) for i in skills_resp.get("Items", [])],
+        key=lambda x: (x.get("sort_order", 0), x.get("id", "")),
+    )
 
     return jsonify(
         {
-            "projects": [row_to_dict(row) for row in projects],
-            "experiences": [row_to_dict(row) for row in experiences],
-            "resume": [row_to_dict(row) for row in resume_items],
-            "skills": [row_to_dict(row) for row in skills],
+            "projects": projects,
+            "experiences": experiences,
+            "resume": resume_items,
+            "skills": skills,
         }
     )
 
@@ -350,17 +311,14 @@ def api_admin_items():
     
     if request.method == "GET":
         section = request.args.get("section", "").strip().lower()
-        query = "SELECT * FROM portfolio_items"
-        args = []
+        response = table_items.scan()
+        all_items = [dynamo_to_dict(i) for i in response.get("Items", [])]
+
         if section in {"project", "experience"}:
-            query += " WHERE section = ?"
-            args.append(section)
-        query += " ORDER BY updated_at DESC"
+            all_items = [i for i in all_items if i.get("section") == section]
 
-        with get_db_connection() as conn:
-            rows = conn.execute(query, args).fetchall()
-
-        return jsonify([row_to_dict(row) for row in rows])
+        all_items.sort(key=lambda x: x.get("updated_at", ""), reverse=True)
+        return jsonify(all_items)
 
     image_path = save_uploaded_image(request.files.get("image"))
     now = now_iso()
@@ -387,113 +345,56 @@ def api_admin_items():
     if not required_ok:
         return jsonify({"error": "section, category, and title are required."}), 400
 
-    with get_db_connection() as conn:
-        conn.execute(
-            """
-            INSERT INTO portfolio_items (
-                section, category, subsection, title, byline, tag, summary, description,
-                date_label, date_value, deliverables, challenges,
-                future_improvements, extra_notes, image_path, external_link,
-                created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                payload["section"],
-                payload["category"],
-                payload["subsection"],
-                payload["title"],
-                payload["byline"],
-                payload["tag"],
-                payload["summary"],
-                payload["description"],
-                payload["date_label"],
-                payload["date_value"],
-                payload["deliverables"],
-                payload["challenges"],
-                payload["future_improvements"],
-                payload["extra_notes"],
-                payload["image_path"],
-                payload["external_link"],
-                now,
-                now,
-            ),
-        )
-        conn.commit()
+    payload["id"] = str(uuid.uuid4())
+    payload["created_at"] = now
+    payload["updated_at"] = now
+    table_items.put_item(Item=payload)
 
     return jsonify({"message": "Item created."}), 201
 
 
-@app.route("/api/admin/items/<int:item_id>", methods=["PUT", "DELETE"])
+@app.route("/api/admin/items/<item_id>", methods=["PUT", "DELETE"])
 def api_admin_item(item_id):
     unauthorized = unauthorized_admin_response()
     if unauthorized:
         return unauthorized
     
-    with get_db_connection() as conn:
-        existing = conn.execute(
-            "SELECT * FROM portfolio_items WHERE id = ?", (item_id,)
-        ).fetchone()
+    response = table_items.get_item(Key={"id": item_id})
+    existing = response.get("Item")
 
-        if not existing:
-            return jsonify({"error": "Item not found."}), 404
+    if not existing:
+        return jsonify({"error": "Item not found."}), 404
 
-        if request.method == "DELETE":
-            conn.execute("DELETE FROM portfolio_items WHERE id = ?", (item_id,))
-            conn.commit()
-            return jsonify({"message": "Item deleted."})
+    if request.method == "DELETE":
+        table_items.delete_item(Key={"id": item_id})
+        return jsonify({"message": "Item deleted."})
 
-        form = request.form
-        image_path = save_uploaded_image(request.files.get("image"))
-        updated_at = now_iso()
-        updated_payload = {
-            "section": form.get("section", existing["section"]).strip().lower(),
-            "category": form.get("category", existing["category"]).strip(),
-            "subsection": form.get("subsection", existing.get("subsection", "")).strip(),
-            "title": form.get("title", existing["title"]).strip(),
-            "byline": form.get("byline", existing.get("byline") or "").strip(),
-            "tag": form.get("tag", existing.get("tag") or "").strip(),
-            "summary": form.get("summary", existing.get("summary") or "").strip(),
-            "description": form.get("description", existing.get("description") or "").strip(),
-            "date_label": form.get("date_label", existing.get("date_label") or "").strip(),
-            "date_value": form.get("date_value", existing.get("date_value") or "").strip(),
-            "deliverables": form.get("deliverables", existing.get("deliverables") or "").strip(),
-            "challenges": form.get("challenges", existing.get("challenges") or "").strip(),
-            "future_improvements": form.get("future_improvements", existing.get("future_improvements") or "").strip(),
-            "extra_notes": form.get("extra_notes", existing.get("extra_notes") or "").strip(),
-            "image_path": image_path or form.get("image_path", existing.get("image_path") or "").strip(),
-            "external_link": form.get("external_link", existing.get("external_link") or "").strip(),
-        }
+    form = request.form
+    image_path = save_uploaded_image(request.files.get("image"))
+    updated_at = now_iso()
+    updated_payload = {
+        "section": form.get("section", existing.get("section", "")).strip().lower(),
+        "category": form.get("category", existing.get("category", "")).strip(),
+        "subsection": form.get("subsection", existing.get("subsection", "")).strip(),
+        "title": form.get("title", existing.get("title", "")).strip(),
+        "byline": form.get("byline", existing.get("byline", "")).strip(),
+        "tag": form.get("tag", existing.get("tag", "")).strip(),
+        "summary": form.get("summary", existing.get("summary", "")).strip(),
+        "description": form.get("description", existing.get("description", "")).strip(),
+        "date_label": form.get("date_label", existing.get("date_label", "")).strip(),
+        "date_value": form.get("date_value", existing.get("date_value", "")).strip(),
+        "deliverables": form.get("deliverables", existing.get("deliverables", "")).strip(),
+        "challenges": form.get("challenges", existing.get("challenges", "")).strip(),
+        "future_improvements": form.get("future_improvements", existing.get("future_improvements", "")).strip(),
+        "extra_notes": form.get("extra_notes", existing.get("extra_notes", "")).strip(),
+        "image_path": image_path or form.get("image_path", existing.get("image_path", "")).strip(),
+        "external_link": form.get("external_link", existing.get("external_link", "")).strip(),
+    }
 
-        conn.execute(
-            """
-            UPDATE portfolio_items
-            SET section = ?, category = ?, subsection = ?, title = ?, byline = ?, tag = ?, summary = ?,
-                description = ?, date_label = ?, date_value = ?, deliverables = ?, challenges = ?,
-                future_improvements = ?, extra_notes = ?, image_path = ?, external_link = ?, updated_at = ?
-            WHERE id = ?
-            """,
-            (
-                updated_payload["section"],
-                updated_payload["category"],
-                updated_payload["subsection"],
-                updated_payload["title"],
-                updated_payload["byline"],
-                updated_payload["tag"],
-                updated_payload["summary"],
-                updated_payload["description"],
-                updated_payload["date_label"],
-                updated_payload["date_value"],
-                updated_payload["deliverables"],
-                updated_payload["challenges"],
-                updated_payload["future_improvements"],
-                updated_payload["extra_notes"],
-                updated_payload["image_path"],
-                updated_payload["external_link"],
-                updated_at,
-                item_id,
-            ),
-        )
-        conn.commit()
+    updated_payload["id"] = item_id
+    updated_payload["created_at"] = existing.get("created_at", "")
+    updated_payload["updated_at"] = updated_at
+    table_items.put_item(Item=updated_payload)
 
     return jsonify({"message": "Item updated."})
 
@@ -505,11 +406,12 @@ def api_admin_resume():
         return unauthorized
     
     if request.method == "GET":
-        with get_db_connection() as conn:
-            rows = conn.execute(
-                "SELECT * FROM resume_items ORDER BY lane ASC, sort_order ASC, id DESC"
-            ).fetchall()
-        return jsonify([row_to_dict(row) for row in rows])
+        response = table_resume.scan()
+        items = sorted(
+            [dynamo_to_dict(i) for i in response.get("Items", [])],
+            key=lambda x: (x.get("lane", ""), x.get("sort_order", 0), x.get("id", "")),
+        )
+        return jsonify(items)
 
     now = now_iso()
     lane = request.form.get("lane", "").strip().lower()
@@ -524,59 +426,50 @@ def api_admin_resume():
     if not title or not period:
         return jsonify({"error": "title and period are required."}), 400
 
-    with get_db_connection() as conn:
-        conn.execute(
-            """
-            INSERT INTO resume_items (
-                lane, title, subtitle, period, description, sort_order, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (lane, title, subtitle, period, description, sort_order, now, now),
-        )
-        conn.commit()
+    table_resume.put_item(Item={
+        "id": str(uuid.uuid4()),
+        "lane": lane,
+        "title": title,
+        "subtitle": subtitle,
+        "period": period,
+        "description": description,
+        "sort_order": Decimal(str(sort_order)),
+        "created_at": now,
+        "updated_at": now,
+    })
     return jsonify({"message": "Resume item created."}), 201
 
 
-@app.route("/api/admin/resume/<int:item_id>", methods=["PUT", "DELETE"])
+@app.route("/api/admin/resume/<item_id>", methods=["PUT", "DELETE"])
 def api_admin_resume_item(item_id):
     unauthorized = unauthorized_admin_response()
     if unauthorized:
         return unauthorized
     
-    with get_db_connection() as conn:
-        existing = conn.execute(
-            "SELECT * FROM resume_items WHERE id = ?", (item_id,)
-        ).fetchone()
-        if not existing:
-            return jsonify({"error": "Resume item not found."}), 404
+    response = table_resume.get_item(Key={"id": item_id})
+    existing = response.get("Item")
+    if not existing:
+        return jsonify({"error": "Resume item not found."}), 404
 
-        if request.method == "DELETE":
-            conn.execute("DELETE FROM resume_items WHERE id = ?", (item_id,))
-            conn.commit()
-            return jsonify({"message": "Resume item deleted."})
+    if request.method == "DELETE":
+        table_resume.delete_item(Key={"id": item_id})
+        return jsonify({"message": "Resume item deleted."})
 
-        lane = request.form.get("lane", existing["lane"]).strip().lower()
-        if lane not in {"education", "work"}:
-            return jsonify({"error": "lane must be education or work."}), 400
+    lane = request.form.get("lane", existing.get("lane", "")).strip().lower()
+    if lane not in {"education", "work"}:
+        return jsonify({"error": "lane must be education or work."}), 400
 
-        conn.execute(
-            """
-            UPDATE resume_items
-            SET lane = ?, title = ?, subtitle = ?, period = ?, description = ?, sort_order = ?, updated_at = ?
-            WHERE id = ?
-            """,
-            (
-                lane,
-                request.form.get("title", existing["title"]).strip(),
-                request.form.get("subtitle", existing["subtitle"] or "").strip(),
-                request.form.get("period", existing["period"]).strip(),
-                request.form.get("description", existing["description"] or "").strip(),
-                int(request.form.get("sort_order", existing["sort_order"]) or 0),
-                now_iso(),
-                item_id,
-            ),
-        )
-        conn.commit()
+    table_resume.put_item(Item={
+        "id": item_id,
+        "lane": lane,
+        "title": request.form.get("title", existing.get("title", "")).strip(),
+        "subtitle": request.form.get("subtitle", existing.get("subtitle", "")).strip(),
+        "period": request.form.get("period", existing.get("period", "")).strip(),
+        "description": request.form.get("description", existing.get("description", "")).strip(),
+        "sort_order": Decimal(str(int(request.form.get("sort_order", existing.get("sort_order", 0)) or 0))),
+        "created_at": existing.get("created_at", ""),
+        "updated_at": now_iso(),
+    })
 
     return jsonify({"message": "Resume item updated."})
 
@@ -588,9 +481,12 @@ def api_admin_skills():
         return unauthorized
     
     if request.method == "GET":
-        with get_db_connection() as conn:
-            rows = conn.execute("SELECT * FROM skills ORDER BY sort_order ASC, id ASC").fetchall()
-        return jsonify([row_to_dict(row) for row in rows])
+        response = table_skills.scan()
+        items = sorted(
+            [dynamo_to_dict(i) for i in response.get("Items", [])],
+            key=lambda x: (x.get("sort_order", 0), x.get("id", "")),
+        )
+        return jsonify(items)
 
     now = now_iso()
     name = request.form.get("name", "").strip()
@@ -601,54 +497,46 @@ def api_admin_skills():
     if not name or level < 0 or level > 100:
         return jsonify({"error": "name is required and level must be 0-100."}), 400
 
-    with get_db_connection() as conn:
-        conn.execute(
-            """
-            INSERT INTO skills (name, level, focus, sort_order, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?)
-            """,
-            (name, level, focus, sort_order, now, now),
-        )
-        conn.commit()
+    table_skills.put_item(Item={
+        "id": str(uuid.uuid4()),
+        "name": name,
+        "level": Decimal(str(level)),
+        "focus": focus,
+        "sort_order": Decimal(str(sort_order)),
+        "created_at": now,
+        "updated_at": now,
+    })
     return jsonify({"message": "Skill created."}), 201
 
 
-@app.route("/api/admin/skills/<int:item_id>", methods=["PUT", "DELETE"])
+@app.route("/api/admin/skills/<item_id>", methods=["PUT", "DELETE"])
 def api_admin_skill_item(item_id):
     unauthorized = unauthorized_admin_response()
     if unauthorized:
         return unauthorized
     
-    with get_db_connection() as conn:
-        existing = conn.execute("SELECT * FROM skills WHERE id = ?", (item_id,)).fetchone()
-        if not existing:
-            return jsonify({"error": "Skill not found."}), 404
+    response = table_skills.get_item(Key={"id": item_id})
+    existing = response.get("Item")
+    if not existing:
+        return jsonify({"error": "Skill not found."}), 404
 
-        if request.method == "DELETE":
-            conn.execute("DELETE FROM skills WHERE id = ?", (item_id,))
-            conn.commit()
-            return jsonify({"message": "Skill deleted."})
+    if request.method == "DELETE":
+        table_skills.delete_item(Key={"id": item_id})
+        return jsonify({"message": "Skill deleted."})
 
-        level = int(request.form.get("level", existing["level"]) or 0)
-        if level < 0 or level > 100:
-            return jsonify({"error": "level must be 0-100."}), 400
+    level = int(request.form.get("level", existing.get("level", 0)) or 0)
+    if level < 0 or level > 100:
+        return jsonify({"error": "level must be 0-100."}), 400
 
-        conn.execute(
-            """
-            UPDATE skills
-            SET name = ?, level = ?, focus = ?, sort_order = ?, updated_at = ?
-            WHERE id = ?
-            """,
-            (
-                request.form.get("name", existing["name"]).strip(),
-                level,
-                request.form.get("focus", existing["focus"] or "").strip(),
-                int(request.form.get("sort_order", existing["sort_order"]) or 0),
-                now_iso(),
-                item_id,
-            ),
-        )
-        conn.commit()
+    table_skills.put_item(Item={
+        "id": item_id,
+        "name": request.form.get("name", existing.get("name", "")).strip(),
+        "level": Decimal(str(level)),
+        "focus": request.form.get("focus", existing.get("focus", "")).strip(),
+        "sort_order": Decimal(str(int(request.form.get("sort_order", existing.get("sort_order", 0)) or 0))),
+        "created_at": existing.get("created_at", ""),
+        "updated_at": now_iso(),
+    })
 
     return jsonify({"message": "Skill updated."})
 
