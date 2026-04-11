@@ -12,13 +12,18 @@ if ! command -v certbot &> /dev/null; then
     ln -sf /opt/certbot/bin/certbot /usr/local/bin/certbot
 fi
 
-# Get or renew certificate
-if [ ! -d "/etc/letsencrypt/live/$DOMAIN" ]; then
+# Check if we have a valid cert already
+if certbot certificates 2>/dev/null | grep -q "Certificate Name: $DOMAIN"; then
+    certbot renew --no-self-upgrade --cert-name "$DOMAIN" --post-hook "systemctl reload nginx" || true
+else
+    # Clean any failed attempts
+    rm -rf /etc/letsencrypt/live/$DOMAIN
+    rm -rf /etc/letsencrypt/archive/$DOMAIN
+    rm -rf /etc/letsencrypt/renewal/$DOMAIN.conf
+
     certbot --nginx -d "$DOMAIN" \
         --non-interactive --agree-tos --email "$EMAIL" \
         --redirect || echo "Certbot failed — will retry on next deploy."
-else
-    certbot renew --no-self-upgrade --cert-name "$DOMAIN" --post-hook "systemctl reload nginx" || true
 fi
 
 exit 0
