@@ -26,4 +26,7 @@ else
         --redirect || echo "Certbot failed — will retry on next deploy."
 fi
 
+# Ensure nginx is reloaded with the certbot-modified config
+systemctl reload nginx || systemctl restart nginx || true
+
 exit 0
