@@ -265,8 +265,7 @@ function setAdminMode(enabled) {
 }
 
 function findItemById(itemId) {
-  const id = Number(itemId);
-  return [...state.projects, ...state.experiences].find((item) => Number(item.id) === id) || null;
+  return [...state.projects, ...state.experiences].find((item) => String(item.id) === String(itemId)) || null;
 }
 
 function openAdminItemModal(item = null, section = "project") {
