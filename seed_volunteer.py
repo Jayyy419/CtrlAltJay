@@ -1,0 +1,48 @@
+def get_volunteer():
+    return [
+        (
+            "experience", "Volunteering", "Volunteering",
+            "Assistant-In-Charge - Project We+65",
+            "Blossom Seeds Limited", "Volunteering - Community",
+            "Assistant-In-Charge for Project We+65 under the Youth Corps Leaders Programme.",
+            "",
+            "Oct 2025 – Present", "Oct 2025",
+            "", "", "", "", "", "",
+        ),
+        (
+            "experience", "Volunteering", "Volunteering",
+            "Employee Volunteer",
+            "JPMorganChase", "Volunteering - Environment",
+            "Corporate volunteering initiatives with JPMorganChase.",
+            "",
+            "Apr 2025 – Jan 2026", "Apr 2025",
+            "", "", "", "", "", "",
+        ),
+        (
+            "experience", "Volunteering", "Volunteering",
+            "Youth Expedition Project - Fan-Thai-Stic!",
+            "Youth Corps Singapore", "Volunteering - Community",
+            "Youth-led overseas community engagement initiative in Thailand.",
+            "Collaborated with local communities to create meaningful, sustainable impact while fostering cross-cultural understanding, leadership and lifelong friendships.",
+            "Aug 2023 – Oct 2023", "Aug 2023",
+            "", "", "", "", "", "",
+        ),
+        (
+            "experience", "Volunteering", "Volunteering",
+            "Student Volunteer - Annual Sharing Luncheon",
+            "Lions Clubs International", "Volunteering - Health",
+            "Volunteered for Annual Sharing Luncheon 2023 at Potong Pasir CC.",
+            "",
+            "Oct 2023 – Nov 2023", "Oct 2023",
+            "", "", "", "", "", "",
+        ),
+        (
+            "experience", "Volunteering", "Volunteering",
+            "Home Cleaning Volunteer",
+            "Fei Yue Active Ageing Centre", "Volunteering - Social",
+            "Supported seniors through home cleaning and light household assistance.",
+            "Helped residents maintain a safe, clean and comfortable living environment, building meaningful intergenerational connections.",
+            "Jan 2024", "Jan 2024",
+            "", "", "", "", "", "",
+        ),
+    ]

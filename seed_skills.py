@@ -1,0 +1,21 @@
+def get_skills():
+    return [
+        ("Python", 88, "Backend, automation, scripting", 1),
+        ("JavaScript", 78, "Frontend interaction and DOM", 2),
+        ("Flask", 82, "Web app architecture", 3),
+        ("React.js", 65, "Frontend framework", 4),
+        ("AWS", 80, "Cloud computing and deployment", 5),
+        ("Docker", 68, "Containerisation and DevOps", 6),
+        ("Machine Learning", 74, "TensorFlow, deep learning", 7),
+        ("Agile Methodologies", 75, "Scrum, PSPO I certified", 8),
+        ("SQL / MySQL", 76, "Database management", 9),
+        ("HTML / CSS", 85, "Web development fundamentals", 10),
+        ("C# / .NET", 60, "Application development", 11),
+        ("Linux", 66, "System administration, CLI", 12),
+        ("Git", 80, "Version control", 13),
+        ("Data Analytics", 72, "Tableau, R, Google Analytics", 14),
+        ("Jira / Confluence", 74, "Project tracking and docs", 15),
+        ("Airtable / Typeform", 70, "Workflow and data management", 16),
+        ("Figma", 62, "UI/UX prototyping", 17),
+        ("Prompt Engineering", 72, "LLM integration", 18),
+    ]
