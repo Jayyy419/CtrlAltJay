@@ -141,16 +141,11 @@ function buildCard(item) {
   const title = document.createElement("h4");
   title.textContent = item.title;
 
-  const byline = document.createElement("p");
-  byline.className = "byline";
-  byline.textContent = item.byline ? `By ${item.byline}` : "By CtrlAltJay";
-
   const tag = document.createElement("span");
   tag.className = "tag";
   tag.textContent = item.tag || item.category;
 
   content.appendChild(title);
-  content.appendChild(byline);
   content.appendChild(tag);
 
   card.appendChild(img);
@@ -249,7 +244,6 @@ function openModal(item) {
   const shell = document.getElementById("detail-modal");
   const image = document.getElementById("modal-image");
   const title = document.getElementById("modal-title");
-  const byline = document.getElementById("modal-byline");
   const tag = document.getElementById("modal-tag");
   const body = document.getElementById("modal-body");
   const link = document.getElementById("modal-link");
@@ -257,7 +251,6 @@ function openModal(item) {
   image.src = item.image_path || "../static/images/Projects/WebDev_PortfolioV1.png";
   image.alt = item.title;
   title.textContent = item.title;
-  byline.textContent = item.byline ? `By ${item.byline}` : "";
   tag.textContent = item.tag || item.category;
 
   body.innerHTML = [
@@ -620,7 +613,7 @@ function wireProjectControls() {
   const projectCategories = uniqueCategories(state.projects);
   renderSubsectionNav("projects-subsection-nav", projectCategories, state.projects);
 
-  const experienceSubsections = uniqueSubsections(state.experiences);
+  const experienceSubsections = CATEGORY_OPTIONS.experience;
   renderSubsectionNav("experiences-subsection-nav", experienceSubsections, state.experiences);
 
   // Restore sort from localStorage
