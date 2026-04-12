@@ -95,20 +95,38 @@
 .timeline small { display: block; margin-top: 5px; color: #f59e0b; font-weight: 600; font-size: 0.82rem; }
 .timeline p { margin: 8px 0 0; line-height: 1.6; color: #94a3b8; font-size: 0.88rem; }
 
-/* Skill cards (JS-generated) */
-.skill-card {
-  border: 1.5px solid rgba(255,255,255,0.06);
-  border-radius: 14px;
-  padding: 14px;
+/* Skill tiers & chips (JS-generated) */
+.skill-tier-heading {
+  color: #94a3b8;
+  letter-spacing: 0.08em;
+}
+.skill-chip {
+  display: inline-block;
+  padding: 6px 16px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: 1.5px solid rgba(255,255,255,0.08);
   background: rgba(26,26,46,0.6);
   backdrop-filter: blur(8px);
-  transition: border-color 0.3s ease;
+  transition: border-color 0.3s ease, background 0.3s ease;
 }
-.skill-card:hover { border-color: rgba(245,158,11,0.4); }
-.skill-top { display: flex; justify-content: space-between; font-weight: 700; color: #fff; font-size: 0.9rem; }
-.skill-focus { color: #64748b; font-size: 0.82rem; margin-top: 5px; }
-.skill-meter { margin-top: 8px; height: 6px; border-radius: 999px; background: #1a1a2e; overflow: hidden; }
-.skill-meter div { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #f59e0b, #d97706); transition: width 0.8s ease; }
+.skill-chip:hover { border-color: rgba(245,158,11,0.5); }
+.skill-chip--primary-stack {
+  color: #f59e0b;
+  border-color: rgba(245,158,11,0.3);
+  background: rgba(245,158,11,0.08);
+}
+.skill-chip--experienced {
+  color: #38bdf8;
+  border-color: rgba(56,189,248,0.3);
+  background: rgba(56,189,248,0.08);
+}
+.skill-chip--familiar {
+  color: #a78bfa;
+  border-color: rgba(167,139,250,0.3);
+  background: rgba(167,139,250,0.08);
+}
 
 /* Flash messages */
 .flash-item.error { color: #ef4444; border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.08); }
