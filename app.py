@@ -257,9 +257,9 @@ def admin_logout():
 
 @app.route("/admin")
 def admin_dashboard():
-    if not session.get("is_admin"):
-        return render_template("admin_login.html")
-    return redirect(url_for("index"))
+    if session.get("is_admin"):
+        return redirect(url_for("index"))
+    return redirect(url_for("index") + "?admin=login")
 
 
 @app.route("/api/admin/items", methods=["GET", "POST"])
