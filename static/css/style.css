@@ -56,7 +56,6 @@ html { -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent;
 .card img { width: 100%; height: 200px; object-fit: cover; background: #16162a; flex-shrink: 0; }
 .card-content { padding: 18px; }
 .card h4 { margin: 0 0 6px; font-size: 1rem; color: #fff; font-weight: 600; font-family: 'Space Grotesk', system-ui, sans-serif; }
-.card .byline { margin: 6px 0; color: #94a3b8; font-size: 0.82rem; }
 .card .tag {
   display: inline-block;
   font-size: 0.72rem;
