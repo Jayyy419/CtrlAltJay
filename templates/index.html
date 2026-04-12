@@ -259,34 +259,14 @@
           </div>
           <div>
             <label for="admin-item-category" class="text-sm text-ink-soft">Category <span class="required-star text-red-400 font-bold">*</span></label>
-            <input id="admin-item-category" type="text" name="category" required class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent">
-          </div>
-        </div>
-        <div class="field-grid grid grid-cols-2 gap-3 max-sm:grid-cols-1">
-          <div>
-            <label for="admin-item-subsection" class="text-sm text-ink-soft">Subsection</label>
-            <select id="admin-item-subsection" name="subsection" class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent">
-              <option value="">None</option>
-              <option value="Achievements">Achievements</option>
-              <option value="Certifications">Certifications</option>
-              <option value="Roles & Activities">Roles & Activities</option>
-              <option value="Volunteering">Volunteering</option>
+            <select id="admin-item-category" name="category" required class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent">
+              <option value="">Select section first</option>
             </select>
           </div>
-          <div>
-            <label for="admin-item-title-input" class="text-sm text-ink-soft">Title <span class="required-star text-red-400 font-bold">*</span></label>
-            <input id="admin-item-title-input" type="text" name="title" required class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent">
-          </div>
         </div>
-        <div class="field-grid grid grid-cols-2 gap-3 max-sm:grid-cols-1">
-          <div>
-            <label for="admin-item-byline" class="text-sm text-ink-soft">Byline</label>
-            <input id="admin-item-byline" type="text" name="byline" class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent">
-          </div>
-          <div>
-            <label for="admin-item-tag" class="text-sm text-ink-soft">Tag</label>
-            <input id="admin-item-tag" type="text" name="tag" class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent">
-          </div>
+        <div>
+          <label for="admin-item-title-input" class="text-sm text-ink-soft">Title <span class="required-star text-red-400 font-bold">*</span></label>
+          <input id="admin-item-title-input" type="text" name="title" required class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent">
         </div>
         <div>
           <label for="admin-item-summary" class="text-sm text-ink-soft">Summary</label>
@@ -299,11 +279,18 @@
         <div class="field-grid grid grid-cols-2 gap-3 max-sm:grid-cols-1">
           <div>
             <label for="admin-item-date-label" class="text-sm text-ink-soft">Date Label</label>
-            <input id="admin-item-date-label" type="text" name="date_label" class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent">
+            <select id="admin-item-date-label" name="date_label" class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent">
+              <option value="">None</option>
+              <option value="Released">Released</option>
+              <option value="Period">Period</option>
+              <option value="Work in Progress">Work in Progress</option>
+              <option value="Completed">Completed</option>
+              <option value="Ongoing">Ongoing</option>
+            </select>
           </div>
           <div>
             <label for="admin-item-date-value" class="text-sm text-ink-soft">Date Value</label>
-            <input id="admin-item-date-value" type="text" name="date_value" class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent">
+            <input id="admin-item-date-value" type="date" name="date_value" class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent">
           </div>
         </div>
         <div>
