@@ -361,6 +361,8 @@ function openAdminItemModal(item = null, section = "project") {
   document.getElementById("admin-item-future").value = item?.future_improvements || "";
   document.getElementById("admin-item-extra").value = item?.extra_notes || "";
   document.getElementById("admin-item-image-path").value = item?.image_path || "";
+  const imageInfo = document.getElementById("admin-item-image-info");
+  if (imageInfo) imageInfo.textContent = item?.image_path ? `Current: ${item.image_path.split('/').pop()}` : "";
   document.getElementById("admin-item-link").value = item?.external_link || "";
 
   // Show/hide section field and set modal title

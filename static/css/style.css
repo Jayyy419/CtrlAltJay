@@ -229,22 +229,105 @@ html { -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent;
 .icon-edit-btn:hover { border-color: #f59e0b; color: #f59e0b; }
 .icon-edit-btn ion-icon { font-size: 1.1rem; }
 
-/* Responsive */
+/* ===== Responsive ===== */
+
+/* Tablet — sidebar stacks */
 @media (max-width: 1060px) {
-  .layout { grid-template-columns: 1fr; }
-  .sidebar { position: static !important; }
+  .layout { grid-template-columns: 1fr; gap: 1rem !important; padding-top: 1.25rem !important; padding-bottom: 1.25rem !important; }
+  .sidebar { position: static !important; padding: 1.5rem !important; }
+  .portrait-wrap { width: 100px !important; height: 100px !important; margin-bottom: 0.75rem !important; }
+  .contact-cluster { grid-template-columns: 1fr 1fr !important; }
 }
 
+/* Mobile */
 @media (max-width: 640px) {
-  .layout { padding-left: 1rem; padding-right: 1rem; }
-  .sidebar, .content { padding: 1.25rem !important; }
-  .card { grid-template-rows: 160px auto; }
-  .timeline li { margin-left: 40px; }
+  /* Layout */
+  .layout { padding: 0.75rem !important; gap: 0.75rem !important; }
+  .sidebar { padding: 1rem !important; border-radius: 1rem !important; }
+  .content { padding: 1rem !important; border-radius: 1rem !important; }
+
+  /* Sidebar compact */
+  .portrait-wrap { width: 72px !important; height: 72px !important; border-radius: 0.75rem !important; margin-bottom: 0.5rem !important; }
+  .sidebar h1 { font-size: 1.25rem !important; }
+  .headline { font-size: 0.78rem !important; margin-top: 0.375rem !important; margin-bottom: 0.75rem !important; }
+  .contact-cluster { grid-template-columns: 1fr !important; gap: 0.375rem !important; margin-bottom: 0.75rem !important; }
+  .contact-cluster .chip { padding: 0.5rem 0.75rem !important; font-size: 0.78rem !important; gap: 0.5rem !important; border-radius: 0.625rem !important; }
+  .contact-cluster .chip ion-icon { font-size: 1rem !important; }
+  .contact-cluster .chip span { overflow-wrap: anywhere; }
+
+  /* Tabs */
+  .main-nav { gap: 0.375rem !important; margin-bottom: 1rem !important; padding-bottom: 0.625rem !important; }
+  .tab-btn { padding: 0.5rem 0.75rem !important; font-size: 0.75rem !important; border-width: 1.5px !important; border-radius: 0.625rem !important; }
+
+  /* Panel headings */
+  .panel-head { margin-bottom: 1rem !important; }
+  .panel-head h2 { font-size: 1.375rem !important; }
+  .panel-head p { font-size: 0.78rem !important; }
+  .panel-head-top { flex-wrap: wrap; gap: 0.5rem !important; }
+  .admin-inline-btn { font-size: 0.72rem !important; padding: 0.375rem 0.75rem !important; }
+
+  /* Subsection nav & controls */
+  .subsection-nav { gap: 0.375rem !important; margin-bottom: 0.75rem !important; padding-bottom: 0.625rem !important; }
+  .subsection-btn { padding: 6px 12px !important; font-size: 0.72rem !important; border-radius: 8px !important; }
+  .controls-row { margin-top: 0.75rem !important; margin-bottom: 0.75rem !important; }
+  .controls-row select { font-size: 0.78rem !important; padding: 0.5rem 0.75rem !important; border-radius: 0.625rem !important; }
+
+  /* Cards */
+  .card-grid { gap: 0.75rem !important; }
+  .card { grid-template-rows: 160px auto; border-radius: 12px; }
+  .card-content { padding: 12px !important; }
+  .card h4 { font-size: 0.875rem !important; }
+  .card .byline { font-size: 0.72rem !important; margin: 4px 0 !important; }
+  .card .tag { font-size: 0.68rem !important; padding: 3px 10px !important; }
+
+  /* Timeline */
+  .timeline-wrap { gap: 1.5rem !important; }
+  .timeline li { margin-left: 40px; padding: 12px !important; border-radius: 10px !important; }
   .timeline li::before { left: -26px; width: 10px; height: 10px; }
   .timeline::before { left: 10px; }
-  .modal-card { padding: 20px; border-radius: 16px; }
-  .modal-card img { max-height: 240px; border-radius: 10px; margin-bottom: 14px; }
-  .admin-item-card { width: min(96vw, 920px); }
+  .timeline h4 { font-size: 0.85rem !important; }
+  .timeline p { font-size: 0.8rem !important; }
+  .timeline small { font-size: 0.72rem !important; }
+
+  /* Skills */
+  .skill-tier { margin-bottom: 1rem !important; }
+  .skill-tier-heading { font-size: 0.72rem !important; margin-bottom: 0.5rem !important; }
+  .skill-chip { font-size: 0.75rem !important; padding: 4px 12px !important; }
+
+  /* Focus cards (About tab) */
+  .focus-grid { gap: 0.625rem !important; }
+  .focus-card { padding: 0.875rem !important; border-radius: 0.875rem !important; }
+  .focus-card h4 { font-size: 0.875rem !important; }
+  .focus-card p { font-size: 0.78rem !important; }
+  .lead-copy { font-size: 0.85rem !important; margin-bottom: 1.25rem !important; }
+
+  /* Modals */
+  .modal-card { padding: 1.25rem; border-radius: 1rem; width: min(94vw, 860px); }
+  .modal-card img { max-height: 200px; border-radius: 0.625rem; margin-bottom: 12px; }
+  .modal-card h3 { font-size: 1.125rem !important; }
+  .modal-row { padding: 10px 12px !important; font-size: 0.82rem !important; border-radius: 0 8px 8px 0 !important; }
+  .modal-row strong { font-size: 0.72rem !important; }
+  .modal-tag { font-size: 0.7rem !important; padding: 4px 10px !important; margin-bottom: 10px !important; }
+  .modal-close { width: 32px; height: 32px; font-size: 18px; top: 12px; right: 12px; }
+  .admin-item-card { width: min(96vw, 920px); padding: 1rem !important; }
+
+  /* Contact form */
+  .contact-form textarea { min-height: 120px !important; }
+  .btn-primary { font-size: 0.82rem !important; padding: 0.625rem 1.25rem !important; }
+
+  /* Footer */
+  footer { font-size: 0.68rem !important; padding-left: 0.75rem !important; padding-right: 0.75rem !important; }
+}
+
+/* Small phones */
+@media (max-width: 400px) {
+  .portrait-wrap { width: 60px !important; height: 60px !important; }
+  .sidebar h1 { font-size: 1.125rem !important; }
+  .card { grid-template-rows: 130px auto; }
+  .panel-head h2 { font-size: 1.25rem !important; }
+  .tab-btn { padding: 0.375rem 0.625rem !important; font-size: 0.7rem !important; }
+  .modal-card { padding: 1rem; }
+  .modal-card img { max-height: 160px; }
 }
 
 /* Hide scrollbar for tab nav on mobile */
