@@ -44,8 +44,8 @@ html { -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent;
   background: rgba(26,26,46,0.6);
   backdrop-filter: blur(12px);
   cursor: pointer;
-  display: grid;
-  grid-template-rows: 200px auto;
+  display: flex;
+  flex-direction: column;
   transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .card:hover {
@@ -53,7 +53,7 @@ html { -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent;
   transform: translateY(-8px);
   box-shadow: 0 20px 40px rgba(245,158,11,0.1), 0 0 0 1px rgba(245,158,11,0.2);
 }
-.card img { width: 100%; height: 100%; object-fit: cover; background: #16162a; }
+.card img { width: 100%; height: 200px; object-fit: cover; background: #16162a; flex-shrink: 0; }
 .card-content { padding: 18px; }
 .card h4 { margin: 0 0 6px; font-size: 1rem; color: #fff; font-weight: 600; font-family: 'Space Grotesk', system-ui, sans-serif; }
 .card .byline { margin: 6px 0; color: #94a3b8; font-size: 0.82rem; }
@@ -139,15 +139,15 @@ html { -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent;
 .contact-form textarea.invalid { border-color: #ef4444 !important; }
 
 /* Modals */
-.modal-shell { position: fixed; inset: 0; display: none; z-index: 200; overflow-y: auto; }
-.modal-shell.active { display: flex; align-items: center; justify-content: center; }
+.modal-shell { position: fixed; inset: 0; display: none; z-index: 200; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.modal-shell.active { display: flex; justify-content: center; align-items: flex-start; }
 .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(4px); }
 
 .modal-card {
   position: relative;
   width: min(90vw, 860px);
-  max-height: 90vh;
-  overflow-y: auto;
+  margin: 5vh auto;
+  flex-shrink: 0;
   background: rgba(26,26,46,0.95);
   backdrop-filter: blur(24px);
   border-radius: 20px;
@@ -274,7 +274,8 @@ html { -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent;
 
   /* Cards */
   .card-grid { gap: 0.75rem !important; }
-  .card { grid-template-rows: 160px auto; border-radius: 12px; }
+  .card { border-radius: 12px; }
+  .card img { height: 150px !important; }
   .card-content { padding: 12px !important; }
   .card h4 { font-size: 0.875rem !important; }
   .card .byline { font-size: 0.72rem !important; margin: 4px 0 !important; }
@@ -302,14 +303,14 @@ html { -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent;
   .lead-copy { font-size: 0.85rem !important; margin-bottom: 1.25rem !important; }
 
   /* Modals */
-  .modal-card { padding: 1.25rem; border-radius: 1rem; width: min(94vw, 860px); }
+  .modal-card { padding: 1.25rem; border-radius: 1rem; width: min(94vw, 860px); margin: 2vh auto; }
   .modal-card img { max-height: 200px; border-radius: 0.625rem; margin-bottom: 12px; }
   .modal-card h3 { font-size: 1.125rem !important; }
   .modal-row { padding: 10px 12px !important; font-size: 0.82rem !important; border-radius: 0 8px 8px 0 !important; }
   .modal-row strong { font-size: 0.72rem !important; }
   .modal-tag { font-size: 0.7rem !important; padding: 4px 10px !important; margin-bottom: 10px !important; }
   .modal-close { width: 32px; height: 32px; font-size: 18px; top: 12px; right: 12px; }
-  .admin-item-card { width: min(96vw, 920px); padding: 1rem !important; }
+  .admin-item-card { width: min(96vw, 920px); padding: 1rem !important; margin: 1vh auto !important; }
 
   /* Contact form */
   .contact-form textarea { min-height: 120px !important; }
@@ -323,7 +324,7 @@ html { -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent;
 @media (max-width: 400px) {
   .portrait-wrap { width: 60px !important; height: 60px !important; }
   .sidebar h1 { font-size: 1.125rem !important; }
-  .card { grid-template-rows: 130px auto; }
+  .card img { height: 120px !important; }
   .panel-head h2 { font-size: 1.25rem !important; }
   .tab-btn { padding: 0.375rem 0.625rem !important; font-size: 0.7rem !important; }
   .modal-card { padding: 1rem; }
