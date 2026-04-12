@@ -388,7 +388,7 @@ function findItemById(itemId) {
 
 const CATEGORY_OPTIONS = {
   project: ["AI / ML", "Cloud & DevOps", "Community", "Innovation", "Operations", "Web Development"],
-  experience: ["Achievements", "Career", "Certifications", "Events", "External Roles", "Testimonials", "Volunteers"],
+  experience: ["Achievements", "Career", "Certifications", "Events", "External Roles", "Testimonials", "Volunteering"],
 };
 
 function populateCategoryDropdown(section, selectedValue) {
