@@ -45,7 +45,17 @@ function compareBySort(a, b, mode) {
 }
 
 function uniqueCategories(items) {
-  return ["All", ...new Set(items.map((item) => item.category).filter(Boolean))];
+  const cats = [...new Set(items.map((item) => item.category).filter(Boolean))].sort();
+  const result = ["All"];
+  if (items.some((item) => !item.category)) result.push("Uncategorised");
+  return result.concat(cats);
+}
+
+function uniqueSubsections(items) {
+  const subs = [...new Set(items.map((item) => item.subsection).filter(Boolean))].sort();
+  const result = ["All"];
+  if (items.some((item) => !item.subsection)) result.push("Uncategorised");
+  return result.concat(subs);
 }
 
 function buildCard(item) {
@@ -121,7 +131,11 @@ function renderSection(items, categoryId, sortId, targetGridId, subsectionFilter
 
   // Apply subsection filter if provided
   if (subsectionFilter && subsectionFilter.toLowerCase() !== "all") {
-    filtered = filtered.filter((item) => item.category === subsectionFilter || item.subsection === subsectionFilter);
+    if (subsectionFilter === "Uncategorised") {
+      filtered = filtered.filter((item) => !item.category && !item.subsection);
+    } else {
+      filtered = filtered.filter((item) => item.category === subsectionFilter || item.subsection === subsectionFilter);
+    }
   }
 
   // For experiences with no subsection filter specified but we have subsection buttons,
@@ -442,37 +456,35 @@ function wireProjectControls() {
   const projectCategories = uniqueCategories(state.projects);
   renderSubsectionNav("projects-subsection-nav", projectCategories);
 
+  const experienceSubsections = uniqueSubsections(state.experiences);
+  renderSubsectionNav("experiences-subsection-nav", experienceSubsections);
+
   state.rerenderProjects = () => {
     const activeSubsection = document.querySelector("#projects-subsection-nav .subsection-btn.active")?.dataset.subsection || "all";
     renderSection(state.projects, null, "projects-sort", "projects-grid", activeSubsection);
   };
   
   state.rerenderExperiences = () => {
-    const activeSubsection = document.querySelector("#experiences-experience-subsection-nav .subsection-btn.active") || 
-                             document.querySelector(".tab-panel#experiences .subsection-btn.active");
-    const subsectionValue = activeSubsection?.dataset.subsection || "all";
-    renderSection(state.experiences, null, "experiences-sort", "experiences-grid", subsectionValue);
+    const activeSubsection = document.querySelector("#experiences-subsection-nav .subsection-btn.active")?.dataset.subsection || "all";
+    renderSection(state.experiences, null, "experiences-sort", "experiences-grid", activeSubsection);
   };
 
   if (!state.controlsBound) {
-    // Project subsection button listeners
-    const projectSubsectionBtns = document.querySelectorAll("#projects-subsection-nav .subsection-btn");
-    projectSubsectionBtns.forEach((btn) => {
-      btn.addEventListener("click", () => {
-        projectSubsectionBtns.forEach((it) => it.classList.remove("active"));
-        btn.classList.add("active");
-        state.rerenderProjects();
-      });
+    // Use event delegation so listeners survive nav regeneration
+    document.getElementById("projects-subsection-nav").addEventListener("click", (e) => {
+      const btn = e.target.closest(".subsection-btn");
+      if (!btn) return;
+      document.querySelectorAll("#projects-subsection-nav .subsection-btn").forEach((it) => it.classList.remove("active"));
+      btn.classList.add("active");
+      state.rerenderProjects();
     });
 
-    // Experience subsection button listeners - keep the old selector
-    const experienceSubsectionBtns = document.querySelectorAll("#experiences .subsection-nav .subsection-btn");
-    experienceSubsectionBtns.forEach((btn) => {
-      btn.addEventListener("click", () => {
-        experienceSubsectionBtns.forEach((it) => it.classList.remove("active"));
-        btn.classList.add("active");
-        state.rerenderExperiences();
-      });
+    document.getElementById("experiences-subsection-nav").addEventListener("click", (e) => {
+      const btn = e.target.closest(".subsection-btn");
+      if (!btn) return;
+      document.querySelectorAll("#experiences-subsection-nav .subsection-btn").forEach((it) => it.classList.remove("active"));
+      btn.classList.add("active");
+      state.rerenderExperiences();
     });
 
     document.getElementById("projects-sort").addEventListener("change", () => state.rerenderProjects());
