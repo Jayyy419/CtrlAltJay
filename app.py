@@ -283,8 +283,12 @@ def admin_auth():
 def admin_logout():
     session.pop("is_admin", None)
     if request.method == "POST":
-        return jsonify({"ok": True})
-    return redirect(url_for("index"))
+        resp = jsonify({"ok": True})
+        resp.headers["Clear-Site-Data"] = '"cache", "storage"'
+        return resp
+    resp = redirect(url_for("index"))
+    resp.headers["Clear-Site-Data"] = '"cache", "storage"'
+    return resp
 
 
 @app.route("/admin")
