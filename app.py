@@ -10,8 +10,6 @@ from pathlib import Path
 import boto3
 from boto3.dynamodb.conditions import Attr
 
-from seed_data import get_all_items, get_all_resume, get_all_skills
-
 from dotenv import load_dotenv
 from flask import (
     Flask,
@@ -106,56 +104,6 @@ def save_uploaded_image(upload):
     return f"../static/uploads/{stamped_name}"
 
 
-def initialize_database():
-    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-    seed_now = now_iso()
-
-    # Seed portfolio items if empty
-    response = table_items.scan(Limit=1)
-    if response.get("Count", 0) == 0:
-        all_items = get_all_items()
-        with table_items.batch_writer() as batch:
-            for tup in all_items:
-                item = {"id": str(uuid.uuid4()), "created_at": seed_now, "updated_at": seed_now}
-                for i, field in enumerate(PORTFOLIO_ITEM_FIELDS):
-                    item[field] = tup[i] if tup[i] is not None else ""
-                batch.put_item(Item=item)
-
-    # Seed resume items if empty
-    response = table_resume.scan(Limit=1)
-    if response.get("Count", 0) == 0:
-        all_resume = get_all_resume()
-        with table_resume.batch_writer() as batch:
-            for lane, title, sub, period, desc, sort in all_resume:
-                batch.put_item(Item={
-                    "id": str(uuid.uuid4()),
-                    "lane": lane,
-                    "title": title,
-                    "subtitle": sub or "",
-                    "period": period,
-                    "description": desc or "",
-                    "sort_order": Decimal(str(sort)),
-                    "created_at": seed_now,
-                    "updated_at": seed_now,
-                })
-
-    # Seed skills if empty
-    response = table_skills.scan(Limit=1)
-    if response.get("Count", 0) == 0:
-        all_skills = get_all_skills()
-        with table_skills.batch_writer() as batch:
-            for name, level, focus, sort in all_skills:
-                batch.put_item(Item={
-                    "id": str(uuid.uuid4()),
-                    "name": name,
-                    "level": Decimal(str(level)),
-                    "focus": focus or "",
-                    "sort_order": Decimal(str(sort)),
-                    "created_at": seed_now,
-                    "updated_at": seed_now,
-                })
-
-
 def dynamo_to_dict(item):
     """Convert DynamoDB item (with Decimals) to JSON-safe dict."""
     result = {}
@@ -168,10 +116,10 @@ def dynamo_to_dict(item):
 
 
 @app.before_request
-def bootstrap():
-    if not getattr(app, "_db_initialized", False):
-        initialize_database()
-        app._db_initialized = True
+def ensure_upload_dir():
+    if not getattr(app, "_dirs_ready", False):
+        UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+        app._dirs_ready = True
 
 
 @app.route("/")
