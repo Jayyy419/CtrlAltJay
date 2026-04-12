@@ -108,13 +108,11 @@ def save_uploaded_image(upload):
 
 def initialize_database():
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    seed_now = now_iso()
 
-    # Check if portfolio items table is empty
+    # Seed portfolio items if empty
     response = table_items.scan(Limit=1)
     if response.get("Count", 0) == 0:
-        seed_now = now_iso()
-
-        # Seed portfolio items
         all_items = get_all_items()
         with table_items.batch_writer() as batch:
             for tup in all_items:
@@ -123,7 +121,9 @@ def initialize_database():
                     item[field] = tup[i] if tup[i] is not None else ""
                 batch.put_item(Item=item)
 
-        # Seed resume items
+    # Seed resume items if empty
+    response = table_resume.scan(Limit=1)
+    if response.get("Count", 0) == 0:
         all_resume = get_all_resume()
         with table_resume.batch_writer() as batch:
             for lane, title, sub, period, desc, sort in all_resume:
@@ -139,7 +139,9 @@ def initialize_database():
                     "updated_at": seed_now,
                 })
 
-        # Seed skills
+    # Seed skills if empty
+    response = table_skills.scan(Limit=1)
+    if response.get("Count", 0) == 0:
         all_skills = get_all_skills()
         with table_skills.batch_writer() as batch:
             for name, level, focus, sort in all_skills:
