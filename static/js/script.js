@@ -612,6 +612,14 @@ function initAdminAuth() {
     .then((payload) => {
       if (payload?.is_admin) {
         setAdminMode(true);
+      } else {
+        // Show login modal if ?admin=login
+        const params = new URLSearchParams(window.location.search);
+        if (params.get("admin") === "login") {
+          openAdminLoginModal();
+          // Clean URL without reload
+          window.history.replaceState({}, "", window.location.pathname);
+        }
       }
     })
     .catch(() => {
@@ -630,6 +638,59 @@ function initAdminAuth() {
       wireProjectControls();
     });
   }
+
+  // Login modal
+  const loginModal = document.getElementById("admin-login-modal");
+  if (loginModal) {
+    loginModal.querySelectorAll("[data-close-admin-login]").forEach((el) => {
+      el.addEventListener("click", closeAdminLoginModal);
+    });
+
+    document.getElementById("admin-login-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const feedback = document.getElementById("admin-login-feedback");
+      const passcode = document.getElementById("admin-login-passcode").value.trim();
+      if (!passcode) { feedback.textContent = "Passcode is required."; return; }
+      feedback.textContent = "Verifying...";
+      feedback.style.color = "#94a3b8";
+      try {
+        const res = await fetch("/admin/auth", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ passcode }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          closeAdminLoginModal();
+          setAdminMode(true);
+          wireProjectControls();
+        } else {
+          feedback.style.color = "#f87171";
+          feedback.textContent = data.error || "Authentication failed.";
+        }
+      } catch (_) {
+        feedback.style.color = "#f87171";
+        feedback.textContent = "Could not verify. Please try again.";
+      }
+    });
+  }
+}
+
+function openAdminLoginModal() {
+  const modal = document.getElementById("admin-login-modal");
+  if (!modal) return;
+  document.getElementById("admin-login-form").reset();
+  document.getElementById("admin-login-feedback").textContent = "";
+  modal.classList.add("active");
+  modal.setAttribute("aria-hidden", "false");
+  document.getElementById("admin-login-passcode").focus();
+}
+
+function closeAdminLoginModal() {
+  const modal = document.getElementById("admin-login-modal");
+  if (!modal) return;
+  modal.classList.remove("active");
+  modal.setAttribute("aria-hidden", "true");
 }
 
 bootstrap();
