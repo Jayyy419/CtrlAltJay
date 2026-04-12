@@ -229,18 +229,40 @@ function renderSkills() {
   const target = document.getElementById("skills-grid");
   target.innerHTML = "";
 
+  const tierOrder = ["Primary Stack", "Experienced", "Familiar"];
+  const grouped = {};
   state.skills.forEach((skill) => {
-    const card = document.createElement("article");
-    card.className = "skill-card";
-    card.innerHTML = `
-      <div class="skill-top">
-        <span>${skill.name}</span>
-        <span>${skill.level}%</span>
-      </div>
-      <div class="skill-focus">${skill.focus || ""}</div>
-      <div class="skill-meter"><div style="width: ${Math.max(0, Math.min(100, skill.level))}%"></div></div>
-    `;
-    target.appendChild(card);
+    const tier = skill.focus || "Other";
+    if (!grouped[tier]) grouped[tier] = [];
+    grouped[tier].push(skill);
+  });
+
+  tierOrder.forEach((tier) => {
+    const skills = grouped[tier];
+    if (!skills || skills.length === 0) return;
+
+    const section = document.createElement("div");
+    section.className = "skill-tier mb-6";
+
+    const heading = document.createElement("h4");
+    heading.className = "skill-tier-heading text-sm font-semibold uppercase tracking-wider mb-3";
+    heading.textContent = tier;
+    section.appendChild(heading);
+
+    const chipWrap = document.createElement("div");
+    chipWrap.className = "flex flex-wrap gap-2";
+
+    skills
+      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+      .forEach((skill) => {
+        const chip = document.createElement("span");
+        chip.className = "skill-chip skill-chip--" + tier.toLowerCase().replace(/\s+/g, "-");
+        chip.textContent = skill.name;
+        chipWrap.appendChild(chip);
+      });
+
+    section.appendChild(chipWrap);
+    target.appendChild(section);
   });
 }
 
