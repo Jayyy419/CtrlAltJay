@@ -233,7 +233,7 @@ def admin_auth():
         session["is_admin"] = True
         session.pop("admin_attempts", None)
         session.pop("admin_lock_until", None)
-        return jsonify({"message": "Authenticated.", "redirect_url": url_for("admin_dashboard")})
+        return jsonify({"message": "Authenticated.", "redirect_url": url_for("index")})
 
     attempts = int(session.get("admin_attempts", 0) or 0) + 1
     session["admin_attempts"] = attempts
@@ -259,7 +259,7 @@ def admin_logout():
 def admin_dashboard():
     if not session.get("is_admin"):
         return render_template("admin_login.html")
-    return render_template("admin.html")
+    return redirect(url_for("index"))
 
 
 @app.route("/api/admin/items", methods=["GET", "POST"])
