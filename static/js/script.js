@@ -102,7 +102,7 @@ function renderSubsectionNav(navId, categories) {
   categories.forEach((category, index) => {
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = "subsection-btn";
+    btn.className = "subsection-btn shrink-0";
     if (index === 0) btn.classList.add("active"); // First item (All) is active by default
     btn.dataset.subsection = category;
     btn.textContent = category;

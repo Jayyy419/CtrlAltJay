@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>CtrlAltJay</title>
   <link rel="shortcut icon" href="../static/images/PersonalLogo.ico" type="image/x-icon">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -80,12 +80,12 @@
 
     <!-- Content -->
     <section class="content bg-surface-50/80 backdrop-blur-xl border border-white/[0.06] rounded-2xl p-8 shadow-2xl">
-      <nav class="main-nav flex flex-wrap gap-3 mb-8 pb-5 border-b border-white/[0.06]">
-        <button class="tab-btn active px-5 py-2.5 bg-surface-100 text-ink-soft border-2 border-white/[0.06] rounded-xl cursor-pointer font-medium text-sm transition-all duration-300 hover:border-accent/60 hover:text-accent" data-tab="about">About</button>
-        <button class="tab-btn px-5 py-2.5 bg-surface-100 text-ink-soft border-2 border-white/[0.06] rounded-xl cursor-pointer font-medium text-sm transition-all duration-300 hover:border-accent/60 hover:text-accent" data-tab="projects">Projects</button>
-        <button class="tab-btn px-5 py-2.5 bg-surface-100 text-ink-soft border-2 border-white/[0.06] rounded-xl cursor-pointer font-medium text-sm transition-all duration-300 hover:border-accent/60 hover:text-accent" data-tab="experiences">Experiences</button>
-        <button class="tab-btn px-5 py-2.5 bg-surface-100 text-ink-soft border-2 border-white/[0.06] rounded-xl cursor-pointer font-medium text-sm transition-all duration-300 hover:border-accent/60 hover:text-accent" data-tab="resume">Resume</button>
-        <button class="tab-btn px-5 py-2.5 bg-surface-100 text-ink-soft border-2 border-white/[0.06] rounded-xl cursor-pointer font-medium text-sm transition-all duration-300 hover:border-accent/60 hover:text-accent" data-tab="contact">Contact</button>
+      <nav class="main-nav flex gap-3 mb-8 pb-5 border-b border-white/[0.06] overflow-x-auto -mx-2 px-2 scrollbar-hide">
+        <button class="tab-btn active shrink-0 px-5 py-2.5 bg-surface-100 text-ink-soft border-2 border-white/[0.06] rounded-xl cursor-pointer font-medium text-sm transition-all duration-300 hover:border-accent/60 hover:text-accent" data-tab="about">About</button>
+        <button class="tab-btn shrink-0 px-5 py-2.5 bg-surface-100 text-ink-soft border-2 border-white/[0.06] rounded-xl cursor-pointer font-medium text-sm transition-all duration-300 hover:border-accent/60 hover:text-accent" data-tab="projects">Projects</button>
+        <button class="tab-btn shrink-0 px-5 py-2.5 bg-surface-100 text-ink-soft border-2 border-white/[0.06] rounded-xl cursor-pointer font-medium text-sm transition-all duration-300 hover:border-accent/60 hover:text-accent" data-tab="experiences">Experiences</button>
+        <button class="tab-btn shrink-0 px-5 py-2.5 bg-surface-100 text-ink-soft border-2 border-white/[0.06] rounded-xl cursor-pointer font-medium text-sm transition-all duration-300 hover:border-accent/60 hover:text-accent" data-tab="resume">Resume</button>
+        <button class="tab-btn shrink-0 px-5 py-2.5 bg-surface-100 text-ink-soft border-2 border-white/[0.06] rounded-xl cursor-pointer font-medium text-sm transition-all duration-300 hover:border-accent/60 hover:text-accent" data-tab="contact">Contact</button>
       </nav>
 
       <!-- About -->
@@ -99,7 +99,7 @@
 
         <section>
           <h3 class="font-display text-xl font-semibold text-white mb-4">Current Focus</h3>
-          <div class="focus-grid grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-4">
+          <div class="focus-grid grid grid-cols-[repeat(auto-fit,minmax(min(240px,100%),1fr))] gap-4">
             {% for item in profile.now_building %}
             <article class="focus-card group bg-surface-100/60 border border-white/[0.06] rounded-2xl p-5 transition-all duration-300 hover:border-accent/40 hover:shadow-[0_0_30px_rgba(245,158,11,0.08)]">
               <h4 class="font-display font-semibold text-white mb-2 group-hover:text-accent transition-colors">{{ item.title }}</h4>
@@ -120,8 +120,8 @@
           <p class="mt-2 text-ink-muted">Latest projects first. Filter and sort to explore the full build history.</p>
         </header>
 
-        <div class="subsection-nav flex gap-3 flex-wrap mb-5 pb-4 border-b border-white/[0.06]" id="projects-subsection-nav">
-          <button class="subsection-btn active" data-subsection="all">All</button>
+        <div class="subsection-nav flex gap-3 mb-5 pb-4 border-b border-white/[0.06] overflow-x-auto scrollbar-hide" id="projects-subsection-nav">
+          <button class="subsection-btn shrink-0 active" data-subsection="all">All</button>
         </div>
 
         <div class="controls-row flex gap-3 flex-wrap items-center my-5">
@@ -134,7 +134,7 @@
             <option value="title_desc">Title Z to A</option>
           </select>
         </div>
-        <div id="projects-grid" class="card-grid grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-5 py-2"></div>
+        <div id="projects-grid" class="card-grid grid grid-cols-[repeat(auto-fill,minmax(min(280px,100%),1fr))] gap-5 py-2"></div>
       </article>
 
       <!-- Experiences -->
@@ -147,15 +147,15 @@
           <p class="mt-2 text-ink-muted">Achievements, certifications, events, and more moments that shaped my journey.</p>
         </header>
 
-        <div class="subsection-nav flex gap-3 flex-wrap mb-5 pb-4 border-b border-white/[0.06]">
-          <button class="subsection-btn active" data-subsection="all">All</button>
-          <button class="subsection-btn" data-subsection="Achievements">Achievements</button>
-          <button class="subsection-btn" data-subsection="Career">Career</button>
-          <button class="subsection-btn" data-subsection="Certifications">Certifications</button>
-          <button class="subsection-btn" data-subsection="Events">Events</button>
-          <button class="subsection-btn" data-subsection="External Roles">External Roles</button>
-          <button class="subsection-btn" data-subsection="Testimonials">Testimonials</button>
-          <button class="subsection-btn" data-subsection="Volunteer">Volunteer</button>
+        <div class="subsection-nav flex gap-3 mb-5 pb-4 border-b border-white/[0.06] overflow-x-auto scrollbar-hide">
+          <button class="subsection-btn shrink-0 active" data-subsection="all">All</button>
+          <button class="subsection-btn shrink-0" data-subsection="Achievements">Achievements</button>
+          <button class="subsection-btn shrink-0" data-subsection="Career">Career</button>
+          <button class="subsection-btn shrink-0" data-subsection="Certifications">Certifications</button>
+          <button class="subsection-btn shrink-0" data-subsection="Events">Events</button>
+          <button class="subsection-btn shrink-0" data-subsection="External Roles">External Roles</button>
+          <button class="subsection-btn shrink-0" data-subsection="Testimonials">Testimonials</button>
+          <button class="subsection-btn shrink-0" data-subsection="Volunteer">Volunteer</button>
         </div>
 
         <div class="controls-row flex gap-3 flex-wrap items-center my-5">
@@ -168,7 +168,7 @@
             <option value="title_desc">Title Z to A</option>
           </select>
         </div>
-        <div id="experiences-grid" class="card-grid grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-5 py-2"></div>
+        <div id="experiences-grid" class="card-grid grid grid-cols-[repeat(auto-fill,minmax(min(280px,100%),1fr))] gap-5 py-2"></div>
       </article>
 
       <!-- Resume -->

@@ -1,5 +1,7 @@
 /* ===== CtrlAltJay — Tailwind-first custom overrides ===== */
 
+html { -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
+
 [hidden] { display: none !important; }
 
 /* Layout grid */
@@ -236,6 +238,22 @@
 @media (max-width: 640px) {
   .layout { padding-left: 1rem; padding-right: 1rem; }
   .sidebar, .content { padding: 1.25rem !important; }
+  .card { grid-template-rows: 160px auto; }
+  .timeline li { margin-left: 40px; }
+  .timeline li::before { left: -26px; width: 10px; height: 10px; }
+  .timeline::before { left: 10px; }
+  .modal-card { padding: 20px; border-radius: 16px; }
+  .modal-card img { max-height: 240px; border-radius: 10px; margin-bottom: 14px; }
+  .admin-item-card { width: min(96vw, 920px); }
+}
+
+/* Hide scrollbar for tab nav on mobile */
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+
+/* Safe area insets for notch devices */
+@supports (padding: env(safe-area-inset-bottom)) {
+  body { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
 }
 
 /* Scrollbar */
