@@ -273,10 +273,12 @@ def api_admin_items():
 
     image_path = save_uploaded_image(request.files.get("image"))
     now = now_iso()
+    section = request.form.get("section", "").strip().lower()
+    category = request.form.get("category", "").strip()
     payload = {
-        "section": request.form.get("section", "").strip().lower(),
-        "category": request.form.get("category", "").strip(),
-        "subsection": request.form.get("subsection", "").strip(),
+        "section": section,
+        "category": category,
+        "subsection": category if section == "experience" else "",
         "title": request.form.get("title", "").strip(),
         "byline": request.form.get("byline", "").strip(),
         "tag": request.form.get("tag", "").strip(),
@@ -323,10 +325,12 @@ def api_admin_item(item_id):
     form = request.form
     image_path = save_uploaded_image(request.files.get("image"))
     updated_at = now_iso()
+    section = form.get("section", existing.get("section", "")).strip().lower()
+    category = form.get("category", existing.get("category", "")).strip()
     updated_payload = {
-        "section": form.get("section", existing.get("section", "")).strip().lower(),
-        "category": form.get("category", existing.get("category", "")).strip(),
-        "subsection": form.get("subsection", existing.get("subsection", "")).strip(),
+        "section": section,
+        "category": category,
+        "subsection": category if section == "experience" else existing.get("subsection", ""),
         "title": form.get("title", existing.get("title", "")).strip(),
         "byline": form.get("byline", existing.get("byline", "")).strip(),
         "tag": form.get("tag", existing.get("tag", "")).strip(),

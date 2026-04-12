@@ -52,9 +52,14 @@ function uniqueCategories(items) {
 }
 
 function uniqueSubsections(items) {
-  const subs = [...new Set(items.map((item) => item.subsection).filter(Boolean))].sort();
+  const values = new Set();
+  items.forEach((item) => {
+    if (item.subsection) values.add(item.subsection);
+    else if (item.category) values.add(item.category);
+  });
+  const subs = [...values].sort();
   const result = ["All"];
-  if (items.some((item) => !item.subsection)) result.push("Uncategorised");
+  if (items.some((item) => !item.subsection && !item.category)) result.push("Uncategorised");
   return result.concat(subs);
 }
 
@@ -304,6 +309,24 @@ function findItemById(itemId) {
   return [...state.projects, ...state.experiences].find((item) => String(item.id) === String(itemId)) || null;
 }
 
+const CATEGORY_OPTIONS = {
+  project: ["AI / ML", "Cloud & DevOps", "Community", "Innovation", "Operations", "Web Development"],
+  experience: ["Achievements", "Career", "Certifications", "Events", "External Roles", "Testimonials", "Volunteers"],
+};
+
+function populateCategoryDropdown(section, selectedValue) {
+  const select = document.getElementById("admin-item-category");
+  select.innerHTML = '<option value="">Select a category</option>';
+  const options = CATEGORY_OPTIONS[section] || [];
+  options.forEach((cat) => {
+    const opt = document.createElement("option");
+    opt.value = cat;
+    opt.textContent = cat;
+    if (cat === selectedValue) opt.selected = true;
+    select.appendChild(opt);
+  });
+}
+
 function openAdminItemModal(item = null, section = "project") {
   const modal = document.getElementById("admin-item-modal");
   const form = document.getElementById("admin-item-form");
@@ -323,12 +346,12 @@ function openAdminItemModal(item = null, section = "project") {
   // Track the current section for this create/edit action
   state.currentSection = section;
 
+  const effectiveSection = item?.section || section;
+
   document.getElementById("admin-item-id").value = item?.id || "";
-  document.getElementById("admin-item-category").value = item?.category || "";
-  document.getElementById("admin-item-subsection").value = item?.subsection || "";
+  sectionField.value = effectiveSection;
+  populateCategoryDropdown(effectiveSection, item?.category || item?.subsection || "");
   document.getElementById("admin-item-title-input").value = item?.title || "";
-  document.getElementById("admin-item-byline").value = item?.byline || "";
-  document.getElementById("admin-item-tag").value = item?.tag || "";
   document.getElementById("admin-item-summary").value = item?.summary || "";
   document.getElementById("admin-item-description").value = item?.description || "";
   document.getElementById("admin-item-date-label").value = item?.date_label || "";
@@ -340,11 +363,7 @@ function openAdminItemModal(item = null, section = "project") {
   document.getElementById("admin-item-image-path").value = item?.image_path || "";
   document.getElementById("admin-item-link").value = item?.external_link || "";
 
-  // Set section field and control visibility
-  sectionField.value = item?.section || section;
-  
-  // Hide section field when creating new items (not editing)
-  // Show section field when editing
+  // Show/hide section field and set modal title
   if (item) {
     sectionFieldGroup.style.display = "grid";
     title.textContent = "Edit Item";
@@ -391,6 +410,11 @@ function initInlineAdminEditor() {
   if (!createProjectBtn || !createExperienceBtn || !editBtn || !adminItemForm || !adminItemFeedback) {
     return;
   }
+
+  // Dynamic category options when section changes
+  document.getElementById("admin-item-section").addEventListener("change", (e) => {
+    populateCategoryDropdown(e.target.value, "");
+  });
 
   createProjectBtn.addEventListener("click", () => {
     if (!state.isAdmin) return;
