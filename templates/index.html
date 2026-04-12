@@ -42,7 +42,7 @@
   <main class="layout max-w-[1440px] mx-auto w-full px-5 py-10 gap-8 flex-1">
     <!-- Sidebar -->
     <aside class="sidebar bg-surface-50/80 backdrop-blur-xl border border-white/[0.06] rounded-2xl p-8 sticky top-10 h-fit shadow-2xl">
-      <div class="relative mx-auto w-36 h-36 rounded-2xl overflow-hidden ring-2 ring-accent/60 ring-offset-2 ring-offset-surface-400 mb-6">
+      <div class="portrait-wrap relative mx-auto w-36 h-36 rounded-2xl overflow-hidden ring-2 ring-accent/60 ring-offset-2 ring-offset-surface-400 mb-6">
         <img src="../static/images/Portrait_ZoomedIn.JPG" alt="{{ profile.name }}" class="w-full h-full object-cover portrait">
       </div>
       <h1 class="text-2xl font-bold text-white text-center tracking-tight">{{ profile.name }}</h1>
@@ -282,7 +282,6 @@
             <select id="admin-item-date-label" name="date_label" class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent">
               <option value="">None</option>
               <option value="Released">Released</option>
-              <option value="Period">Period</option>
               <option value="Work in Progress">Work in Progress</option>
               <option value="Completed">Completed</option>
               <option value="Ongoing">Ongoing</option>
@@ -311,8 +310,10 @@
         </div>
         <div class="field-grid grid grid-cols-2 gap-3 max-sm:grid-cols-1">
           <div>
-            <label for="admin-item-image-path" class="text-sm text-ink-soft">Image Path</label>
-            <input id="admin-item-image-path" type="text" name="image_path" placeholder="../static/images/..." class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm placeholder:text-ink-muted focus:outline-none focus:border-accent">
+            <label for="admin-item-image" class="text-sm text-ink-soft">Image</label>
+            <input id="admin-item-image" type="file" name="image" accept="image/*" class="w-full mt-1 text-sm text-ink file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-accent file:text-surface-400 file:cursor-pointer hover:file:bg-accent-dark">
+            <input type="hidden" id="admin-item-image-path" name="image_path">
+            <p id="admin-item-image-info" class="text-xs text-ink-muted mt-1 truncate"></p>
           </div>
           <div>
             <label for="admin-item-link" class="text-sm text-ink-soft">External Link</label>

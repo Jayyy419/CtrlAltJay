@@ -29,6 +29,7 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent
 UPLOAD_DIR = BASE_DIR / "static" / "uploads"
+ALLOWED_IMAGE_EXT = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".ico"}
 
 AWS_REGION = os.getenv("AWS_REGION", "ap-southeast-1")
 dynamodb = boto3.resource("dynamodb", region_name=AWS_REGION)
@@ -44,6 +45,7 @@ app.config["MAIL_USERNAME"] = os.getenv("MAIL_USERNAME", "default_username")
 app.config["MAIL_PASSWORD"] = os.getenv("MAIL_PASSWORD", "default_password")
 app.config["MAIL_USE_TLS"] = os.getenv("MAIL_USE_TLS", "true").lower() in ["true", "1", "t"]
 app.config["MAIL_USE_SSL"] = os.getenv("MAIL_USE_SSL", "false").lower() in ["true", "1", "t"]
+app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB upload limit
 
 mail = Mail(app)
 
@@ -96,8 +98,14 @@ def save_uploaded_image(upload):
     if not upload or not upload.filename:
         return ""
 
-    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     safe_name = secure_filename(upload.filename)
+    if not safe_name:
+        return ""
+    ext = os.path.splitext(safe_name)[1].lower()
+    if ext not in ALLOWED_IMAGE_EXT:
+        return ""
+
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     stamped_name = f"{int(datetime.utcnow().timestamp())}_{safe_name}"
     destination = UPLOAD_DIR / stamped_name
     upload.save(destination)
