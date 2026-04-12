@@ -10,22 +10,84 @@ const state = {
   controlsBound: false,
   rerenderProjects: null,
   rerenderExperiences: null,
-  currentSection: null, // Track which section is being created
+  currentSection: null,
+  dataLoaded: false,
 };
 
 const tabs = document.querySelectorAll(".tab-btn");
 const panels = document.querySelectorAll(".tab-panel");
 
+/* ===== Toast notifications ===== */
+function showToast(message, type = "info") {
+  const container = document.getElementById("toast-container");
+  if (!container) return;
+  const toast = document.createElement("div");
+  toast.className = `toast toast--${type}`;
+  toast.textContent = message;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 3100);
+}
+
+/* ===== Confirm dialog ===== */
+function showConfirm(title, message) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement("div");
+    overlay.className = "confirm-overlay";
+    overlay.innerHTML = `
+      <div class="confirm-box">
+        <h4>${title}</h4>
+        <p>${message}</p>
+        <div class="confirm-actions">
+          <button class="confirm-cancel" data-confirm="cancel">Cancel</button>
+          <button class="confirm-danger" data-confirm="ok">Delete</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-confirm]");
+      if (!btn) return;
+      overlay.remove();
+      resolve(btn.dataset.confirm === "ok");
+    });
+  });
+}
+
+/* ===== Skeleton loading ===== */
+function showSkeletons(gridId, count = 6) {
+  const grid = document.getElementById(gridId);
+  if (!grid) return;
+  grid.innerHTML = "";
+  for (let i = 0; i < count; i++) {
+    const skel = document.createElement("div");
+    skel.className = "skeleton-card";
+    skel.innerHTML = `<div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line"></div>`;
+    grid.appendChild(skel);
+  }
+}
+
+function switchTab(tabName) {
+  tabs.forEach((it) => it.classList.remove("active"));
+  panels.forEach((panel) => panel.classList.remove("active"));
+  const btn = document.querySelector(`.tab-btn[data-tab="${tabName}"]`);
+  const panel = document.getElementById(tabName);
+  if (btn) btn.classList.add("active");
+  if (panel) panel.classList.add("active");
+}
+
 function initTabs() {
   tabs.forEach((btn) => {
     btn.addEventListener("click", () => {
-      tabs.forEach((it) => it.classList.remove("active"));
-      panels.forEach((panel) => panel.classList.remove("active"));
-      btn.classList.add("active");
-      document.getElementById(btn.dataset.tab).classList.add("active");
+      switchTab(btn.dataset.tab);
+      window.history.replaceState(null, "", `#${btn.dataset.tab}`);
       window.scrollTo({ top: 0, behavior: "smooth" });
     });
   });
+
+  // Deep link: activate tab from URL hash
+  const hash = window.location.hash.replace("#", "");
+  if (hash && document.getElementById(hash)) {
+    switchTab(hash);
+  }
 }
 
 function compareBySort(a, b, mode) {
@@ -71,6 +133,7 @@ function buildCard(item) {
   const img = document.createElement("img");
   img.src = imagePath;
   img.alt = item.title;
+  img.loading = "lazy";
 
   const content = document.createElement("div");
   content.className = "card-content";
@@ -109,7 +172,7 @@ function renderCategorySelect(elementId, categories) {
   });
 }
 
-function renderSubsectionNav(navId, categories) {
+function renderSubsectionNav(navId, categories, items) {
   const nav = document.getElementById(navId);
   if (!nav) return;
   
@@ -118,17 +181,28 @@ function renderSubsectionNav(navId, categories) {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "subsection-btn shrink-0";
-    if (index === 0) btn.classList.add("active"); // First item (All) is active by default
+    if (index === 0) btn.classList.add("active");
     btn.dataset.subsection = category;
-    btn.textContent = category;
+
+    // Count items for badge
+    let count;
+    if (category === "All") {
+      count = items.length;
+    } else if (category === "Uncategorised") {
+      count = items.filter((it) => !it.category && !it.subsection).length;
+    } else {
+      count = items.filter((it) => it.category === category || it.subsection === category).length;
+    }
+    btn.textContent = `${category} (${count})`;
     nav.appendChild(btn);
   });
 }
 
-function renderSection(items, categoryId, sortId, targetGridId, subsectionFilter = null) {
+function renderSection(items, categoryId, sortId, targetGridId, subsectionFilter = null, searchId = null) {
   const selectedCategory = categoryId ? document.getElementById(categoryId).value : "All";
   const sortMode = document.getElementById(sortId).value;
   const target = document.getElementById(targetGridId);
+  const searchQuery = searchId ? (document.getElementById(searchId)?.value || "").trim().toLowerCase() : "";
 
   let filtered = items.filter(
     (item) => selectedCategory === "All" || item.category === selectedCategory
@@ -143,11 +217,21 @@ function renderSection(items, categoryId, sortId, targetGridId, subsectionFilter
     }
   }
 
-  // For experiences with no subsection filter specified but we have subsection buttons,
-  // also allow items without a subsection to show if they match the category
+  // Apply text search
+  if (searchQuery) {
+    filtered = filtered.filter((item) => {
+      const haystack = [item.title, item.summary, item.description, item.category, item.tag].filter(Boolean).join(" ").toLowerCase();
+      return haystack.includes(searchQuery);
+    });
+  }
+
   filtered = filtered.sort((a, b) => compareBySort(a, b, sortMode));
 
   target.innerHTML = "";
+  if (filtered.length === 0) {
+    target.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><ion-icon name="search-outline"></ion-icon><p>${searchQuery ? "No results for \u201c" + searchQuery + "\u201d" : "No items in this category yet."}</p></div>`;
+    return;
+  }
   filtered.forEach((item) => {
     target.appendChild(buildCard(item));
   });
@@ -363,6 +447,16 @@ function openAdminItemModal(item = null, section = "project") {
   document.getElementById("admin-item-image-path").value = item?.image_path || "";
   const imageInfo = document.getElementById("admin-item-image-info");
   if (imageInfo) imageInfo.textContent = item?.image_path ? `Current: ${item.image_path.split('/').pop()}` : "";
+  const imagePreview = document.getElementById("admin-item-image-preview");
+  if (imagePreview) {
+    if (item?.image_path) {
+      imagePreview.src = item.image_path;
+      imagePreview.classList.remove("hidden");
+    } else {
+      imagePreview.src = "";
+      imagePreview.classList.add("hidden");
+    }
+  }
   document.getElementById("admin-item-link").value = item?.external_link || "";
 
   // Show/hide section field and set modal title
@@ -406,6 +500,7 @@ function initInlineAdminEditor() {
   const createProjectBtn = document.getElementById("create-project-btn");
   const createExperienceBtn = document.getElementById("create-experience-btn");
   const editBtn = document.getElementById("modal-edit-btn");
+  const deleteBtn = document.getElementById("modal-delete-btn");
   const adminItemForm = document.getElementById("admin-item-form");
   const adminItemFeedback = document.getElementById("admin-item-feedback");
 
@@ -417,6 +512,25 @@ function initInlineAdminEditor() {
   document.getElementById("admin-item-section").addEventListener("change", (e) => {
     populateCategoryDropdown(e.target.value, "");
   });
+
+  // Image preview on file select
+  const imageInput = document.getElementById("admin-item-image");
+  const imagePreview = document.getElementById("admin-item-image-preview");
+  if (imageInput && imagePreview) {
+    imageInput.addEventListener("change", () => {
+      const file = imageInput.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          imagePreview.src = e.target.result;
+          imagePreview.classList.remove("hidden");
+        };
+        reader.readAsDataURL(file);
+      } else {
+        imagePreview.classList.add("hidden");
+      }
+    });
+  }
 
   createProjectBtn.addEventListener("click", () => {
     if (!state.isAdmin) return;
@@ -439,6 +553,29 @@ function initInlineAdminEditor() {
     }
     openAdminItemModal(state.modalItem, state.modalItem.section || "project");
   });
+
+  // Delete button
+  if (deleteBtn) {
+    deleteBtn.addEventListener("click", async () => {
+      if (!state.isAdmin || !state.modalItem) return;
+      const item = state.modalItem;
+      const confirmed = await showConfirm("Delete Item", `Are you sure you want to delete "${item.title}"? This cannot be undone.`);
+      if (!confirmed) return;
+      try {
+        const res = await fetch(`/api/admin/items/${item.id}`, { method: "DELETE" });
+        if (!res.ok) throw new Error("Delete failed");
+        const detailModal = document.getElementById("detail-modal");
+        detailModal.classList.remove("active");
+        detailModal.setAttribute("aria-hidden", "true");
+        state.modalItem = null;
+        await fetchData();
+        wireProjectControls();
+        showToast("Item deleted.", "success");
+      } catch (err) {
+        showToast("Failed to delete item.", "error");
+      }
+    });
+  }
 
   document.querySelectorAll("[data-close-admin-item]").forEach((element) => {
     element.addEventListener("click", closeAdminItemModal);
@@ -464,8 +601,8 @@ function initInlineAdminEditor() {
       await saveAdminItem(formData, itemId);
       await fetchData();
       wireProjectControls();
-      adminItemFeedback.textContent = itemId ? "Item updated." : "Item created.";
       closeAdminItemModal();
+      showToast(itemId ? "Item updated." : "Item created.", "success");
       if (state.modalItem?.id && itemId) {
         const refreshedItem = findItemById(itemId);
         if (refreshedItem) {
@@ -474,25 +611,32 @@ function initInlineAdminEditor() {
       }
     } catch (error) {
       adminItemFeedback.textContent = error.message;
+      showToast(error.message, "error");
     }
   });
 }
 
 function wireProjectControls() {
   const projectCategories = uniqueCategories(state.projects);
-  renderSubsectionNav("projects-subsection-nav", projectCategories);
+  renderSubsectionNav("projects-subsection-nav", projectCategories, state.projects);
 
   const experienceSubsections = uniqueSubsections(state.experiences);
-  renderSubsectionNav("experiences-subsection-nav", experienceSubsections);
+  renderSubsectionNav("experiences-subsection-nav", experienceSubsections, state.experiences);
+
+  // Restore sort from localStorage
+  const savedProjectSort = localStorage.getItem("ctrlaltjay-projects-sort");
+  const savedExpSort = localStorage.getItem("ctrlaltjay-experiences-sort");
+  if (savedProjectSort) document.getElementById("projects-sort").value = savedProjectSort;
+  if (savedExpSort) document.getElementById("experiences-sort").value = savedExpSort;
 
   state.rerenderProjects = () => {
     const activeSubsection = document.querySelector("#projects-subsection-nav .subsection-btn.active")?.dataset.subsection || "all";
-    renderSection(state.projects, null, "projects-sort", "projects-grid", activeSubsection);
+    renderSection(state.projects, null, "projects-sort", "projects-grid", activeSubsection, "projects-search");
   };
   
   state.rerenderExperiences = () => {
     const activeSubsection = document.querySelector("#experiences-subsection-nav .subsection-btn.active")?.dataset.subsection || "all";
-    renderSection(state.experiences, null, "experiences-sort", "experiences-grid", activeSubsection);
+    renderSection(state.experiences, null, "experiences-sort", "experiences-grid", activeSubsection, "experiences-search");
   };
 
   if (!state.controlsBound) {
@@ -513,8 +657,26 @@ function wireProjectControls() {
       state.rerenderExperiences();
     });
 
-    document.getElementById("projects-sort").addEventListener("change", () => state.rerenderProjects());
-    document.getElementById("experiences-sort").addEventListener("change", () => state.rerenderExperiences());
+    document.getElementById("projects-sort").addEventListener("change", (e) => {
+      localStorage.setItem("ctrlaltjay-projects-sort", e.target.value);
+      state.rerenderProjects();
+    });
+    document.getElementById("experiences-sort").addEventListener("change", (e) => {
+      localStorage.setItem("ctrlaltjay-experiences-sort", e.target.value);
+      state.rerenderExperiences();
+    });
+
+    // Search inputs
+    let projectSearchTimer, expSearchTimer;
+    document.getElementById("projects-search")?.addEventListener("input", () => {
+      clearTimeout(projectSearchTimer);
+      projectSearchTimer = setTimeout(() => state.rerenderProjects(), 250);
+    });
+    document.getElementById("experiences-search")?.addEventListener("input", () => {
+      clearTimeout(expSearchTimer);
+      expSearchTimer = setTimeout(() => state.rerenderExperiences(), 250);
+    });
+
     state.controlsBound = true;
   }
 
@@ -528,11 +690,39 @@ async function bootstrap() {
   initContactForm();
   initAdminAuth();
   initInlineAdminEditor();
+  initEscapeKey();
   setAdminMode(false);
+
+  // Show skeletons while data loads
+  showSkeletons("projects-grid", 6);
+  showSkeletons("experiences-grid", 6);
+
   await fetchData();
+  state.dataLoaded = true;
   wireProjectControls();
   renderResume();
   renderSkills();
+}
+
+/* ===== Escape key closes topmost modal ===== */
+function initEscapeKey() {
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    // Close in order: confirm overlay, admin item modal, detail modal, admin login modal
+    const confirm = document.querySelector(".confirm-overlay");
+    if (confirm) { confirm.remove(); return; }
+    const adminItem = document.getElementById("admin-item-modal");
+    if (adminItem?.classList.contains("active")) { closeAdminItemModal(); return; }
+    const detail = document.getElementById("detail-modal");
+    if (detail?.classList.contains("active")) {
+      state.modalItem = null;
+      detail.classList.remove("active");
+      detail.setAttribute("aria-hidden", "true");
+      return;
+    }
+    const loginModal = document.getElementById("admin-login-modal");
+    if (loginModal?.classList.contains("active")) { closeAdminLoginModal(); return; }
+  });
 }
 
 function initContactForm() {
@@ -636,6 +826,7 @@ function initAdminAuth() {
       }
       setAdminMode(false);
       wireProjectControls();
+      showToast("Logged out.", "info");
     });
   }
 
@@ -664,6 +855,7 @@ function initAdminAuth() {
           closeAdminLoginModal();
           setAdminMode(true);
           wireProjectControls();
+          showToast("Admin mode active.", "success");
         } else {
           feedback.style.color = "#f87171";
           feedback.textContent = data.error || "Authentication failed.";
