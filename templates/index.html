@@ -203,6 +203,13 @@
             </div>
           </div>
         </section>
+
+        <section class="mt-8 text-center">
+          <button type="button" id="surprise-me-btn" class="surprise-me-btn">
+            <ion-icon name="shuffle-outline"></ion-icon> Surprise Me
+          </button>
+          <p class="text-xs text-ink-muted mt-2">Open a random portfolio item</p>
+        </section>
       </article>
 
       <!-- Recently Viewed -->
@@ -543,6 +550,12 @@
       <div class="modal-title-row flex items-center justify-between gap-3">
         <h3 id="modal-title" class="text-xl font-bold text-white flex-1"></h3>
         <div class="flex items-center gap-2">
+          <button type="button" id="modal-copy-id-btn" class="icon-edit-btn admin-only" aria-label="Copy item ID" hidden style="color:#94a3b8">
+            <ion-icon name="clipboard-outline"></ion-icon>
+          </button>
+          <button type="button" id="modal-export-item-btn" class="icon-edit-btn" aria-label="Export item as JSON" style="color:#22c55e">
+            <ion-icon name="download-outline"></ion-icon>
+          </button>
           <button type="button" id="modal-clone-btn" class="icon-edit-btn admin-only" aria-label="Clone this card" hidden style="color:#38bdf8">
             <ion-icon name="copy-outline"></ion-icon>
           </button>
