@@ -4,7 +4,19 @@
   <meta charset="UTF-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>CtrlAltJay</title>
+  <title>CtrlAltJay — Rone Peh | Portfolio</title>
+  <meta name="description" content="Portfolio of Rone Peh — Information Technology student, SWE Intern at J.P. Morgan Chase. Projects in cloud, AI/ML, web development, and more.">
+  <meta name="author" content="Rone Peh">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://ctrlaltjay.dev/">
+  <meta property="og:title" content="CtrlAltJay — Rone Peh | Portfolio">
+  <meta property="og:description" content="Portfolio of Rone Peh — Information Technology student, SWE Intern at J.P. Morgan Chase.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://ctrlaltjay.dev/">
+  <meta property="og:locale" content="en_SG">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="CtrlAltJay — Rone Peh | Portfolio">
+  <meta name="twitter:description" content="Portfolio of Rone Peh — Information Technology student, SWE Intern at J.P. Morgan Chase.">
   <link rel="shortcut icon" href="../static/images/PersonalLogo.ico" type="image/x-icon">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -47,6 +59,16 @@
     <ion-icon name="chevron-up-outline"></ion-icon>
   </button>
 
+  <!-- Theme toggle -->
+  <button class="theme-toggle-btn" id="theme-toggle" aria-label="Toggle theme">
+    <ion-icon name="sunny-outline"></ion-icon>
+  </button>
+
+  <!-- View toggle -->
+  <button class="view-toggle-btn" id="view-toggle" aria-label="Toggle grid/list view">
+    <ion-icon name="list-outline"></ion-icon>
+  </button>
+
   <main class="layout max-w-[1440px] mx-auto w-full px-5 py-10 gap-8 flex-1">
     <!-- Sidebar -->
     <aside class="sidebar bg-surface-50/80 backdrop-blur-xl border border-white/[0.06] rounded-2xl p-8 sticky top-10 h-fit shadow-2xl">
@@ -84,6 +106,17 @@
       </div>
 
       <button type="button" id="admin-logout-btn" class="admin-link admin-logout w-full text-center mt-4 bg-transparent text-ink-muted font-semibold rounded-xl px-4 py-3 text-sm border border-white/[0.06] transition-all duration-300 hover:border-red-500/60 hover:text-red-400 cursor-pointer" hidden>Exit Admin Mode</button>
+
+      <!-- Activity Log (Admin) -->
+      <div class="admin-only mt-3" hidden>
+        <button type="button" id="activity-log-toggle" class="w-full text-center bg-transparent text-ink-muted font-semibold rounded-xl px-4 py-2.5 text-xs border border-white/[0.06] transition-all duration-300 hover:border-accent/60 hover:text-accent cursor-pointer">
+          <ion-icon name="document-text-outline" class="align-middle mr-1"></ion-icon>Activity Log
+        </button>
+        <div id="activity-log-panel" class="activity-log-panel mt-2" style="display:none">
+          <div id="activity-log-list" class="activity-log-list"></div>
+          <button type="button" id="activity-log-clear" class="text-xs text-red-400 mt-2 cursor-pointer bg-transparent border-0 hover:text-red-300">Clear Log</button>
+        </div>
+      </div>
     </aside>
 
     <!-- Content -->
@@ -117,6 +150,12 @@
           </div>
         </section>
       </article>
+
+      <!-- Recently Viewed -->
+      <div id="recently-viewed" class="recently-viewed-section mb-6" style="display:none">
+        <h4 class="text-sm font-semibold text-ink-soft mb-2"><ion-icon name="time-outline" class="align-middle mr-1"></ion-icon>Recently Viewed</h4>
+        <div class="recent-strip"></div>
+      </div>
 
       <!-- Projects -->
       <article id="projects" class="tab-panel animate-fade-up">
@@ -434,6 +473,12 @@
       <div id="modal-tag" class="modal-tag"></div>
       <div id="modal-body" class="modal-body"></div>
       <a id="modal-link" target="_blank" rel="noopener noreferrer" class="modal-link inline-block mt-4 text-accent font-bold no-underline hover:text-accent-light transition-colors">Open external link</a>
+
+      <!-- Related Items -->
+      <div id="related-items" class="related-section mt-6" style="display:none">
+        <h4 class="text-sm font-semibold text-ink-soft mb-3"><ion-icon name="git-branch-outline" class="align-middle mr-1"></ion-icon>Related</h4>
+        <div class="related-strip"></div>
+      </div>
     </section>
   </div>
 
@@ -457,6 +502,31 @@
         </button>
       </form>
       <p id="resume-key-feedback" class="text-xs mt-3" style="color:#f87171" aria-live="polite"></p>
+    </section>
+  </div>
+
+  <!-- Batch Skill Assignment Modal -->
+  <div class="modal-shell" id="batch-skill-modal" aria-hidden="true">
+    <div class="modal-backdrop" onclick="closeBatchSkillModal()"></div>
+    <section class="modal-card" role="dialog" aria-modal="true" style="max-width:500px">
+      <button class="modal-close" onclick="closeBatchSkillModal()" aria-label="Close">
+        <ion-icon name="close-outline"></ion-icon>
+      </button>
+      <h3 class="text-xl font-bold text-white mb-1">Batch Skill Assignment</h3>
+      <p class="text-ink-muted text-sm mb-4">Choose skills and mode to apply to selected items.</p>
+      <div class="flex gap-4 mb-4">
+        <label class="text-sm text-ink-soft flex items-center gap-1.5 cursor-pointer">
+          <input type="radio" name="batch-skill-mode" value="add" checked class="accent-accent"> Add
+        </label>
+        <label class="text-sm text-ink-soft flex items-center gap-1.5 cursor-pointer">
+          <input type="radio" name="batch-skill-mode" value="remove" class="accent-accent"> Remove
+        </label>
+        <label class="text-sm text-ink-soft flex items-center gap-1.5 cursor-pointer">
+          <input type="radio" name="batch-skill-mode" value="replace" class="accent-accent"> Replace
+        </label>
+      </div>
+      <div id="batch-skills-picker" class="skills-picker mb-4"></div>
+      <button type="button" onclick="applyBatchSkills()" class="btn-primary bg-gradient-to-r from-accent to-accent-dark text-surface-400 font-bold rounded-xl px-6 py-3 text-sm border-none cursor-pointer transition-all duration-300 hover:shadow-[0_0_24px_rgba(245,158,11,0.4)]">Apply to Selected</button>
     </section>
   </div>
 

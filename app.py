@@ -663,3 +663,63 @@ def admin_resume_key_rotate():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
+
+# ─── SEO: Sitemap & Robots ──────────────────────────────────────────────────
+
+@app.route("/sitemap.xml")
+def sitemap():
+    items_resp = table_items.scan()
+    all_items = [
+        dynamo_to_dict(i)
+        for i in items_resp.get("Items", [])
+        if not i.get("id", "").startswith("__")
+    ]
+    base_url = "https://ctrlaltjay.dev"
+    now = datetime.utcnow().strftime("%Y-%m-%d")
+
+    urls = [
+        {"loc": f"{base_url}/", "lastmod": now, "priority": "1.0"},
+        {"loc": f"{base_url}/#about", "lastmod": now, "priority": "0.8"},
+        {"loc": f"{base_url}/#projects", "lastmod": now, "priority": "0.9"},
+        {"loc": f"{base_url}/#experiences", "lastmod": now, "priority": "0.9"},
+        {"loc": f"{base_url}/#resume", "lastmod": now, "priority": "0.7"},
+        {"loc": f"{base_url}/#contact", "lastmod": now, "priority": "0.6"},
+    ]
+
+    for item in all_items:
+        lastmod = (item.get("updated_at") or now)[:10]
+        urls.append({
+            "loc": f"{base_url}/#item/{item['id']}",
+            "lastmod": lastmod,
+            "priority": "0.6",
+        })
+
+    xml_entries = "\n".join(
+        f"  <url>\n"
+        f"    <loc>{u['loc']}</loc>\n"
+        f"    <lastmod>{u['lastmod']}</lastmod>\n"
+        f"    <priority>{u['priority']}</priority>\n"
+        f"  </url>"
+        for u in urls
+    )
+
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        f"{xml_entries}\n"
+        "</urlset>"
+    )
+
+    response = app.response_class(xml, mimetype="application/xml")
+    return response
+
+
+@app.route("/robots.txt")
+def robots():
+    txt = (
+        "User-agent: *\n"
+        "Allow: /\n"
+        "Sitemap: https://ctrlaltjay.dev/sitemap.xml\n"
+    )
+    return app.response_class(txt, mimetype="text/plain")
