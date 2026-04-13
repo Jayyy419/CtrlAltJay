@@ -58,7 +58,7 @@ PORTFOLIO_ITEM_FIELDS = [
     "section", "category", "subsection", "title", "byline", "tag",
     "summary", "description", "date_label", "date_value", "deliverables",
     "challenges", "future_improvements", "extra_notes", "image_path",
-    "external_link",
+    "external_link", "skills",
 ]
 
 
@@ -145,7 +145,7 @@ def set_security_headers(response):
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
         "font-src 'self' https://fonts.gstatic.com; "
         "img-src 'self' data: blob:; "
-        "connect-src 'self'; "
+        "connect-src 'self' https://unpkg.com; "
         "frame-ancestors 'none'; "
         "base-uri 'self'; "
         "form-action 'self'"
@@ -337,6 +337,7 @@ def api_admin_items():
         "extra_notes": request.form.get("extra_notes", "").strip(),
         "image_path": image_path or request.form.get("image_path", "").strip(),
         "external_link": request.form.get("external_link", "").strip(),
+        "skills": request.form.get("skills", "").strip(),
     }
 
     required_ok = payload["section"] in {"project", "experience"} and payload["category"] and payload["title"]
@@ -389,6 +390,7 @@ def api_admin_item(item_id):
         "extra_notes": form.get("extra_notes", existing.get("extra_notes", "")).strip(),
         "image_path": image_path or form.get("image_path", existing.get("image_path", "")).strip(),
         "external_link": form.get("external_link", existing.get("external_link", "")).strip(),
+        "skills": form.get("skills", existing.get("skills", "")).strip(),
     }
 
     updated_payload["id"] = item_id
