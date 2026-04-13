@@ -1,9 +1,15 @@
 .git
 .gitignore
 .vscode
+.elasticbeanstalk
 LinkedIn_Export/
 __pycache__
 *.pyc
 venv/
 .env
 README.md
+docs/
+migrate_legacy.py
+old_portfolio.html
+original_style.css
+temp_old_index.html
