@@ -1,0 +1,16 @@
+{
+  "name": "CtrlAltJay — Rone Peh Portfolio",
+  "short_name": "CtrlAltJay",
+  "description": "Portfolio of Rone Peh — Information Technology student, SWE Intern at J.P. Morgan Chase.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a18",
+  "theme_color": "#f59e0b",
+  "icons": [
+    {
+      "src": "/static/images/PersonalLogo.ico",
+      "sizes": "any",
+      "type": "image/x-icon"
+    }
+  ]
+}

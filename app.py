@@ -26,6 +26,14 @@ from flask_mail import Mail, Message
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
+import json
+
+try:
+    from PIL import Image as PILImage
+    HAS_PILLOW = True
+except ImportError:
+    HAS_PILLOW = False
+
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -55,10 +63,11 @@ MAX_ADMIN_ATTEMPTS = 5
 ADMIN_LOCK_SECONDS = 600
 
 PORTFOLIO_ITEM_FIELDS = [
-    "section", "category", "subsection", "title", "byline", "tag",
-    "summary", "description", "date_label", "date_value", "deliverables",
-    "challenges", "future_improvements", "extra_notes", "image_path",
-    "external_link", "skills",
+    "additional_images", "byline", "category", "challenges",
+    "credential_url", "date_label", "date_value", "deliverables",
+    "description", "external_link", "extra_notes", "future_improvements",
+    "image_path", "section", "skills", "status", "subsection", "summary",
+    "tag", "title",
 ]
 
 
@@ -110,7 +119,33 @@ def save_uploaded_image(upload):
     stamped_name = f"{int(datetime.utcnow().timestamp())}_{safe_name}"
     destination = UPLOAD_DIR / stamped_name
     upload.save(destination)
+
+    # Optimise with Pillow when available (skip SVG/ICO)
+    if HAS_PILLOW and ext in {".jpg", ".jpeg", ".png", ".webp"}:
+        try:
+            with PILImage.open(destination) as img:
+                if img.mode in ("RGBA", "P") and ext in {".jpg", ".jpeg"}:
+                    img = img.convert("RGB")
+                max_w = 1200
+                if img.width > max_w:
+                    ratio = max_w / img.width
+                    img = img.resize((max_w, int(img.height * ratio)), PILImage.LANCZOS)
+                save_kw = {"optimize": True}
+                if ext in {".jpg", ".jpeg"}:
+                    img.save(destination, "JPEG", quality=85, **save_kw)
+                elif ext == ".png":
+                    img.save(destination, "PNG", **save_kw)
+                elif ext == ".webp":
+                    img.save(destination, "WEBP", quality=85)
+        except Exception:
+            pass  # keep original if optimisation fails
+
     return f"../static/uploads/{stamped_name}"
+
+
+def save_additional_images(files):
+    """Save multiple uploaded images, return comma-separated paths."""
+    return ",".join(filter(None, (save_uploaded_image(f) for f in files)))
 
 
 def dynamo_to_dict(item):
@@ -146,6 +181,8 @@ def set_security_headers(response):
         "font-src 'self' https://fonts.gstatic.com; "
         "img-src 'self' data: blob:; "
         "connect-src 'self' https://unpkg.com; "
+        "manifest-src 'self'; "
+        "worker-src 'self'; "
         "frame-ancestors 'none'; "
         "base-uri 'self'; "
         "form-action 'self'"
@@ -160,6 +197,9 @@ def set_security_headers(response):
     response.headers["Cross-Origin-Embedder-Policy"] = "unsafe-none"
     response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
     response.headers["X-Permitted-Cross-Domain-Policies"] = "none"
+    # Cache static assets for CDN / browser caching
+    if request.path.startswith("/static/"):
+        response.headers["Cache-Control"] = "public, max-age=86400"
     return response
 
 
@@ -338,7 +378,15 @@ def api_admin_items():
         "image_path": image_path or request.form.get("image_path", "").strip(),
         "external_link": request.form.get("external_link", "").strip(),
         "skills": request.form.get("skills", "").strip(),
+        "status": request.form.get("status", "").strip(),
+        "credential_url": request.form.get("credential_url", "").strip(),
     }
+
+    # Additional images
+    add_files = request.files.getlist("additional_images")
+    new_adds = save_additional_images(add_files)
+    existing_adds = request.form.get("existing_additional_images", "").strip()
+    payload["additional_images"] = ",".join(filter(None, [existing_adds, new_adds]))
 
     required_ok = payload["section"] in {"project", "experience"} and payload["category"] and payload["title"]
     if not required_ok:
@@ -391,7 +439,15 @@ def api_admin_item(item_id):
         "image_path": image_path or form.get("image_path", existing.get("image_path", "")).strip(),
         "external_link": form.get("external_link", existing.get("external_link", "")).strip(),
         "skills": form.get("skills", existing.get("skills", "")).strip(),
+        "status": form.get("status", existing.get("status", "")).strip(),
+        "credential_url": form.get("credential_url", existing.get("credential_url", "")).strip(),
     }
+
+    # Additional images
+    add_files = request.files.getlist("additional_images")
+    new_adds = save_additional_images(add_files)
+    existing_adds = form.get("existing_additional_images", existing.get("additional_images", "")).strip()
+    updated_payload["additional_images"] = ",".join(filter(None, [existing_adds, new_adds]))
 
     updated_payload["id"] = item_id
     updated_payload["created_at"] = existing.get("created_at", "")
@@ -552,6 +608,11 @@ def send_message():
     subject = request.form.get("subject", "").strip()
     message_body = request.form.get("message", "").strip()
     newsletter_opt_in = request.form.get("newsletter-opt-in") == "yes"
+
+    # Honeypot — silently reject bot submissions
+    if request.form.get("website", "").strip():
+        flash("Message sent successfully. I'll get back to you soon!", "success")
+        return redirect(url_for("index"))
 
     # Validate required fields
     if not fullname:
@@ -723,3 +784,84 @@ def robots():
         "Sitemap: https://ctrlaltjay.dev/sitemap.xml\n"
     )
     return app.response_class(txt, mimetype="text/plain")
+
+
+# ─── Error Pages ─────────────────────────────────────────────────────────────
+
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template("404.html"), 404
+
+
+@app.errorhandler(500)
+def internal_error(e):
+    return render_template(
+        "404.html", error_code=500,
+        error_message="Something went wrong on our end.",
+    ), 500
+
+
+# ─── Visitor Hit Counter ─────────────────────────────────────────────────────
+
+@app.route("/api/hit-count", methods=["GET", "POST"])
+def hit_count():
+    if request.method == "POST":
+        try:
+            table_items.update_item(
+                Key={"id": SETTINGS_ID},
+                UpdateExpression="SET hit_count = if_not_exists(hit_count, :zero) + :inc",
+                ExpressionAttributeValues={":inc": Decimal("1"), ":zero": Decimal("0")},
+            )
+        except Exception:
+            pass
+        return jsonify({"ok": True})
+    resp = table_items.get_item(Key={"id": SETTINGS_ID})
+    item = resp.get("Item", {})
+    count = int(item.get("hit_count", 0))
+    return jsonify({"count": count})
+
+
+# ─── Auto-Backup to S3 ──────────────────────────────────────────────────────
+
+@app.route("/api/admin/backup", methods=["POST"])
+def admin_backup():
+    unauthorized = unauthorized_admin_response()
+    if unauthorized:
+        return unauthorized
+    try:
+        s3 = boto3.client("s3", region_name=AWS_REGION)
+        bucket = os.getenv("BACKUP_S3_BUCKET", "ctrlaltjay-backups")
+        timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+        tables = {
+            "portfolio-items": table_items,
+            "resume-items": table_resume,
+            "skills": table_skills,
+        }
+        for name, tbl in tables.items():
+            resp = tbl.scan()
+            items_list = [dynamo_to_dict(i) for i in resp.get("Items", [])]
+            s3.put_object(
+                Bucket=bucket,
+                Key=f"backups/{timestamp}/{name}.json",
+                Body=json.dumps(items_list, indent=2, default=str),
+                ContentType="application/json",
+            )
+        return jsonify({"message": f"Backup saved to s3://{bucket}/backups/{timestamp}/"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ─── PWA: Service Worker & Manifest ─────────────────────────────────────────
+
+@app.route("/sw.js")
+def service_worker():
+    response = app.send_static_file("sw.js")
+    response.headers["Service-Worker-Allowed"] = "/"
+    response.headers["Content-Type"] = "application/javascript"
+    response.headers["Cache-Control"] = "no-cache"
+    return response
+
+
+@app.route("/manifest.json")
+def manifest():
+    return app.send_static_file("manifest.json")

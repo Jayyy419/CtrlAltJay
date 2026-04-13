@@ -48,8 +48,13 @@
     }
   </script>
   <link rel="stylesheet" href="../static/css/style.css">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#0a0a18">
 </head>
 <body class="bg-surface-400 text-ink font-sans min-h-screen flex flex-col antialiased">
+
+  <!-- Skip link for accessibility -->
+  <a href="#main-content" class="skip-link">Skip to main content</a>
 
   <!-- Scroll progress bar -->
   <div class="scroll-progress" id="scroll-progress"></div>
@@ -69,7 +74,7 @@
     <ion-icon name="list-outline"></ion-icon>
   </button>
 
-  <main class="layout max-w-[1440px] mx-auto w-full px-5 py-10 gap-8 flex-1">
+  <main id="main-content" class="layout max-w-[1440px] mx-auto w-full px-5 py-10 gap-8 flex-1" role="main">
     <!-- Sidebar -->
     <aside class="sidebar bg-surface-50/80 backdrop-blur-xl border border-white/[0.06] rounded-2xl p-8 sticky top-10 h-fit shadow-2xl">
       <div class="portrait-wrap relative mx-auto w-36 h-36 rounded-2xl overflow-hidden ring-2 ring-accent/60 ring-offset-2 ring-offset-surface-400 mb-6">
@@ -117,6 +122,30 @@
           <button type="button" id="activity-log-clear" class="text-xs text-red-400 mt-2 cursor-pointer bg-transparent border-0 hover:text-red-300">Clear Log</button>
         </div>
       </div>
+
+      <!-- Admin Stats -->
+      <div class="admin-only mt-3" hidden>
+        <button type="button" id="admin-stats-toggle" class="w-full text-center bg-transparent text-ink-muted font-semibold rounded-xl px-4 py-2.5 text-xs border border-white/[0.06] transition-all duration-300 hover:border-accent/60 hover:text-accent cursor-pointer">
+          <ion-icon name="bar-chart-outline" class="align-middle mr-1"></ion-icon>Stats Dashboard
+        </button>
+        <div id="admin-stats-panel" class="activity-log-panel mt-2" style="display:none">
+          <div id="admin-stats-content"></div>
+        </div>
+      </div>
+
+      <!-- Hit Counter (Admin) -->
+      <div class="admin-only mt-3" hidden>
+        <div class="text-center text-xs text-ink-muted">
+          <ion-icon name="eye-outline" class="align-middle mr-1"></ion-icon>Visitors: <span id="hit-counter-display" class="text-accent font-bold">&mdash;</span>
+        </div>
+      </div>
+
+      <!-- Backup (Admin) -->
+      <div class="admin-only mt-3" hidden>
+        <button type="button" id="admin-backup-btn" class="w-full text-center bg-transparent text-ink-muted font-semibold rounded-xl px-4 py-2.5 text-xs border border-white/[0.06] transition-all duration-300 hover:border-accent/60 hover:text-accent cursor-pointer">
+          <ion-icon name="cloud-upload-outline" class="align-middle mr-1"></ion-icon>Backup to S3
+        </button>
+      </div>
     </aside>
 
     <!-- Content -->
@@ -147,6 +176,24 @@
               <p class="text-ink-soft text-sm leading-relaxed">{{ item.description }}</p>
             </article>
             {% endfor %}
+          </div>
+        </section>
+
+        <section class="stats-counters mt-10" id="stats-counters">
+          <h3 class="font-display text-xl font-semibold text-white mb-4">By the Numbers</h3>
+          <div class="counter-grid grid grid-cols-3 gap-4 max-sm:grid-cols-1">
+            <div class="counter-card">
+              <span class="counter-number" id="counter-projects">0</span>
+              <span class="counter-label">Projects</span>
+            </div>
+            <div class="counter-card">
+              <span class="counter-number" id="counter-experiences">0</span>
+              <span class="counter-label">Experiences</span>
+            </div>
+            <div class="counter-card">
+              <span class="counter-number" id="counter-skills">0</span>
+              <span class="counter-label">Skills</span>
+            </div>
           </div>
         </section>
       </article>
@@ -317,6 +364,9 @@
           </div>
           <textarea name="message" placeholder="Tell me what you are building or hiring for" required minlength="10" maxlength="5000" title="Message should be between 10 and 5000 characters" rows="6"
             class="w-full px-4 py-3 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm placeholder:text-ink-muted focus:outline-none focus:border-accent transition-colors resize-y min-h-[160px]"></textarea>
+          <div class="hp-field" aria-hidden="true" tabindex="-1">
+            <input type="text" name="website" tabindex="-1" autocomplete="off">
+          </div>
           <div class="field-row">
             <label class="checkbox-label flex items-center gap-2.5 cursor-pointer text-ink-muted text-sm">
               <input type="checkbox" name="newsletter-opt-in" value="yes" class="w-4 h-4 cursor-pointer accent-accent rounded">
@@ -409,6 +459,16 @@
           </div>
         </div>
         <div>
+          <label for="admin-item-status" class="text-sm text-ink-soft">Status</label>
+          <select id="admin-item-status" name="status" class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent">
+            <option value="">None</option>
+            <option value="Active">Active</option>
+            <option value="Archived">Archived</option>
+            <option value="Completed">Completed</option>
+            <option value="In Progress">In Progress</option>
+          </select>
+        </div>
+        <div>
           <label for="admin-item-deliverables" class="text-sm text-ink-soft">Deliverables</label>
           <textarea id="admin-item-deliverables" name="deliverables" rows="2" class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent resize-y"></textarea>
         </div>
@@ -438,6 +498,16 @@
           </div>
         </div>
         <div>
+          <label for="admin-item-credential-url" class="text-sm text-ink-soft">Credential / Verification URL</label>
+          <input id="admin-item-credential-url" type="url" name="credential_url" placeholder="https://www.credly.com/badges/..." class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm placeholder:text-ink-muted focus:outline-none focus:border-accent">
+        </div>
+        <div>
+          <label for="admin-item-additional-images" class="text-sm text-ink-soft">Additional Images</label>
+          <input id="admin-item-additional-images" type="file" name="additional_images" accept="image/*" multiple class="w-full mt-1 text-sm text-ink file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-accent file:text-surface-400 file:cursor-pointer hover:file:bg-accent-dark">
+          <input type="hidden" id="admin-item-existing-additional" name="existing_additional_images">
+          <div id="admin-item-additional-preview" class="flex gap-2 mt-2 flex-wrap"></div>
+        </div>
+        <div>
           <label class="text-sm text-ink-soft">Skills</label>
           <div id="admin-item-skills-picker" class="skills-picker mt-1"></div>
           <input type="hidden" id="admin-item-skills" name="skills">
@@ -457,7 +527,12 @@
       <button class="modal-close" data-close-modal>
         <ion-icon name="close-outline"></ion-icon>
       </button>
-      <img id="modal-image" alt="Detail image">
+      <div id="modal-carousel" class="modal-carousel">
+        <img id="modal-image" alt="Detail image">
+        <button type="button" class="carousel-prev" id="carousel-prev" aria-label="Previous image" style="display:none"><ion-icon name="chevron-back-outline"></ion-icon></button>
+        <button type="button" class="carousel-next" id="carousel-next" aria-label="Next image" style="display:none"><ion-icon name="chevron-forward-outline"></ion-icon></button>
+        <div id="carousel-dots" class="carousel-dots"></div>
+      </div>
       <div class="modal-title-row flex items-center justify-between gap-3">
         <h3 id="modal-title" class="text-xl font-bold text-white flex-1"></h3>
         <div class="flex items-center gap-2">
@@ -473,6 +548,20 @@
       <div id="modal-tag" class="modal-tag"></div>
       <div id="modal-body" class="modal-body"></div>
       <a id="modal-link" target="_blank" rel="noopener noreferrer" class="modal-link inline-block mt-4 text-accent font-bold no-underline hover:text-accent-light transition-colors">Open external link</a>
+
+      <!-- Credential Verification -->
+      <a id="modal-credential-link" target="_blank" rel="noopener noreferrer" class="credential-link" style="display:none">
+        <ion-icon name="shield-checkmark-outline"></ion-icon> Verify Credential
+      </a>
+
+      <!-- Social Share -->
+      <div id="modal-share" class="share-buttons mt-4">
+        <span class="text-xs text-ink-muted font-semibold mr-2">Share:</span>
+        <button type="button" class="share-btn" data-platform="linkedin" aria-label="Share on LinkedIn"><ion-icon name="logo-linkedin"></ion-icon></button>
+        <button type="button" class="share-btn" data-platform="twitter" aria-label="Share on X"><ion-icon name="logo-twitter"></ion-icon></button>
+        <button type="button" class="share-btn" data-platform="telegram" aria-label="Share on Telegram"><ion-icon name="paper-plane-outline"></ion-icon></button>
+        <button type="button" class="share-btn" data-platform="copy" aria-label="Copy link"><ion-icon name="link-outline"></ion-icon></button>
+      </div>
 
       <!-- Related Items -->
       <div id="related-items" class="related-section mt-6" style="display:none">
@@ -536,5 +625,8 @@
 
   <!-- Toast container -->
   <div id="toast-container" class="toast-container"></div>
+
+  <!-- ARIA live region for dynamic updates -->
+  <div id="aria-live" class="sr-only" aria-live="polite" aria-atomic="true"></div>
 </body>
 </html>
