@@ -128,6 +128,7 @@ function uniqueSubsections(items) {
 function buildCard(item) {
   const card = document.createElement("article");
   card.className = "card";
+  card.tabIndex = 0;
 
   const imagePath = item.image_path || "../static/images/Projects/WebDev_PortfolioV1.png";
   const img = document.createElement("img");
@@ -193,6 +194,9 @@ function renderSubsectionNav(navId, categories, items) {
   });
 }
 
+const PAGE_SIZE = 12;
+const shownCounts = {};  // track pagination per grid
+
 function renderSection(items, categoryId, sortId, targetGridId, subsectionFilter = null, searchId = null) {
   const selectedCategory = categoryId ? document.getElementById(categoryId).value : "All";
   const sortMode = document.getElementById(sortId).value;
@@ -225,11 +229,33 @@ function renderSection(items, categoryId, sortId, targetGridId, subsectionFilter
   target.innerHTML = "";
   if (filtered.length === 0) {
     target.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><ion-icon name="search-outline"></ion-icon><p>${searchQuery ? "No results for \u201c" + searchQuery + "\u201d" : "No items in this category yet."}</p></div>`;
+    shownCounts[targetGridId] = 0;
     return;
   }
-  filtered.forEach((item) => {
+
+  // Pagination: show only first PAGE_SIZE (or previously expanded count)
+  const limit = shownCounts[targetGridId] || PAGE_SIZE;
+  const visible = filtered.slice(0, limit);
+
+  visible.forEach((item) => {
     target.appendChild(buildCard(item));
   });
+
+  // Observe cards for entrance animation
+  observeCards(target);
+
+  // Show More button
+  if (filtered.length > limit) {
+    const wrap = document.createElement("div");
+    wrap.className = "show-more-wrap";
+    const remaining = filtered.length - limit;
+    wrap.innerHTML = `<button class="show-more-btn"><ion-icon name="chevron-down-outline"></ion-icon> Show ${Math.min(remaining, PAGE_SIZE)} more of ${remaining} remaining</button>`;
+    wrap.querySelector("button").addEventListener("click", () => {
+      shownCounts[targetGridId] = (shownCounts[targetGridId] || PAGE_SIZE) + PAGE_SIZE;
+      renderSection(items, categoryId, sortId, targetGridId, subsectionFilter, searchId);
+    });
+    target.appendChild(wrap);
+  }
 }
 
 function rowToHTML(label, value) {
@@ -461,6 +487,23 @@ function openAdminItemModal(item = null, section = "project") {
     sectionFieldGroup.style.display = "none";
     title.textContent = section === "experience" ? "Create New Experience" : "Create New Project";
     submit.textContent = "Create Item";
+
+    // Restore draft if available
+    const draft = restoreDraft();
+    if (draft) {
+      Object.entries(draft).forEach(([key, val]) => {
+        const el = form.elements[key];
+        if (el && val) el.value = val;
+      });
+      // Re-populate category dropdown with drafted values
+      populateCategoryDropdown(sectionField.value || effectiveSection, draft.category || "");
+      // Show draft indicator
+      const badge = document.createElement("span");
+      badge.className = "draft-badge";
+      badge.textContent = "Draft restored";
+      title.appendChild(badge);
+      setTimeout(() => badge.remove(), 3000);
+    }
   }
 
   modal.classList.add("active");
@@ -595,6 +638,7 @@ function initInlineAdminEditor() {
       await fetchData();
       wireProjectControls();
       closeAdminItemModal();
+      clearDraft();
       showToast(itemId ? "Item updated." : "Item created.", "success");
       if (state.modalItem?.id && itemId) {
         const refreshedItem = findItemById(itemId);
@@ -625,11 +669,13 @@ function wireProjectControls() {
   state.rerenderProjects = () => {
     const activeSubsection = document.querySelector("#projects-subsection-nav .subsection-btn.active")?.dataset.subsection || "all";
     renderSection(state.projects, null, "projects-sort", "projects-grid", activeSubsection, "projects-search");
+    addBulkCheckboxes(document.getElementById("projects-grid"));
   };
   
   state.rerenderExperiences = () => {
     const activeSubsection = document.querySelector("#experiences-subsection-nav .subsection-btn.active")?.dataset.subsection || "all";
     renderSection(state.experiences, null, "experiences-sort", "experiences-grid", activeSubsection, "experiences-search");
+    addBulkCheckboxes(document.getElementById("experiences-grid"));
   };
 
   if (!state.controlsBound) {
@@ -639,6 +685,7 @@ function wireProjectControls() {
       if (!btn) return;
       document.querySelectorAll("#projects-subsection-nav .subsection-btn").forEach((it) => it.classList.remove("active"));
       btn.classList.add("active");
+      shownCounts["projects-grid"] = PAGE_SIZE;
       state.rerenderProjects();
     });
 
@@ -647,6 +694,7 @@ function wireProjectControls() {
       if (!btn) return;
       document.querySelectorAll("#experiences-subsection-nav .subsection-btn").forEach((it) => it.classList.remove("active"));
       btn.classList.add("active");
+      shownCounts["experiences-grid"] = PAGE_SIZE;
       state.rerenderExperiences();
     });
 
@@ -684,6 +732,12 @@ async function bootstrap() {
   initAdminAuth();
   initInlineAdminEditor();
   initEscapeKey();
+  initBackToTop();
+  initScrollProgress();
+  initLightbox();
+  initKeyboardNav();
+  initAutoSaveDraft();
+  initExportJSON();
   setAdminMode(false);
 
   // Show skeletons while data loads
@@ -701,7 +755,9 @@ async function bootstrap() {
 function initEscapeKey() {
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
-    // Close in order: confirm overlay, admin item modal, detail modal, admin login modal
+    // Close in order: lightbox, confirm overlay, admin item modal, detail modal, admin login modal
+    const lightbox = document.querySelector(".lightbox-overlay");
+    if (lightbox) { lightbox.remove(); return; }
     const confirm = document.querySelector(".confirm-overlay");
     if (confirm) { confirm.remove(); return; }
     const adminItem = document.getElementById("admin-item-modal");
@@ -876,6 +932,224 @@ function closeAdminLoginModal() {
   if (!modal) return;
   modal.classList.remove("active");
   modal.setAttribute("aria-hidden", "true");
+}
+
+/* ===== Card entrance animations (IntersectionObserver) ===== */
+const cardObserver = new IntersectionObserver(
+  (entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add("card-visible");
+        cardObserver.unobserve(entry.target);
+      }
+    });
+  },
+  { threshold: 0.05 }
+);
+
+function observeCards(container) {
+  container.querySelectorAll(".card:not(.card-visible)").forEach((card) => {
+    cardObserver.observe(card);
+  });
+}
+
+/* ===== Back-to-top button ===== */
+function initBackToTop() {
+  const btn = document.getElementById("back-to-top");
+  if (!btn) return;
+  window.addEventListener("scroll", () => {
+    btn.classList.toggle("visible", window.scrollY > 400);
+  }, { passive: true });
+  btn.addEventListener("click", () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+}
+
+/* ===== Scroll progress bar ===== */
+function initScrollProgress() {
+  const bar = document.getElementById("scroll-progress");
+  if (!bar) return;
+  window.addEventListener("scroll", () => {
+    const scrollTop = window.scrollY;
+    const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+    const progress = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+    bar.style.width = progress + "%";
+  }, { passive: true });
+}
+
+/* ===== Image lightbox ===== */
+function initLightbox() {
+  document.addEventListener("click", (e) => {
+    const img = e.target.closest("#modal-image");
+    if (!img || !img.src) return;
+    const overlay = document.createElement("div");
+    overlay.className = "lightbox-overlay";
+    overlay.innerHTML = `<img src="${img.src}" alt="${img.alt || ""}">`;
+    overlay.addEventListener("click", () => overlay.remove());
+    document.body.appendChild(overlay);
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      const lb = document.querySelector(".lightbox-overlay");
+      if (lb) lb.remove();
+    }
+  });
+}
+
+/* ===== Keyboard navigation ===== */
+function initKeyboardNav() {
+  document.addEventListener("keydown", (e) => {
+    // Only if a card grid is visible and no modal is open
+    if (document.querySelector(".modal-shell.active") || document.querySelector(".lightbox-overlay") || document.querySelector(".confirm-overlay")) return;
+    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft" && e.key !== "Enter") return;
+
+    const activePanel = document.querySelector(".tab-panel.active");
+    if (!activePanel) return;
+    const grid = activePanel.querySelector(".card-grid");
+    if (!grid) return;
+
+    const cards = [...grid.querySelectorAll(".card")];
+    if (cards.length === 0) return;
+
+    const focusedCard = document.activeElement?.closest(".card");
+    let idx = focusedCard ? cards.indexOf(focusedCard) : -1;
+
+    if (e.key === "ArrowRight") {
+      e.preventDefault();
+      idx = Math.min(idx + 1, cards.length - 1);
+      cards[idx].focus();
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      idx = Math.max(idx - 1, 0);
+      cards[idx].focus();
+    } else if (e.key === "Enter" && focusedCard) {
+      e.preventDefault();
+      focusedCard.click();
+    }
+  });
+}
+
+/* ===== Bulk admin actions ===== */
+const bulkSelected = new Set();
+
+function updateBulkBar() {
+  let bar = document.getElementById("bulk-action-bar");
+  if (bulkSelected.size === 0) {
+    if (bar) bar.remove();
+    return;
+  }
+  if (!bar) {
+    bar = document.createElement("div");
+    bar.id = "bulk-action-bar";
+    bar.className = "bulk-bar";
+    bar.innerHTML = `
+      <span id="bulk-count"></span>
+      <button class="bulk-delete" id="bulk-delete-btn">Delete Selected</button>
+      <button class="bulk-cancel" id="bulk-cancel-btn">Cancel</button>`;
+    document.body.appendChild(bar);
+    document.getElementById("bulk-delete-btn").addEventListener("click", bulkDelete);
+    document.getElementById("bulk-cancel-btn").addEventListener("click", bulkCancel);
+  }
+  document.getElementById("bulk-count").textContent = `${bulkSelected.size} selected`;
+}
+
+async function bulkDelete() {
+  if (bulkSelected.size === 0) return;
+  const confirmed = await showConfirm("Bulk Delete", `Delete ${bulkSelected.size} item(s)? This cannot be undone.`);
+  if (!confirmed) return;
+  let ok = 0, fail = 0;
+  for (const id of bulkSelected) {
+    try {
+      const res = await fetch(`/api/admin/items/${id}`, { method: "DELETE" });
+      if (res.ok) ok++; else fail++;
+    } catch { fail++; }
+  }
+  bulkSelected.clear();
+  updateBulkBar();
+  await fetchData();
+  wireProjectControls();
+  showToast(`Deleted ${ok} item(s)${fail ? `, ${fail} failed` : ""}.`, fail ? "error" : "success");
+}
+
+function bulkCancel() {
+  bulkSelected.clear();
+  document.querySelectorAll(".card-checkbox").forEach((cb) => (cb.checked = false));
+  updateBulkBar();
+}
+
+function addBulkCheckboxes(container) {
+  if (!state.isAdmin) return;
+  container.querySelectorAll(".card").forEach((card) => {
+    if (card.querySelector(".card-checkbox")) return;
+    const item = [...state.projects, ...state.experiences].find(
+      (it) => it.title === card.querySelector("h4")?.textContent
+    );
+    if (!item) return;
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.className = "card-checkbox";
+    cb.checked = bulkSelected.has(item.id);
+    cb.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (cb.checked) bulkSelected.add(item.id);
+      else bulkSelected.delete(item.id);
+      updateBulkBar();
+    });
+    card.appendChild(cb);
+  });
+}
+
+/* ===== Auto-save admin draft (localStorage) ===== */
+const DRAFT_KEY = "ctrlaltjay-admin-draft";
+
+function initAutoSaveDraft() {
+  const form = document.getElementById("admin-item-form");
+  if (!form) return;
+
+  // Save draft on input
+  form.addEventListener("input", () => {
+    const data = {};
+    new FormData(form).forEach((val, key) => {
+      if (key !== "image" && key !== "id") data[key] = val;
+    });
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(data));
+  });
+}
+
+function restoreDraft() {
+  const raw = localStorage.getItem(DRAFT_KEY);
+  if (!raw) return false;
+  try {
+    const data = JSON.parse(raw);
+    if (!data.title) return false;
+    return data;
+  } catch { return false; }
+}
+
+function clearDraft() {
+  localStorage.removeItem(DRAFT_KEY);
+}
+
+/* ===== Export as JSON ===== */
+function initExportJSON() {
+  const btn = document.getElementById("export-json-btn");
+  if (!btn) return;
+  btn.addEventListener("click", async () => {
+    try {
+      const res = await fetch("/api/public-data");
+      const data = await res.json();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `ctrlaltjay-export-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast("Data exported.", "success");
+    } catch {
+      showToast("Export failed.", "error");
+    }
+  });
 }
 
 bootstrap();
