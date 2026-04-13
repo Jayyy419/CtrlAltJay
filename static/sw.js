@@ -1,4 +1,4 @@
-const CACHE_NAME = "ctrlaltjay-v5";
+const CACHE_NAME = "ctrlaltjay-v6";
 const PRECACHE_URLS = [
   "/",
   "/static/css/style.css",
@@ -27,15 +27,28 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
-  if (event.request.method !== "GET") return;
-  // Network-first strategy: try network, fall back to cache
+  const { request } = event;
+  if (request.method !== "GET") return;
+
+  const url = new URL(request.url);
+
+  // Only cache same-origin requests — skip CDN, analytics, external resources
+  if (url.origin !== self.location.origin) return;
+
+  // Skip API calls and admin endpoints — always go to network
+  if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/admin")) return;
+
+  // Network-first for same-origin static assets and pages
   event.respondWith(
-    fetch(event.request)
+    fetch(request)
       .then((response) => {
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        // Only cache valid responses (not errors, not opaque)
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+        }
         return response;
       })
-      .catch(() => caches.match(event.request))
+      .catch(() => caches.match(request))
   );
 });
