@@ -149,6 +149,14 @@ function buildCard(item) {
   content.appendChild(title);
   content.appendChild(tag);
 
+  // Status badge
+  if (item.status) {
+    const badge = document.createElement("span");
+    badge.className = "status-badge status-badge--" + item.status.toLowerCase().replace(/\s+/g, "-");
+    badge.textContent = item.status;
+    content.appendChild(badge);
+  }
+
   // Skill tags
   const itemSkills = parseSkills(item.skills);
   if (itemSkills.length > 0) {
@@ -436,6 +444,23 @@ function openModal(item) {
     link.style.display = "none";
   }
 
+  // Credential verification link
+  const credLink = document.getElementById("modal-credential-link");
+  if (credLink) {
+    if (item.credential_url) {
+      credLink.href = item.credential_url;
+      credLink.style.display = "inline-flex";
+    } else {
+      credLink.style.display = "none";
+    }
+  }
+
+  // Image carousel
+  setupCarousel(item);
+
+  // Update share buttons
+  updateShareLinks(item);
+
   shell.classList.add("active");
   shell.setAttribute("aria-hidden", "false");
 
@@ -634,6 +659,22 @@ function openAdminItemModal(item = null, section = "project") {
     }
   }
   document.getElementById("admin-item-link").value = item?.external_link || "";
+
+  // New fields
+  document.getElementById("admin-item-status").value = item?.status || "";
+  document.getElementById("admin-item-credential-url").value = item?.credential_url || "";
+  const addPreview = document.getElementById("admin-item-additional-preview");
+  const addHidden = document.getElementById("admin-item-existing-additional");
+  if (addPreview) addPreview.innerHTML = "";
+  if (addHidden) addHidden.value = item?.additional_images || "";
+  if (item?.additional_images && addPreview) {
+    item.additional_images.split(",").filter(Boolean).forEach((src) => {
+      const img = document.createElement("img");
+      img.src = src.trim();
+      img.className = "h-16 w-16 object-cover rounded-lg border border-white/[0.06]";
+      addPreview.appendChild(img);
+    });
+  }
 
   // Populate skills picker
   populateSkillsPicker(parseSkills(item?.skills));
@@ -941,6 +982,10 @@ async function bootstrap() {
   initDragAndDrop();
   initBatchSkills();
   initActivityLog();
+  initImageCarousel();
+  initAdminStats();
+  initAdminBackup();
+  initFocusTrap();
   setAdminMode(false);
 
   // Show skeletons while data loads
@@ -956,6 +1001,9 @@ async function bootstrap() {
   updateFooterTimestamp();
   renderRecentlyViewed();
   handleDeepLink();
+  initHitCounter();
+  initAnimatedCounters();
+  registerServiceWorker();
 }
 
 /* ===== Escape key closes topmost modal ===== */
@@ -1965,6 +2013,263 @@ async function applyBatchSkills() {
   wireProjectControls();
   showToast(`Skills updated on ${ok} item(s)${fail ? `, ${fail} failed` : ""}.`, fail ? "error" : "success");
   logActivity("Batch Skills", `Updated skills on ${ok} items`);
+}
+
+/* ===== Image Carousel ===== */
+let carouselImages = [];
+let carouselIndex = 0;
+
+function setupCarousel(item) {
+  const mainImg = document.getElementById("modal-image");
+  const prevBtn = document.getElementById("carousel-prev");
+  const nextBtn = document.getElementById("carousel-next");
+  const dots = document.getElementById("carousel-dots");
+
+  carouselImages = [item.image_path || "../static/images/Projects/WebDev_PortfolioV1.png"];
+  if (item.additional_images) {
+    const extras = item.additional_images.split(",").map((s) => s.trim()).filter(Boolean);
+    carouselImages = carouselImages.concat(extras);
+  }
+  carouselIndex = 0;
+
+  if (carouselImages.length <= 1) {
+    if (prevBtn) prevBtn.style.display = "none";
+    if (nextBtn) nextBtn.style.display = "none";
+    if (dots) dots.innerHTML = "";
+    return;
+  }
+  if (prevBtn) prevBtn.style.display = "";
+  if (nextBtn) nextBtn.style.display = "";
+  renderCarouselDots();
+}
+
+function navigateCarousel(dir) {
+  carouselIndex = (carouselIndex + dir + carouselImages.length) % carouselImages.length;
+  const img = document.getElementById("modal-image");
+  if (img) img.src = carouselImages[carouselIndex];
+  renderCarouselDots();
+}
+
+function renderCarouselDots() {
+  const dots = document.getElementById("carousel-dots");
+  if (!dots) return;
+  dots.innerHTML = carouselImages.map((_, i) =>
+    `<span class="carousel-dot${i === carouselIndex ? " active" : ""}" data-idx="${i}"></span>`
+  ).join("");
+}
+
+function initImageCarousel() {
+  const prevBtn = document.getElementById("carousel-prev");
+  const nextBtn = document.getElementById("carousel-next");
+  if (prevBtn) prevBtn.addEventListener("click", (e) => { e.stopPropagation(); navigateCarousel(-1); });
+  if (nextBtn) nextBtn.addEventListener("click", (e) => { e.stopPropagation(); navigateCarousel(1); });
+  document.getElementById("carousel-dots")?.addEventListener("click", (e) => {
+    const dot = e.target.closest(".carousel-dot");
+    if (!dot) return;
+    carouselIndex = parseInt(dot.dataset.idx, 10);
+    document.getElementById("modal-image").src = carouselImages[carouselIndex];
+    renderCarouselDots();
+  });
+}
+
+/* ===== Social Share Buttons ===== */
+function updateShareLinks(item) {
+  const base = "https://ctrlaltjay.dev";
+  const url = encodeURIComponent(`${base}/#item/${item.id}`);
+  const title = encodeURIComponent(item.title || "");
+  const shareDiv = document.getElementById("modal-share");
+  if (!shareDiv) return;
+  shareDiv.querySelectorAll(".share-btn").forEach((btn) => {
+    const clone = btn.cloneNode(true);
+    btn.parentNode.replaceChild(clone, btn);
+    const platform = clone.dataset.platform;
+    clone.addEventListener("click", (e) => {
+      e.stopPropagation();
+      let shareUrl;
+      if (platform === "linkedin") shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${url}`;
+      else if (platform === "twitter") shareUrl = `https://twitter.com/intent/tweet?text=${title}&url=${url}`;
+      else if (platform === "telegram") shareUrl = `https://t.me/share/url?url=${url}&text=${title}`;
+      else if (platform === "copy") {
+        navigator.clipboard.writeText(decodeURIComponent(url)).then(() => showToast("Link copied!", "success")).catch(() => showToast("Copy failed.", "error"));
+        return;
+      }
+      if (shareUrl) window.open(shareUrl, "_blank", "noopener,noreferrer,width=600,height=400");
+    });
+  });
+}
+
+/* ===== Animated Counters ===== */
+function initAnimatedCounters() {
+  const section = document.getElementById("stats-counters");
+  if (!section) return;
+  let animated = false;
+  const observer = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting && !animated && state.dataLoaded) {
+      animated = true;
+      animateCounter("counter-projects", state.projects.length);
+      animateCounter("counter-experiences", state.experiences.length);
+      animateCounter("counter-skills", state.skills.length);
+      observer.disconnect();
+    }
+  }, { threshold: 0.3 });
+  observer.observe(section);
+}
+
+function animateCounter(id, target) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const duration = 1200;
+  const start = performance.now();
+  function step(now) {
+    const progress = Math.min((now - start) / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    el.textContent = Math.round(eased * target);
+    if (progress < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+/* ===== Visitor Hit Counter ===== */
+function initHitCounter() {
+  fetch("/api/hit-count", { method: "POST" }).catch(() => {});
+  loadHitCount();
+}
+
+async function loadHitCount() {
+  try {
+    const res = await fetch("/api/hit-count");
+    const data = await res.json();
+    const el = document.getElementById("hit-counter-display");
+    if (el) el.textContent = data.count?.toLocaleString() || "0";
+  } catch { /* no-op */ }
+}
+
+/* ===== Admin Stats Dashboard ===== */
+function initAdminStats() {
+  const btn = document.getElementById("admin-stats-toggle");
+  const panel = document.getElementById("admin-stats-panel");
+  if (!btn || !panel) return;
+  btn.addEventListener("click", () => {
+    const visible = panel.style.display !== "none";
+    panel.style.display = visible ? "none" : "block";
+    if (!visible) renderAdminStats();
+  });
+}
+
+function renderAdminStats() {
+  const container = document.getElementById("admin-stats-content");
+  if (!container) return;
+  const projCats = {};
+  state.projects.forEach((p) => { const c = p.category || "Uncategorised"; projCats[c] = (projCats[c] || 0) + 1; });
+  const expCats = {};
+  state.experiences.forEach((e) => { const c = e.category || "Uncategorised"; expCats[c] = (expCats[c] || 0) + 1; });
+  const skillUsage = {};
+  [...state.projects, ...state.experiences].forEach((item) => {
+    parseSkills(item.skills).forEach((s) => { skillUsage[s] = (skillUsage[s] || 0) + 1; });
+  });
+  const topSkills = Object.entries(skillUsage).sort((a, b) => b[1] - a[1]).slice(0, 10);
+
+  let html = `<div class="stats-section">
+    <div class="stat-row"><span class="stat-label">Total Projects</span><span class="stat-value">${state.projects.length}</span></div>
+    <div class="stat-row"><span class="stat-label">Total Experiences</span><span class="stat-value">${state.experiences.length}</span></div>
+    <div class="stat-row"><span class="stat-label">Resume Items</span><span class="stat-value">${state.resume.length}</span></div>
+    <div class="stat-row"><span class="stat-label">Skills Defined</span><span class="stat-value">${state.skills.length}</span></div>
+  </div>`;
+
+  html += `<h5 class="text-xs font-semibold text-ink-muted mt-3 mb-1">Projects by Category</h5>`;
+  html += Object.entries(projCats).sort().map(([c, n]) => `<div class="stat-row"><span class="stat-label">${c}</span><span class="stat-value">${n}</span></div>`).join("");
+
+  html += `<h5 class="text-xs font-semibold text-ink-muted mt-3 mb-1">Experiences by Category</h5>`;
+  html += Object.entries(expCats).sort().map(([c, n]) => `<div class="stat-row"><span class="stat-label">${c}</span><span class="stat-value">${n}</span></div>`).join("");
+
+  if (topSkills.length > 0) {
+    html += `<h5 class="text-xs font-semibold text-ink-muted mt-3 mb-1">Top Skills</h5>`;
+    html += topSkills.map(([s, n]) => `<div class="stat-row"><span class="stat-label">${s}</span><span class="stat-value">${n}</span></div>`).join("");
+  }
+  container.innerHTML = html;
+}
+
+/* ===== Admin Backup ===== */
+function initAdminBackup() {
+  const btn = document.getElementById("admin-backup-btn");
+  if (!btn) return;
+  btn.addEventListener("click", async () => {
+    if (!state.isAdmin) return;
+    btn.textContent = "Backing up...";
+    btn.disabled = true;
+    try {
+      const res = await fetch("/api/admin/backup", { method: "POST" });
+      const data = await res.json();
+      if (res.ok) {
+        showToast(data.message || "Backup complete.", "success");
+        logActivity("Backup", "Exported all tables to S3");
+      } else {
+        showToast(data.error || "Backup failed.", "error");
+      }
+    } catch {
+      showToast("Backup failed.", "error");
+    }
+    btn.innerHTML = '<ion-icon name="cloud-upload-outline" class="align-middle mr-1"></ion-icon>Backup to S3';
+    btn.disabled = false;
+  });
+}
+
+/* ===== Service Worker Registration ===== */
+function registerServiceWorker() {
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {});
+  }
+}
+
+/* ===== Focus Trap for Modals ===== */
+function trapFocus(container) {
+  const getFocusable = () => [...container.querySelectorAll('button:not([hidden]):not([disabled]), [href]:not([hidden]), input:not([hidden]):not([type="hidden"]):not([tabindex="-1"]), select:not([hidden]), textarea:not([hidden])')].filter((el) => el.offsetParent !== null);
+  container._focusTrap = (e) => {
+    if (e.key !== "Tab") return;
+    const focusable = getFocusable();
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey) {
+      if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+    } else {
+      if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  };
+  container.addEventListener("keydown", container._focusTrap);
+  const focusable = getFocusable();
+  if (focusable.length > 0) setTimeout(() => focusable[0].focus(), 50);
+}
+
+function releaseFocusTrap(container) {
+  if (container._focusTrap) {
+    container.removeEventListener("keydown", container._focusTrap);
+    delete container._focusTrap;
+  }
+}
+
+function initFocusTrap() {
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((m) => {
+      if (m.type !== "attributes" || m.attributeName !== "class") return;
+      const modal = m.target;
+      if (!modal.classList.contains("modal-shell")) return;
+      if (modal.classList.contains("active")) {
+        trapFocus(modal.querySelector(".modal-card") || modal);
+      } else {
+        releaseFocusTrap(modal.querySelector(".modal-card") || modal);
+      }
+    });
+  });
+  document.querySelectorAll(".modal-shell").forEach((modal) => {
+    observer.observe(modal, { attributes: true, attributeFilter: ["class"] });
+  });
+}
+
+/* ===== ARIA Live Announcements ===== */
+function announce(message) {
+  const el = document.getElementById("aria-live");
+  if (el) { el.textContent = ""; requestAnimationFrame(() => { el.textContent = message; }); }
 }
 
 bootstrap();

@@ -1,6 +1,7 @@
 boto3==1.35.0
 gunicorn==22.0.0
 packaging==24.1
+Pillow==10.4.0
 blinker==1.8.2
 click==8.1.7
 colorama==0.4.6

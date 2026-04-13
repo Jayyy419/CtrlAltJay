@@ -2,6 +2,31 @@
 
 All notable changes to the CtrlAltJay portfolio are documented here.
 
+## QOL Batch 5 — Infrastructure & Polish
+
+### Added
+- **Multi-image carousel** — Items can now have multiple images. Detail modal shows prev/next arrows and dot navigation when additional images are present. New `additional_images` field in schema.
+- **PWA support** — Added `manifest.json` and service worker (`sw.js`) for installability and offline caching (network-first strategy). Served from root via Flask routes.
+- **Admin stats dashboard** — Collapsible sidebar panel showing total counts, category breakdowns, and top 10 skill usage across portfolio items.
+- **Image optimization (Pillow)** — Uploaded images are automatically resized to max 1200px width and compressed (JPEG quality 85) using Pillow. SVG/ICO bypass optimization.
+- **Animated counters** — "By the Numbers" section on the About tab with count-up animation (projects, experiences, skills) triggered by IntersectionObserver.
+- **Social share buttons** — LinkedIn, X (Twitter), Telegram, and copy-link buttons in the detail modal with encoded deep links.
+- **Custom 404 page** — Styled error page matching portfolio design for 404 and 500 errors.
+- **Contact form honeypot** — Hidden `website` field that silently rejects bot submissions while appearing successful.
+- **Visitor hit counter** — Server-side counter in DynamoDB incremented on each page load. Displayed in admin sidebar.
+- **Project status badges** — New `status` field (Active/Completed/In Progress/Archived) shown as colored pills on cards.
+- **Certificate verification links** — New `credential_url` field with a "Verify Credential" button in the detail modal.
+- **Accessibility audit pass** — Skip-to-content link, `role="main"` landmark, ARIA live region for dynamic announcements, focus trapping in all modals via MutationObserver, screen-reader-only utility class.
+- **Auto-backup to S3** — Admin button exports all 3 DynamoDB tables as JSON to S3 bucket (`ctrlaltjay-backups`).
+- **CloudFront CDN preparation** — Static assets served with `Cache-Control: public, max-age=86400` headers for CDN compatibility.
+
+### Changed
+- CSP updated with `manifest-src 'self'` and `worker-src 'self'` for PWA.
+- Modal image now wrapped in carousel container (`modal-carousel`).
+- Admin item form expanded with Status, Credential URL, and Additional Images fields.
+
+---
+
 ## QOL Batch 4 — Feature-Rich Update
 
 ### Added

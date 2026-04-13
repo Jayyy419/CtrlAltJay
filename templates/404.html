@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ error_code or 404 }} — CtrlAltJay</title>
+  <link rel="shortcut icon" href="../static/images/PersonalLogo.ico" type="image/x-icon">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0a0a18;
+      color: #e2e8f0;
+      font-family: 'Inter', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 2rem;
+    }
+    .container { max-width: 480px; }
+    .code {
+      font-size: 6rem;
+      font-weight: 800;
+      color: #f59e0b;
+      font-family: 'Space Grotesk', system-ui, sans-serif;
+      line-height: 1;
+    }
+    h1 { font-size: 1.5rem; margin: 1rem 0 0.5rem; color: #fff; }
+    p { color: #94a3b8; font-size: 0.95rem; line-height: 1.6; margin-bottom: 2rem; }
+    a {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 28px;
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: #0a0a18;
+      font-weight: 700;
+      font-size: 0.9rem;
+      border-radius: 12px;
+      text-decoration: none;
+      transition: all 0.3s;
+    }
+    a:hover { box-shadow: 0 0 24px rgba(245,158,11,0.4); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="code">{{ error_code or 404 }}</div>
+    <h1>{{ error_message or "Page not found" }}</h1>
+    <p>The page you're looking for doesn't exist or has been moved. Head back to the portfolio to explore projects, experiences, and more.</p>
+    <a href="/">&larr; Back to Portfolio</a>
+  </div>
+</body>
+</html>
