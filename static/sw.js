@@ -1,4 +1,4 @@
-const CACHE_NAME = "ctrlaltjay-v4";
+const CACHE_NAME = "ctrlaltjay-v5";
 const PRECACHE_URLS = [
   "/",
   "/static/css/style.css",
