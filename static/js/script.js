@@ -144,6 +144,10 @@ function buildCard(item, highlightQuery = "") {
   img.src = imagePath;
   img.alt = item.title;
   img.loading = "lazy";
+  img.style.opacity = "0";
+  img.style.transition = "opacity 0.3s ease";
+  img.addEventListener("load", () => { img.style.opacity = "1"; });
+  img.addEventListener("error", () => { img.style.opacity = "1"; });
 
   const content = document.createElement("div");
   content.className = "card-content";
@@ -320,6 +324,18 @@ function renderSubsectionNav(navId, categories, items) {
     btn.textContent = `${category} (${count})`;
     nav.appendChild(btn);
   });
+
+  // Favourites pill
+  const favIds = getFavorites();
+  const favCount = items.filter((i) => favIds.includes(i.id)).length;
+  if (favCount > 0) {
+    const favBtn = document.createElement("button");
+    favBtn.type = "button";
+    favBtn.className = "subsection-btn shrink-0 fav-pill";
+    favBtn.dataset.subsection = "★ Favourites";
+    favBtn.textContent = `★ Favourites (${favCount})`;
+    nav.insertBefore(favBtn, nav.children[1]);
+  }
 }
 
 const PAGE_SIZE = 12;
@@ -336,8 +352,11 @@ function renderSection(items, categoryId, sortId, targetGridId, subsectionFilter
     (item) => selectedCategory === "All" || item.category === selectedCategory
   );
 
-  // Apply subsection filter if provided
-  if (subsectionFilter && subsectionFilter.toLowerCase() !== "all") {
+  // Apply subsection filter (including favourites)
+  if (subsectionFilter === "★ Favourites") {
+    const favSet = new Set(getFavorites());
+    filtered = filtered.filter((item) => favSet.has(item.id));
+  } else if (subsectionFilter && subsectionFilter.toLowerCase() !== "all") {
     if (subsectionFilter === "Uncategorised") {
       filtered = filtered.filter((item) => !item.category && !item.subsection);
     } else {
@@ -375,10 +394,6 @@ function renderSection(items, categoryId, sortId, targetGridId, subsectionFilter
     return;
   }
 
-  // Pagination: show only first PAGE_SIZE (or previously expanded count)
-  const limit = shownCounts[targetGridId] || PAGE_SIZE;
-  const visible = filtered.slice(0, limit);
-
   // Pin favorites to top
   const favIds = new Set(getFavorites());
   if (favIds.size > 0) {
@@ -386,6 +401,20 @@ function renderSection(items, categoryId, sortId, targetGridId, subsectionFilter
     const rest = filtered.filter((i) => !favIds.has(i.id));
     filtered = [...pinned, ...rest];
   }
+
+  // Pagination: show only first PAGE_SIZE (or previously expanded count)
+  const limit = shownCounts[targetGridId] || PAGE_SIZE;
+  const visible = filtered.slice(0, limit);
+
+  // Result count indicator
+  const countEl = document.createElement("div");
+  countEl.className = "result-count";
+  if (searchQuery || (subsectionFilter && subsectionFilter.toLowerCase() !== "all")) {
+    countEl.textContent = `Showing ${Math.min(limit, filtered.length)} of ${filtered.length} result${filtered.length !== 1 ? "s" : ""}`;
+  } else {
+    countEl.textContent = `${filtered.length} item${filtered.length !== 1 ? "s" : ""}`;
+  }
+  target.appendChild(countEl);
 
   visible.forEach((item) => {
     target.appendChild(buildCard(item, searchQuery));
@@ -477,7 +506,7 @@ function openModal(item) {
     }
   });
 
-  // Skill tags in modal
+  // Skill tags in modal (click to filter)
   const existingSkillRow = shell.querySelector(".modal-skills-row");
   if (existingSkillRow) existingSkillRow.remove();
   const itemSkills = parseSkills(item.skills);
@@ -488,6 +517,29 @@ function openModal(item) {
       const chip = document.createElement("span");
       chip.className = "modal-skill-chip";
       chip.textContent = s;
+      chip.style.cursor = "pointer";
+      chip.title = `Filter by \"${s}\"`;
+      chip.addEventListener("click", (e) => {
+        e.stopPropagation();
+        closeDetailModal();
+        const tab = item.section === "experience" ? "experiences" : "projects";
+        switchTab(tab);
+        const filterContainer = document.getElementById(`${tab}-skills-filter`);
+        if (filterContainer) {
+          filterContainer.querySelectorAll(".skill-filter-btn").forEach((b) => {
+            b.classList.toggle("active", b.dataset.skill === s);
+          });
+        }
+        const subNav = document.getElementById(`${tab}-subsection-nav`);
+        if (subNav) {
+          subNav.querySelectorAll(".subsection-btn").forEach((b) => b.classList.remove("active"));
+          const allBtn = subNav.querySelector('.subsection-btn[data-subsection="All"]');
+          if (allBtn) allBtn.classList.add("active");
+        }
+        if (tab === "projects") state.rerenderProjects();
+        else state.rerenderExperiences();
+        document.getElementById(`${tab}-grid`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
       row.appendChild(chip);
     });
     body.parentNode.insertBefore(row, body.nextSibling);
@@ -530,6 +582,31 @@ function openModal(item) {
 
   // Track recently viewed
   trackRecentlyViewed(item.id);
+
+  // Copy item ID (admin)
+  const copyIdBtn = document.getElementById("modal-copy-id-btn");
+  if (copyIdBtn) {
+    copyIdBtn.onclick = (e) => {
+      e.stopPropagation();
+      navigator.clipboard.writeText(item.id).then(() => showToast("Item ID copied.", "success")).catch(() => showToast("Copy failed.", "error"));
+    };
+  }
+
+  // Export single item as JSON
+  const exportItemBtn = document.getElementById("modal-export-item-btn");
+  if (exportItemBtn) {
+    exportItemBtn.onclick = (e) => {
+      e.stopPropagation();
+      const blob = new Blob([JSON.stringify(item, null, 2)], { type: "application/json" });
+      const dlUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = dlUrl;
+      a.download = `${(item.title || "item").replace(/[^a-z0-9]/gi, "_")}.json`;
+      a.click();
+      URL.revokeObjectURL(dlUrl);
+      showToast("Item exported.", "success");
+    };
+  }
 }
 
 function initModal() {
@@ -647,6 +724,7 @@ function setAdminMode(enabled) {
   if (loginBtn) loginBtn.hidden = state.isAdmin;
   if (logoutBtn) logoutBtn.hidden = !state.isAdmin;
   if (state.isAdmin) loadResumeKey();
+  updateDraftIndicator();
 }
 
 function findItemById(itemId) {
@@ -996,6 +1074,7 @@ function wireProjectControls() {
       btn.classList.add("active");
       shownCounts["projects-grid"] = PAGE_SIZE;
       state.rerenderProjects();
+      document.getElementById("projects-grid")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     });
 
     document.getElementById("experiences-subsection-nav").addEventListener("click", (e) => {
@@ -1005,6 +1084,7 @@ function wireProjectControls() {
       btn.classList.add("active");
       shownCounts["experiences-grid"] = PAGE_SIZE;
       state.rerenderExperiences();
+      document.getElementById("experiences-grid")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     });
 
     document.getElementById("projects-sort").addEventListener("change", (e) => {
@@ -1039,6 +1119,7 @@ function wireProjectControls() {
       btn.classList.add("active");
       shownCounts["projects-grid"] = PAGE_SIZE;
       state.rerenderProjects();
+      document.getElementById("projects-grid")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     });
     document.getElementById("experiences-skills-filter")?.addEventListener("click", (e) => {
       const btn = e.target.closest(".skill-filter-btn");
@@ -1047,6 +1128,30 @@ function wireProjectControls() {
       btn.classList.add("active");
       shownCounts["experiences-grid"] = PAGE_SIZE;
       state.rerenderExperiences();
+      document.getElementById("experiences-grid")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+
+    // Clear search buttons
+    ["projects-search", "experiences-search"].forEach((id) => {
+      const input = document.getElementById(id);
+      if (!input || input.parentElement.querySelector(".search-clear-btn")) return;
+      const clearBtn = document.createElement("button");
+      clearBtn.type = "button";
+      clearBtn.className = "search-clear-btn";
+      clearBtn.innerHTML = '<ion-icon name="close-circle-outline"></ion-icon>';
+      clearBtn.title = "Clear search";
+      clearBtn.style.display = "none";
+      input.parentElement.style.position = "relative";
+      input.parentElement.appendChild(clearBtn);
+      input.addEventListener("input", () => {
+        clearBtn.style.display = input.value ? "" : "none";
+      });
+      clearBtn.addEventListener("click", () => {
+        input.value = "";
+        clearBtn.style.display = "none";
+        if (id === "projects-search") state.rerenderProjects();
+        else state.rerenderExperiences();
+      });
     });
 
     state.controlsBound = true;
@@ -1083,6 +1188,8 @@ async function bootstrap() {
   initFocusTrap();
   initKeyboardShortcuts();
   initJSONImport();
+  initSurpriseMe();
+  initMobileSwipe();
   setAdminMode(false);
 
   // Show skeletons while data loads
@@ -1092,6 +1199,7 @@ async function bootstrap() {
   await fetchData();
   state.dataLoaded = true;
   wireProjectControls();
+  updateDraftIndicator();
   renderResume();
   renderSkills();
   updateTabBadges();
@@ -1146,11 +1254,35 @@ function initContactForm() {
     });
   });
 
-  // Form submission
-  form.addEventListener("submit", (e) => {
+  // AJAX form submission
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
     if (!isFormValid(form)) {
-      e.preventDefault();
       scrollToFirstError(form);
+      return;
+    }
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const origText = submitBtn.textContent;
+    submitBtn.textContent = "Sending...";
+    submitBtn.disabled = true;
+    try {
+      const res = await fetch("/send_message", {
+        method: "POST",
+        body: new FormData(form),
+        headers: { "X-Requested-With": "XMLHttpRequest" },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        showToast(data.message || "Message sent!", "success");
+        form.reset();
+      } else {
+        showToast(data.error || "Could not send message.", "error");
+      }
+    } catch {
+      showToast("Network error. Please try again.", "error");
+    } finally {
+      submitBtn.textContent = origText;
+      submitBtn.disabled = false;
     }
   });
 }
@@ -2499,6 +2631,65 @@ function initJSONImport() {
       }
     });
     input.click();
+  });
+}
+
+/* ===== Surprise Me — random item button ===== */
+function initSurpriseMe() {
+  const btn = document.getElementById("surprise-me-btn");
+  if (!btn) return;
+  btn.addEventListener("click", () => {
+    const allItems = [...state.projects, ...state.experiences];
+    if (allItems.length === 0) { showToast("No items loaded yet.", "info"); return; }
+    const random = allItems[Math.floor(Math.random() * allItems.length)];
+    const tab = random.section === "experience" ? "experiences" : "projects";
+    switchTab(tab);
+    openModal(random);
+  });
+}
+
+/* ===== Mobile tab swipe gestures ===== */
+function initMobileSwipe() {
+  let touchStartX = 0;
+  let touchStartY = 0;
+  const content = document.querySelector(".content");
+  if (!content) return;
+  const tabOrder = ["about", "projects", "experiences", "resume", "contact"];
+  content.addEventListener("touchstart", (e) => {
+    touchStartX = e.changedTouches[0].screenX;
+    touchStartY = e.changedTouches[0].screenY;
+  }, { passive: true });
+  content.addEventListener("touchend", (e) => {
+    const dx = e.changedTouches[0].screenX - touchStartX;
+    const dy = e.changedTouches[0].screenY - touchStartY;
+    if (Math.abs(dx) < 60 || Math.abs(dy) > Math.abs(dx)) return;
+    if (e.target.closest(".modal-shell, .recent-strip, .related-strip, .subsection-nav, .skills-filter-row, .modal-carousel")) return;
+    const active = document.querySelector(".tab-btn.active");
+    const currentIdx = tabOrder.indexOf(active?.dataset.tab);
+    if (currentIdx === -1) return;
+    const newIdx = dx < 0 ? currentIdx + 1 : currentIdx - 1;
+    if (newIdx >= 0 && newIdx < tabOrder.length) {
+      switchTab(tabOrder[newIdx]);
+      window.history.replaceState(null, "", `#${tabOrder[newIdx]}`);
+    }
+  }, { passive: true });
+}
+
+/* ===== Unsaved draft pulsing indicator ===== */
+function updateDraftIndicator() {
+  const hasDraft = !!localStorage.getItem(DRAFT_KEY);
+  document.querySelectorAll(".admin-inline-btn").forEach((btn) => {
+    let dot = btn.querySelector(".draft-dot");
+    if (hasDraft && state.isAdmin) {
+      if (!dot) {
+        dot = document.createElement("span");
+        dot.className = "draft-dot";
+        btn.style.position = "relative";
+        btn.appendChild(dot);
+      }
+    } else if (dot) {
+      dot.remove();
+    }
   });
 }
 

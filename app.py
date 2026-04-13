@@ -611,23 +611,33 @@ def send_message():
 
     # Honeypot — silently reject bot submissions
     if request.form.get("website", "").strip():
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return jsonify({"message": "Message sent successfully. I'll get back to you soon!"})
         flash("Message sent successfully. I'll get back to you soon!", "success")
         return redirect(url_for("index"))
 
     # Validate required fields
     if not fullname:
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return jsonify({"error": "Please provide your full name."}), 400
         flash("Please provide your full name.", "error")
         return redirect(url_for("index"))
     
     if not email:
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return jsonify({"error": "Please provide a valid email address."}), 400
         flash("Please provide a valid email address.", "error")
         return redirect(url_for("index"))
     
     if not subject:
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return jsonify({"error": "Please provide a subject for your message."}), 400
         flash("Please provide a subject for your message.", "error")
         return redirect(url_for("index"))
     
     if not message_body or len(message_body) < 10:
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return jsonify({"error": "Your message should be at least 10 characters long."}), 400
         flash("Your message should be at least 10 characters long.", "error")
         return redirect(url_for("index"))
 
@@ -655,9 +665,13 @@ Message:
             reply_to=email,
         )
         mail.send(msg)
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return jsonify({"message": "Message sent successfully. I'll get back to you soon!"})
         flash("Message sent successfully. I'll get back to you soon!", "success")
     except Exception as e:
         print(f"Mail error: {e}")
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return jsonify({"error": "Message could not be sent right now. Please try again later or email directly."}), 500
         flash("Message could not be sent right now. Please try again later or email directly.", "error")
 
     return redirect(url_for("index"))
