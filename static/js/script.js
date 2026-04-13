@@ -149,12 +149,110 @@ function buildCard(item) {
   content.appendChild(title);
   content.appendChild(tag);
 
+  // Skill tags
+  const itemSkills = parseSkills(item.skills);
+  if (itemSkills.length > 0) {
+    const skillWrap = document.createElement("div");
+    skillWrap.className = "card-skills";
+    itemSkills.slice(0, 4).forEach((s) => {
+      const chip = document.createElement("span");
+      chip.className = "card-skill-chip";
+      chip.textContent = s;
+      skillWrap.appendChild(chip);
+    });
+    if (itemSkills.length > 4) {
+      const more = document.createElement("span");
+      more.className = "card-skill-chip card-skill-more";
+      more.textContent = `+${itemSkills.length - 4}`;
+      skillWrap.appendChild(more);
+    }
+    content.appendChild(skillWrap);
+  }
+
   card.appendChild(img);
   card.appendChild(content);
 
   card.addEventListener("click", () => openModal(item));
 
   return card;
+}
+
+/* ===== Skills helpers ===== */
+function parseSkills(val) {
+  if (!val) return [];
+  if (Array.isArray(val)) return val.filter(Boolean);
+  return val.split(",").map((s) => s.trim()).filter(Boolean);
+}
+
+function renderSkillsFilter(containerId, items, sectionPrefix) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  // Collect all unique skills used by items in this section
+  const usedSkills = new Set();
+  items.forEach((item) => {
+    parseSkills(item.skills).forEach((s) => usedSkills.add(s));
+  });
+  const sorted = [...usedSkills].sort();
+  container.innerHTML = "";
+  if (sorted.length === 0) {
+    container.style.display = "none";
+    return;
+  }
+  container.style.display = "";
+  // Label
+  const label = document.createElement("span");
+  label.className = "text-xs text-ink-muted font-semibold mr-1";
+  label.innerHTML = '<ion-icon name="pricetag-outline" class="align-middle mr-0.5"></ion-icon> Skills:';
+  container.appendChild(label);
+  // "All" button
+  const allBtn = document.createElement("button");
+  allBtn.type = "button";
+  allBtn.className = "skill-filter-btn active";
+  allBtn.dataset.skill = "all";
+  allBtn.textContent = "All";
+  container.appendChild(allBtn);
+  // One button per skill
+  sorted.forEach((skill) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "skill-filter-btn";
+    btn.dataset.skill = skill;
+    btn.textContent = skill;
+    container.appendChild(btn);
+  });
+}
+
+function populateSkillsPicker(selectedSkills = []) {
+  const picker = document.getElementById("admin-item-skills-picker");
+  const hidden = document.getElementById("admin-item-skills");
+  if (!picker || !hidden) return;
+  picker.innerHTML = "";
+  const selected = new Set(selectedSkills.map((s) => s.toLowerCase()));
+  const allSkills = state.skills.map((s) => s.name).filter(Boolean).sort();
+  if (allSkills.length === 0) {
+    picker.innerHTML = '<span class="text-xs text-ink-muted">No skills defined yet.</span>';
+    hidden.value = "";
+    return;
+  }
+  function syncHidden() {
+    const checked = [...picker.querySelectorAll("input:checked")].map((cb) => cb.value);
+    hidden.value = checked.join(",");
+  }
+  allSkills.forEach((name) => {
+    const label = document.createElement("label");
+    label.className = "skill-picker-chip";
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.value = name;
+    cb.checked = selected.has(name.toLowerCase());
+    cb.addEventListener("change", syncHidden);
+    const span = document.createElement("span");
+    span.textContent = name;
+    label.appendChild(cb);
+    label.appendChild(span);
+    picker.appendChild(label);
+  });
+  syncHidden();
 }
 
 function renderCategorySelect(elementId, categories) {
@@ -197,11 +295,12 @@ function renderSubsectionNav(navId, categories, items) {
 const PAGE_SIZE = 12;
 const shownCounts = {};  // track pagination per grid
 
-function renderSection(items, categoryId, sortId, targetGridId, subsectionFilter = null, searchId = null) {
+function renderSection(items, categoryId, sortId, targetGridId, subsectionFilter = null, searchId = null, searchFieldId = null, skillFilter = null) {
   const selectedCategory = categoryId ? document.getElementById(categoryId).value : "All";
   const sortMode = document.getElementById(sortId).value;
   const target = document.getElementById(targetGridId);
   const searchQuery = searchId ? (document.getElementById(searchId)?.value || "").trim().toLowerCase() : "";
+  const searchField = searchFieldId ? (document.getElementById(searchFieldId)?.value || "all") : "all";
 
   let filtered = items.filter(
     (item) => selectedCategory === "All" || item.category === selectedCategory
@@ -216,10 +315,23 @@ function renderSection(items, categoryId, sortId, targetGridId, subsectionFilter
     }
   }
 
-  // Apply text search
+  // Apply skill filter
+  if (skillFilter && skillFilter !== "all") {
+    filtered = filtered.filter((item) => {
+      const itemSkills = parseSkills(item.skills);
+      return itemSkills.some((s) => s.toLowerCase() === skillFilter.toLowerCase());
+    });
+  }
+
+  // Apply text search (field-targeted)
   if (searchQuery) {
     filtered = filtered.filter((item) => {
-      const haystack = [item.title, item.summary, item.description, item.category, item.tag].filter(Boolean).join(" ").toLowerCase();
+      let haystack;
+      if (searchField === "all") {
+        haystack = [item.title, item.summary, item.description, item.category, item.tag, item.deliverables, item.challenges, item.extra_notes].filter(Boolean).join(" ").toLowerCase();
+      } else {
+        haystack = (item[searchField] || "").toLowerCase();
+      }
       return haystack.includes(searchQuery);
     });
   }
@@ -288,6 +400,22 @@ function openModal(item) {
     rowToHTML("Future Improvements", item.future_improvements),
     rowToHTML("Notes", item.extra_notes),
   ].join("");
+
+  // Skill tags in modal
+  const existingSkillRow = shell.querySelector(".modal-skills-row");
+  if (existingSkillRow) existingSkillRow.remove();
+  const itemSkills = parseSkills(item.skills);
+  if (itemSkills.length > 0) {
+    const row = document.createElement("div");
+    row.className = "modal-skills-row";
+    itemSkills.forEach((s) => {
+      const chip = document.createElement("span");
+      chip.className = "modal-skill-chip";
+      chip.textContent = s;
+      row.appendChild(chip);
+    });
+    body.parentNode.insertBefore(row, body.nextSibling);
+  }
 
   if (item.external_link) {
     link.href = item.external_link;
@@ -479,6 +607,9 @@ function openAdminItemModal(item = null, section = "project") {
   }
   document.getElementById("admin-item-link").value = item?.external_link || "";
 
+  // Populate skills picker
+  populateSkillsPicker(parseSkills(item?.skills));
+
   // Show/hide section field and set modal title
   if (item) {
     sectionFieldGroup.style.display = "grid";
@@ -658,8 +789,12 @@ function wireProjectControls() {
   const projectCategories = uniqueCategories(state.projects);
   renderSubsectionNav("projects-subsection-nav", projectCategories, state.projects);
 
-  const experienceSubsections = CATEGORY_OPTIONS.experience;
+  const experienceSubsections = ["All", ...CATEGORY_OPTIONS.experience];
   renderSubsectionNav("experiences-subsection-nav", experienceSubsections, state.experiences);
+
+  // Build skills filter pills
+  renderSkillsFilter("projects-skills-filter", state.projects, "projects");
+  renderSkillsFilter("experiences-skills-filter", state.experiences, "experiences");
 
   // Restore sort from localStorage
   const savedProjectSort = localStorage.getItem("ctrlaltjay-projects-sort");
@@ -669,13 +804,15 @@ function wireProjectControls() {
 
   state.rerenderProjects = () => {
     const activeSubsection = document.querySelector("#projects-subsection-nav .subsection-btn.active")?.dataset.subsection || "all";
-    renderSection(state.projects, null, "projects-sort", "projects-grid", activeSubsection, "projects-search");
+    const activeSkill = document.querySelector("#projects-skills-filter .skill-filter-btn.active")?.dataset.skill || "all";
+    renderSection(state.projects, null, "projects-sort", "projects-grid", activeSubsection, "projects-search", "projects-search-field", activeSkill);
     addBulkCheckboxes(document.getElementById("projects-grid"));
   };
   
   state.rerenderExperiences = () => {
     const activeSubsection = document.querySelector("#experiences-subsection-nav .subsection-btn.active")?.dataset.subsection || "all";
-    renderSection(state.experiences, null, "experiences-sort", "experiences-grid", activeSubsection, "experiences-search");
+    const activeSkill = document.querySelector("#experiences-skills-filter .skill-filter-btn.active")?.dataset.skill || "all";
+    renderSection(state.experiences, null, "experiences-sort", "experiences-grid", activeSubsection, "experiences-search", "experiences-search-field", activeSkill);
     addBulkCheckboxes(document.getElementById("experiences-grid"));
   };
 
@@ -717,6 +854,28 @@ function wireProjectControls() {
     document.getElementById("experiences-search")?.addEventListener("input", () => {
       clearTimeout(expSearchTimer);
       expSearchTimer = setTimeout(() => state.rerenderExperiences(), 250);
+    });
+
+    // Search field selectors
+    document.getElementById("projects-search-field")?.addEventListener("change", () => state.rerenderProjects());
+    document.getElementById("experiences-search-field")?.addEventListener("change", () => state.rerenderExperiences());
+
+    // Skills filter delegation
+    document.getElementById("projects-skills-filter")?.addEventListener("click", (e) => {
+      const btn = e.target.closest(".skill-filter-btn");
+      if (!btn) return;
+      document.querySelectorAll("#projects-skills-filter .skill-filter-btn").forEach((it) => it.classList.remove("active"));
+      btn.classList.add("active");
+      shownCounts["projects-grid"] = PAGE_SIZE;
+      state.rerenderProjects();
+    });
+    document.getElementById("experiences-skills-filter")?.addEventListener("click", (e) => {
+      const btn = e.target.closest(".skill-filter-btn");
+      if (!btn) return;
+      document.querySelectorAll("#experiences-skills-filter .skill-filter-btn").forEach((it) => it.classList.remove("active"));
+      btn.classList.add("active");
+      shownCounts["experiences-grid"] = PAGE_SIZE;
+      state.rerenderExperiences();
     });
 
     state.controlsBound = true;
