@@ -246,7 +246,7 @@ def index():
 @app.route("/api/public-data")
 def api_public_data():
     items_resp = table_items.scan()
-    all_items = [dynamo_to_dict(i) for i in items_resp.get("Items", []) if not i.get("id", "").startswith("__")]
+    all_items = [dynamo_to_dict(i) for i in items_resp.get("Items", []) if not i.get("id", "").startswith("__") and not i.get("deleted_at")]
 
     projects = [i for i in all_items if i.get("section") == "project"]
     experiences = [i for i in all_items if i.get("section") == "experience"]
@@ -348,7 +348,7 @@ def api_admin_items():
     if request.method == "GET":
         section = request.args.get("section", "").strip().lower()
         response = table_items.scan()
-        all_items = [dynamo_to_dict(i) for i in response.get("Items", []) if not i.get("id", "").startswith("__")]
+        all_items = [dynamo_to_dict(i) for i in response.get("Items", []) if not i.get("id", "").startswith("__") and not i.get("deleted_at")]
 
         if section in {"project", "experience"}:
             all_items = [i for i in all_items if i.get("section") == section]
@@ -413,8 +413,12 @@ def api_admin_item(item_id):
         return jsonify({"error": "Item not found."}), 404
 
     if request.method == "DELETE":
-        table_items.delete_item(Key={"id": item_id})
-        return jsonify({"message": "Item deleted."})
+        table_items.update_item(
+            Key={"id": item_id},
+            UpdateExpression="SET deleted_at = :ts",
+            ExpressionAttributeValues={":ts": now_iso()},
+        )
+        return jsonify({"message": "Item moved to Recently Deleted."})
 
     form = request.form
     image_path = save_uploaded_image(request.files.get("image"))
@@ -455,6 +459,50 @@ def api_admin_item(item_id):
     table_items.put_item(Item=updated_payload)
 
     return jsonify({"message": "Item updated."})
+
+
+@app.route("/api/admin/deleted-items", methods=["GET"])
+def api_admin_deleted_items():
+    unauthorized = unauthorized_admin_response()
+    if unauthorized:
+        return unauthorized
+    response = table_items.scan()
+    deleted = [
+        dynamo_to_dict(i)
+        for i in response.get("Items", [])
+        if not i.get("id", "").startswith("__") and i.get("deleted_at")
+    ]
+    deleted.sort(key=lambda x: x.get("deleted_at", ""), reverse=True)
+    return jsonify(deleted)
+
+
+@app.route("/api/admin/items/<item_id>/restore", methods=["POST"])
+def api_admin_item_restore(item_id):
+    unauthorized = unauthorized_admin_response()
+    if unauthorized:
+        return unauthorized
+    response = table_items.get_item(Key={"id": item_id})
+    existing = response.get("Item")
+    if not existing or not existing.get("deleted_at"):
+        return jsonify({"error": "Item not found in deleted items."}), 404
+    table_items.update_item(
+        Key={"id": item_id},
+        UpdateExpression="REMOVE deleted_at",
+    )
+    return jsonify({"message": "Item restored."})
+
+
+@app.route("/api/admin/items/<item_id>/permanent", methods=["DELETE"])
+def api_admin_item_permanent(item_id):
+    unauthorized = unauthorized_admin_response()
+    if unauthorized:
+        return unauthorized
+    response = table_items.get_item(Key={"id": item_id})
+    existing = response.get("Item")
+    if not existing:
+        return jsonify({"error": "Item not found."}), 404
+    table_items.delete_item(Key={"id": item_id})
+    return jsonify({"message": "Item permanently deleted."})
 
 
 @app.route("/api/admin/resume", methods=["GET", "POST"])
@@ -607,7 +655,7 @@ def send_message():
     company = request.form.get("company", "").strip()
     subject = request.form.get("subject", "").strip()
     message_body = request.form.get("message", "").strip()
-    newsletter_opt_in = request.form.get("newsletter-opt-in") == "yes"
+    reason = request.form.get("reason", "").strip()
 
     # Honeypot — silently reject bot submissions
     if request.form.get("website", "").strip():
@@ -648,7 +696,7 @@ def send_message():
 From: {fullname}
 Email: {email}
 Company: {company if company else 'Not provided'}
-Newsletter Opt-in: {'Yes' if newsletter_opt_in else 'No'}
+Reason: {reason if reason else 'Not specified'}
 
 Subject: {subject}
 
