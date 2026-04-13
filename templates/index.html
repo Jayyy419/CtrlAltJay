@@ -179,17 +179,31 @@
         <header class="panel-head mb-6">
           <div class="panel-head-top flex items-center justify-between gap-3">
             <h2 class="font-display text-3xl font-bold text-white tracking-tight">Resume</h2>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 flex-wrap">
               <button type="button" id="export-json-btn" class="export-btn admin-only" hidden>
                 <ion-icon name="download-outline"></ion-icon> Export JSON
               </button>
-              <button type="button" id="print-resume-btn" class="export-btn" onclick="window.print()">
+              <button type="button" id="print-resume-btn" class="export-btn">
                 <ion-icon name="print-outline"></ion-icon> Print
               </button>
             </div>
           </div>
           <p class="mt-2 text-ink-muted">Timeline is dynamically managed from admin, including additions to education and work lanes.</p>
         </header>
+
+        <!-- Admin resume-key panel -->
+        <div id="resume-key-panel" class="admin-only resume-key-panel mb-6" hidden>
+          <div class="flex items-center gap-3 flex-wrap">
+            <span class="text-sm text-ink-soft font-semibold">Resume Key:</span>
+            <code id="resume-key-display" class="resume-key-code">Loading...</code>
+            <button type="button" id="resume-key-copy" class="export-btn" title="Copy key">
+              <ion-icon name="copy-outline"></ion-icon> Copy
+            </button>
+            <button type="button" id="resume-key-rotate" class="export-btn" style="border-color:rgba(239,68,68,0.3);color:#ef4444" title="Generate new key">
+              <ion-icon name="refresh-outline"></ion-icon> Rotate
+            </button>
+          </div>
+        </div>
 
         <section class="timeline-wrap grid grid-cols-2 gap-10 max-lg:grid-cols-1">
           <div>
@@ -255,6 +269,7 @@
 
   <footer class="max-w-[1440px] w-full mx-auto px-5 py-4 text-ink-muted text-xs flex justify-between items-center border-t border-white/[0.04] max-sm:flex-col max-sm:gap-1">
     <p>&copy; {{ 2026 }} CtrlAltJay</p>
+    <p id="last-updated-ts" class="text-ink-muted/70"></p>
     <p>Built with Flask, cloud-native thinking, and practical AI workflows.</p>
   </footer>
 
@@ -390,6 +405,29 @@
       <div id="modal-tag" class="modal-tag"></div>
       <div id="modal-body" class="modal-body"></div>
       <a id="modal-link" target="_blank" rel="noopener noreferrer" class="modal-link inline-block mt-4 text-accent font-bold no-underline hover:text-accent-light transition-colors">Open external link</a>
+    </section>
+  </div>
+
+  <!-- Resume Key Modal -->
+  <div class="modal-shell" id="resume-key-modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-resume-key></div>
+    <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="resume-key-modal-title" style="max-width:440px">
+      <button class="modal-close" data-close-resume-key aria-label="Close">
+        <ion-icon name="close-outline"></ion-icon>
+      </button>
+      <div class="flex items-center gap-3 mb-1">
+        <ion-icon name="lock-closed-outline" class="text-2xl text-accent"></ion-icon>
+        <h3 id="resume-key-modal-title" class="text-xl font-bold text-white">Print Resume</h3>
+      </div>
+      <p class="text-ink-muted text-sm mb-5">Enter the resume key to access the printable version.</p>
+      <form id="resume-key-form" class="grid gap-3">
+        <input type="password" id="resume-key-input" placeholder="Paste resume key" required autocomplete="off"
+          class="w-full px-4 py-3 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm placeholder:text-ink-muted focus:outline-none focus:border-accent transition-colors font-mono">
+        <button type="submit" class="btn-primary bg-gradient-to-r from-accent to-accent-dark text-surface-400 font-bold rounded-xl px-6 py-3 text-sm border-none cursor-pointer transition-all duration-300 hover:shadow-[0_0_24px_rgba(245,158,11,0.4)]">
+          <ion-icon name="print-outline" class="mr-1 align-middle"></ion-icon> Unlock &amp; Print
+        </button>
+      </form>
+      <p id="resume-key-feedback" class="text-xs mt-3" style="color:#f87171" aria-live="polite"></p>
     </section>
   </div>
 
