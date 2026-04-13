@@ -51,7 +51,7 @@
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#0a0a18">
 </head>
-<body class="bg-surface-400 text-ink font-sans min-h-screen flex flex-col antialiased">
+<body class="bg-surface-400 text-ink font-sans min-h-screen flex flex-col antialiased" style="opacity:0">
 
   <!-- Skip link for accessibility -->
   <a href="#main-content" class="skip-link">Skip to main content</a>
@@ -144,6 +144,13 @@
       <div class="admin-only mt-3" hidden>
         <button type="button" id="admin-backup-btn" class="w-full text-center bg-transparent text-ink-muted font-semibold rounded-xl px-4 py-2.5 text-xs border border-white/[0.06] transition-all duration-300 hover:border-accent/60 hover:text-accent cursor-pointer">
           <ion-icon name="cloud-upload-outline" class="align-middle mr-1"></ion-icon>Backup to S3
+        </button>
+      </div>
+
+      <!-- Import JSON (Admin) -->
+      <div class="admin-only mt-3" hidden>
+        <button type="button" id="admin-import-btn" class="w-full text-center bg-transparent text-ink-muted font-semibold rounded-xl px-4 py-2.5 text-xs border border-white/[0.06] transition-all duration-300 hover:border-accent/60 hover:text-accent cursor-pointer">
+          <ion-icon name="cloud-download-outline" class="align-middle mr-1"></ion-icon>Import JSON
         </button>
       </div>
     </aside>
@@ -536,6 +543,9 @@
       <div class="modal-title-row flex items-center justify-between gap-3">
         <h3 id="modal-title" class="text-xl font-bold text-white flex-1"></h3>
         <div class="flex items-center gap-2">
+          <button type="button" id="modal-clone-btn" class="icon-edit-btn admin-only" aria-label="Clone this card" hidden style="color:#38bdf8">
+            <ion-icon name="copy-outline"></ion-icon>
+          </button>
           <button type="button" id="modal-delete-btn" class="icon-edit-btn admin-only" aria-label="Delete this card" hidden style="color:#ef4444">
             <ion-icon name="trash-outline"></ion-icon>
           </button>
@@ -546,6 +556,7 @@
       </div>
 
       <div id="modal-tag" class="modal-tag"></div>
+      <div id="modal-read-time" class="modal-read-time" style="display:none"></div>
       <div id="modal-body" class="modal-body"></div>
       <a id="modal-link" target="_blank" rel="noopener noreferrer" class="modal-link inline-block mt-4 text-accent font-bold no-underline hover:text-accent-light transition-colors">Open external link</a>
 
