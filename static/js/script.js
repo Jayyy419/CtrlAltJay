@@ -83,9 +83,9 @@ function initTabs() {
     });
   });
 
-  // Deep link: activate tab from URL hash
+  // Deep link: activate tab from URL hash (skip item/ deep links — handled after data loads)
   const hash = window.location.hash.replace("#", "");
-  if (hash && document.getElementById(hash)) {
+  if (hash && !hash.startsWith("item/") && document.getElementById(hash)) {
     switchTab(hash);
   }
 }
@@ -401,6 +401,15 @@ function openModal(item) {
     rowToHTML("Notes", item.extra_notes),
   ].join("");
 
+  // Apply markdown rendering to modal rows
+  body.querySelectorAll(".modal-row").forEach((row) => {
+    const strong = row.querySelector("strong");
+    if (!strong) return;
+    const label = strong.outerHTML;
+    const text = row.innerHTML.replace(label, "").trim();
+    row.innerHTML = label + " " + renderMarkdown(text);
+  });
+
   // Skill tags in modal
   const existingSkillRow = shell.querySelector(".modal-skills-row");
   if (existingSkillRow) existingSkillRow.remove();
@@ -417,6 +426,9 @@ function openModal(item) {
     body.parentNode.insertBefore(row, body.nextSibling);
   }
 
+  // Related items
+  renderRelatedItems(item);
+
   if (item.external_link) {
     link.href = item.external_link;
     link.style.display = "inline-block";
@@ -426,17 +438,33 @@ function openModal(item) {
 
   shell.classList.add("active");
   shell.setAttribute("aria-hidden", "false");
+
+  // Deep link: update URL hash
+  if (item.id) {
+    window.history.replaceState(null, "", `#item/${item.id}`);
+  }
+
+  // Track recently viewed
+  trackRecentlyViewed(item.id);
 }
 
 function initModal() {
   const shell = document.getElementById("detail-modal");
   shell.querySelectorAll("[data-close-modal]").forEach((element) => {
     element.addEventListener("click", () => {
-      state.modalItem = null;
-      shell.classList.remove("active");
-      shell.setAttribute("aria-hidden", "true");
+      closeDetailModal();
     });
   });
+}
+
+function closeDetailModal() {
+  const shell = document.getElementById("detail-modal");
+  state.modalItem = null;
+  shell.classList.remove("active");
+  shell.setAttribute("aria-hidden", "true");
+  // Clear deep link hash
+  const section = document.querySelector(".tab-panel.active")?.id;
+  window.history.replaceState(null, "", section ? `#${section}` : window.location.pathname);
 }
 
 function renderResume() {
@@ -732,12 +760,10 @@ function initInlineAdminEditor() {
       try {
         const res = await fetch(`/api/admin/items/${item.id}`, { method: "DELETE" });
         if (!res.ok) throw new Error("Delete failed");
-        const detailModal = document.getElementById("detail-modal");
-        detailModal.classList.remove("active");
-        detailModal.setAttribute("aria-hidden", "true");
-        state.modalItem = null;
+        closeDetailModal();
         await fetchData();
         wireProjectControls();
+        logActivity("Delete", item.title);
         showToast("Item deleted.", "success");
       } catch (err) {
         showToast("Failed to delete item.", "error");
@@ -771,6 +797,8 @@ function initInlineAdminEditor() {
       wireProjectControls();
       closeAdminItemModal();
       clearDraft();
+      const itemTitle = formData.get("title") || "item";
+      logActivity(itemId ? "Edit" : "Create", itemTitle);
       showToast(itemId ? "Item updated." : "Item created.", "success");
       if (state.modalItem?.id && itemId) {
         const refreshedItem = findItemById(itemId);
@@ -807,6 +835,10 @@ function wireProjectControls() {
     const activeSkill = document.querySelector("#projects-skills-filter .skill-filter-btn.active")?.dataset.skill || "all";
     renderSection(state.projects, null, "projects-sort", "projects-grid", activeSubsection, "projects-search", "projects-search-field", activeSkill);
     addBulkCheckboxes(document.getElementById("projects-grid"));
+    addFavoriteButtons();
+    enableCardDragging(document.getElementById("projects-grid"));
+    // Restore list view if active
+    if (localStorage.getItem(VIEW_KEY) === "list") document.getElementById("projects-grid")?.classList.add("list-view");
   };
   
   state.rerenderExperiences = () => {
@@ -814,6 +846,9 @@ function wireProjectControls() {
     const activeSkill = document.querySelector("#experiences-skills-filter .skill-filter-btn.active")?.dataset.skill || "all";
     renderSection(state.experiences, null, "experiences-sort", "experiences-grid", activeSubsection, "experiences-search", "experiences-search-field", activeSkill);
     addBulkCheckboxes(document.getElementById("experiences-grid"));
+    addFavoriteButtons();
+    enableCardDragging(document.getElementById("experiences-grid"));
+    if (localStorage.getItem(VIEW_KEY) === "list") document.getElementById("experiences-grid")?.classList.add("list-view");
   };
 
   if (!state.controlsBound) {
@@ -901,6 +936,11 @@ async function bootstrap() {
   initExportJSON();
   initResumeKey();
   initDblClickEdit();
+  initThemeToggle();
+  initViewToggle();
+  initDragAndDrop();
+  initBatchSkills();
+  initActivityLog();
   setAdminMode(false);
 
   // Show skeletons while data loads
@@ -914,6 +954,8 @@ async function bootstrap() {
   renderSkills();
   updateTabBadges();
   updateFooterTimestamp();
+  renderRecentlyViewed();
+  handleDeepLink();
 }
 
 /* ===== Escape key closes topmost modal ===== */
@@ -929,9 +971,7 @@ function initEscapeKey() {
     if (adminItem?.classList.contains("active")) { closeAdminItemModal(); return; }
     const detail = document.getElementById("detail-modal");
     if (detail?.classList.contains("active")) {
-      state.modalItem = null;
-      detail.classList.remove("active");
-      detail.setAttribute("aria-hidden", "true");
+      closeDetailModal();
       return;
     }
     const loginModal = document.getElementById("admin-login-modal");
@@ -1498,5 +1538,433 @@ function initDblClickEdit() {
 
 /* ===== Card focus ring for keyboard nav ===== */
 // Handled via CSS below — .card:focus-visible
+
+/* ===== Deep link handler ===== */
+function handleDeepLink() {
+  const hash = window.location.hash.replace("#", "");
+  if (!hash.startsWith("item/")) return;
+  const itemId = hash.replace("item/", "");
+  const item = findItemById(itemId);
+  if (item) {
+    // Switch to the correct tab
+    const tab = item.section === "experience" ? "experiences" : "projects";
+    switchTab(tab);
+    openModal(item);
+  }
+}
+
+/* ===== Dark/Light Theme Toggle ===== */
+const THEME_KEY = "ctrlaltjay-theme";
+
+function initThemeToggle() {
+  const saved = localStorage.getItem(THEME_KEY);
+  if (saved === "light") document.documentElement.classList.add("light-theme");
+
+  const btn = document.getElementById("theme-toggle");
+  if (!btn) return;
+  updateThemeIcon(btn);
+
+  btn.addEventListener("click", () => {
+    document.documentElement.classList.toggle("light-theme");
+    const isLight = document.documentElement.classList.contains("light-theme");
+    localStorage.setItem(THEME_KEY, isLight ? "light" : "dark");
+    updateThemeIcon(btn);
+  });
+}
+
+function updateThemeIcon(btn) {
+  const isLight = document.documentElement.classList.contains("light-theme");
+  btn.innerHTML = isLight
+    ? '<ion-icon name="moon-outline"></ion-icon>'
+    : '<ion-icon name="sunny-outline"></ion-icon>';
+  btn.title = isLight ? "Switch to dark mode" : "Switch to light mode";
+}
+
+/* ===== Recently Viewed Carousel ===== */
+const RECENT_KEY = "ctrlaltjay-recent";
+const MAX_RECENT = 8;
+
+function trackRecentlyViewed(itemId) {
+  if (!itemId) return;
+  let recent = JSON.parse(localStorage.getItem(RECENT_KEY) || "[]");
+  recent = recent.filter((id) => id !== itemId);
+  recent.unshift(itemId);
+  if (recent.length > MAX_RECENT) recent = recent.slice(0, MAX_RECENT);
+  localStorage.setItem(RECENT_KEY, JSON.stringify(recent));
+  renderRecentlyViewed();
+}
+
+function renderRecentlyViewed() {
+  const container = document.getElementById("recently-viewed");
+  if (!container) return;
+  const recentIds = JSON.parse(localStorage.getItem(RECENT_KEY) || "[]");
+  const allItems = [...state.projects, ...state.experiences];
+  const items = recentIds.map((id) => allItems.find((it) => it.id === id)).filter(Boolean);
+
+  if (items.length === 0) {
+    container.style.display = "none";
+    return;
+  }
+  container.style.display = "";
+  const strip = container.querySelector(".recent-strip");
+  if (!strip) return;
+  strip.innerHTML = "";
+  items.forEach((item) => {
+    const card = document.createElement("div");
+    card.className = "recent-card";
+    card.tabIndex = 0;
+    const img = item.image_path || "../static/images/Projects/WebDev_PortfolioV1.png";
+    card.innerHTML = `<img src="${img}" alt="${item.title}" loading="lazy"><span>${item.title}</span>`;
+    card.addEventListener("click", () => openModal(item));
+    strip.appendChild(card);
+  });
+}
+
+/* ===== Related Items in Detail Modal ===== */
+function renderRelatedItems(item) {
+  const container = document.getElementById("related-items");
+  if (!container) return;
+  const allItems = [...state.projects, ...state.experiences].filter((it) => it.id !== item.id);
+  const itemSkills = parseSkills(item.skills);
+
+  // Score by shared skills + same category
+  const scored = allItems.map((other) => {
+    let score = 0;
+    if (other.category === item.category) score += 1;
+    const otherSkills = parseSkills(other.skills);
+    itemSkills.forEach((s) => {
+      if (otherSkills.some((os) => os.toLowerCase() === s.toLowerCase())) score += 2;
+    });
+    return { item: other, score };
+  }).filter((s) => s.score > 0).sort((a, b) => b.score - a.score).slice(0, 4);
+
+  if (scored.length === 0) {
+    container.style.display = "none";
+    return;
+  }
+  container.style.display = "";
+  const strip = container.querySelector(".related-strip");
+  if (!strip) return;
+  strip.innerHTML = "";
+  scored.forEach(({ item: rel }) => {
+    const card = document.createElement("div");
+    card.className = "related-card";
+    card.tabIndex = 0;
+    const img = rel.image_path || "../static/images/Projects/WebDev_PortfolioV1.png";
+    card.innerHTML = `<img src="${img}" alt="${rel.title}" loading="lazy"><span>${rel.title}</span>`;
+    card.addEventListener("click", () => openModal(rel));
+    strip.appendChild(card);
+  });
+}
+
+/* ===== Activity Log (Admin) ===== */
+const ACTIVITY_LOG_KEY = "ctrlaltjay-activity-log";
+const MAX_LOG_ENTRIES = 50;
+
+function logActivity(action, detail) {
+  if (!state.isAdmin) return;
+  const log = JSON.parse(localStorage.getItem(ACTIVITY_LOG_KEY) || "[]");
+  log.unshift({ action, detail, timestamp: new Date().toISOString() });
+  if (log.length > MAX_LOG_ENTRIES) log.length = MAX_LOG_ENTRIES;
+  localStorage.setItem(ACTIVITY_LOG_KEY, JSON.stringify(log));
+}
+
+function renderActivityLog() {
+  const container = document.getElementById("activity-log-list");
+  if (!container) return;
+  const log = JSON.parse(localStorage.getItem(ACTIVITY_LOG_KEY) || "[]");
+  if (log.length === 0) {
+    container.innerHTML = '<p class="text-ink-muted text-sm">No activity recorded yet.</p>';
+    return;
+  }
+  container.innerHTML = log.map((entry) => {
+    const d = new Date(entry.timestamp);
+    const time = d.toLocaleDateString("en-SG", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+    return `<div class="activity-entry"><span class="activity-action">${entry.action}</span><span class="activity-detail">${entry.detail}</span><span class="activity-time">${time}</span></div>`;
+  }).join("");
+}
+
+function initActivityLog() {
+  const btn = document.getElementById("activity-log-toggle");
+  const panel = document.getElementById("activity-log-panel");
+  if (!btn || !panel) return;
+  btn.addEventListener("click", () => {
+    const visible = panel.style.display !== "none";
+    panel.style.display = visible ? "none" : "block";
+    if (!visible) renderActivityLog();
+  });
+  const clearBtn = document.getElementById("activity-log-clear");
+  if (clearBtn) {
+    clearBtn.addEventListener("click", () => {
+      localStorage.removeItem(ACTIVITY_LOG_KEY);
+      renderActivityLog();
+      showToast("Activity log cleared.", "info");
+    });
+  }
+}
+
+/* ===== Markdown Support ===== */
+function renderMarkdown(text) {
+  if (!text) return "";
+  // Sanitize HTML entities first to prevent XSS
+  let s = text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  // Bold: **text**
+  s = s.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+  // Italic: *text*
+  s = s.replace(/\*(.+?)\*/g, "<em>$1</em>");
+  // Inline code: `code`
+  s = s.replace(/`(.+?)`/g, '<code class="md-code">$1</code>');
+  // Links: [text](url) — only allow http/https
+  s = s.replace(/\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="md-link">$1</a>');
+  // Line breaks
+  s = s.replace(/\n/g, "<br>");
+  return s;
+}
+
+/* ===== Card View Toggle (Grid/List) ===== */
+const VIEW_KEY = "ctrlaltjay-view-mode";
+
+function initViewToggle() {
+  const btn = document.getElementById("view-toggle");
+  if (!btn) return;
+  const saved = localStorage.getItem(VIEW_KEY);
+  if (saved === "list") {
+    document.querySelectorAll(".card-grid").forEach((g) => g.classList.add("list-view"));
+  }
+  updateViewIcon(btn);
+
+  btn.addEventListener("click", () => {
+    const grids = document.querySelectorAll(".card-grid");
+    const isList = grids[0]?.classList.contains("list-view");
+    grids.forEach((g) => g.classList.toggle("list-view", !isList));
+    localStorage.setItem(VIEW_KEY, isList ? "grid" : "list");
+    updateViewIcon(btn);
+  });
+}
+
+function updateViewIcon(btn) {
+  const isList = document.querySelector(".card-grid")?.classList.contains("list-view");
+  btn.innerHTML = isList
+    ? '<ion-icon name="grid-outline"></ion-icon>'
+    : '<ion-icon name="list-outline"></ion-icon>';
+  btn.title = isList ? "Switch to grid view" : "Switch to list view";
+}
+
+/* ===== Favorites / Bookmarks ===== */
+const FAVORITES_KEY = "ctrlaltjay-favorites";
+
+function getFavorites() {
+  return JSON.parse(localStorage.getItem(FAVORITES_KEY) || "[]");
+}
+
+function toggleFavorite(itemId) {
+  let favs = getFavorites();
+  if (favs.includes(itemId)) {
+    favs = favs.filter((id) => id !== itemId);
+  } else {
+    favs.push(itemId);
+  }
+  localStorage.setItem(FAVORITES_KEY, JSON.stringify(favs));
+  return favs.includes(itemId);
+}
+
+function addFavoriteButtons() {
+  document.querySelectorAll(".card").forEach((card) => {
+    if (card.querySelector(".fav-btn")) return;
+    const title = card.querySelector("h4")?.textContent;
+    const item = [...state.projects, ...state.experiences].find((it) => it.title === title);
+    if (!item) return;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "fav-btn";
+    btn.setAttribute("aria-label", "Toggle favorite");
+    const favs = getFavorites();
+    btn.innerHTML = favs.includes(item.id)
+      ? '<ion-icon name="heart"></ion-icon>'
+      : '<ion-icon name="heart-outline"></ion-icon>';
+    if (favs.includes(item.id)) btn.classList.add("fav-active");
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const isNow = toggleFavorite(item.id);
+      btn.innerHTML = isNow ? '<ion-icon name="heart"></ion-icon>' : '<ion-icon name="heart-outline"></ion-icon>';
+      btn.classList.toggle("fav-active", isNow);
+      showToast(isNow ? "Added to favorites" : "Removed from favorites", "info");
+    });
+    card.appendChild(btn);
+  });
+}
+
+/* ===== Drag-and-Drop Reorder (Admin) ===== */
+function initDragAndDrop() {
+  document.addEventListener("dragstart", (e) => {
+    if (!state.isAdmin) return;
+    const card = e.target.closest(".card");
+    if (!card) return;
+    card.classList.add("dragging");
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", card.querySelector("h4")?.textContent || "");
+  });
+
+  document.addEventListener("dragend", (e) => {
+    const card = e.target.closest(".card");
+    if (card) card.classList.remove("dragging");
+  });
+
+  document.addEventListener("dragover", (e) => {
+    if (!state.isAdmin) return;
+    e.preventDefault();
+    const grid = e.target.closest(".card-grid");
+    if (!grid) return;
+    const dragging = grid.querySelector(".dragging");
+    if (!dragging) return;
+    const afterElement = getDragAfterElement(grid, e.clientY);
+    if (afterElement) {
+      grid.insertBefore(dragging, afterElement);
+    } else {
+      // Before show-more-wrap if it exists
+      const showMore = grid.querySelector(".show-more-wrap");
+      if (showMore) grid.insertBefore(dragging, showMore);
+      else grid.appendChild(dragging);
+    }
+  });
+
+  document.addEventListener("drop", (e) => {
+    if (!state.isAdmin) return;
+    e.preventDefault();
+    const grid = e.target.closest(".card-grid");
+    if (!grid) return;
+    saveSortOrder(grid);
+  });
+}
+
+function getDragAfterElement(grid, y) {
+  const siblings = [...grid.querySelectorAll(".card:not(.dragging)")];
+  let closest = null;
+  let closestOffset = Number.NEGATIVE_INFINITY;
+  siblings.forEach((child) => {
+    const box = child.getBoundingClientRect();
+    const offset = y - box.top - box.height / 2;
+    if (offset < 0 && offset > closestOffset) {
+      closestOffset = offset;
+      closest = child;
+    }
+  });
+  return closest;
+}
+
+function saveSortOrder(grid) {
+  const cards = [...grid.querySelectorAll(".card")];
+  const allItems = [...state.projects, ...state.experiences];
+  const order = cards.map((c) => {
+    const title = c.querySelector("h4")?.textContent;
+    return allItems.find((it) => it.title === title)?.id;
+  }).filter(Boolean);
+
+  // Save to localStorage as custom sort
+  const gridId = grid.id;
+  const orderKey = `ctrlaltjay-sort-order-${gridId}`;
+  localStorage.setItem(orderKey, JSON.stringify(order));
+  showToast("Card order saved.", "success");
+  logActivity("Reorder", `Reordered cards in ${gridId}`);
+}
+
+function enableCardDragging(container) {
+  if (!state.isAdmin) return;
+  container.querySelectorAll(".card").forEach((card) => {
+    card.draggable = true;
+  });
+}
+
+/* ===== Batch Skill Assignment ===== */
+function initBatchSkills() {
+  // Add button to bulk bar when it exists
+  const observer = new MutationObserver(() => {
+    const bar = document.getElementById("bulk-action-bar");
+    if (bar && !bar.querySelector(".bulk-skills")) {
+      const btn = document.createElement("button");
+      btn.className = "bulk-skills";
+      btn.textContent = "Assign Skills";
+      btn.style.cssText = "padding:8px 18px;border-radius:10px;font-size:0.82rem;font-weight:600;cursor:pointer;border:1.5px solid rgba(56,189,248,0.3);background:rgba(56,189,248,0.15);color:#38bdf8;transition:all 0.2s ease";
+      btn.addEventListener("click", openBatchSkillModal);
+      bar.insertBefore(btn, bar.querySelector(".bulk-cancel"));
+    }
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+}
+
+function openBatchSkillModal() {
+  if (bulkSelected.size === 0) return;
+  const shell = document.getElementById("batch-skill-modal");
+  if (!shell) return;
+  // Populate picker
+  const picker = document.getElementById("batch-skills-picker");
+  picker.innerHTML = "";
+  const allSkills = state.skills.map((s) => s.name).filter(Boolean).sort();
+  if (allSkills.length === 0) {
+    picker.innerHTML = '<span class="text-xs text-ink-muted">No skills defined yet.</span>';
+    return;
+  }
+  allSkills.forEach((name) => {
+    const label = document.createElement("label");
+    label.className = "skill-picker-chip";
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.value = name;
+    const span = document.createElement("span");
+    span.textContent = name;
+    label.appendChild(cb);
+    label.appendChild(span);
+    picker.appendChild(label);
+  });
+  shell.classList.add("active");
+  shell.setAttribute("aria-hidden", "false");
+}
+
+function closeBatchSkillModal() {
+  const shell = document.getElementById("batch-skill-modal");
+  if (!shell) return;
+  shell.classList.remove("active");
+  shell.setAttribute("aria-hidden", "true");
+}
+
+async function applyBatchSkills() {
+  const picker = document.getElementById("batch-skills-picker");
+  const checked = [...picker.querySelectorAll("input:checked")].map((cb) => cb.value);
+  if (checked.length === 0) { showToast("Select at least one skill.", "error"); return; }
+  const modeEl = document.querySelector('input[name="batch-skill-mode"]:checked');
+  const mode = modeEl ? modeEl.value : "add";
+  let ok = 0, fail = 0;
+  for (const id of bulkSelected) {
+    const item = findItemById(id);
+    if (!item) { fail++; continue; }
+    let current = parseSkills(item.skills);
+    if (mode === "add") {
+      checked.forEach((s) => { if (!current.some((c) => c.toLowerCase() === s.toLowerCase())) current.push(s); });
+    } else if (mode === "remove") {
+      current = current.filter((s) => !checked.some((c) => c.toLowerCase() === s.toLowerCase()));
+    } else {
+      current = [...checked];
+    }
+    const fd = new FormData();
+    fd.append("skills", current.join(","));
+    fd.append("title", item.title);
+    fd.append("section", item.section);
+    fd.append("category", item.category);
+    try {
+      const res = await fetch(`/api/admin/items/${id}`, { method: "PUT", body: fd });
+      if (res.ok) ok++; else fail++;
+    } catch { fail++; }
+  }
+  closeBatchSkillModal();
+  bulkSelected.clear();
+  updateBulkBar();
+  await fetchData();
+  wireProjectControls();
+  showToast(`Skills updated on ${ok} item(s)${fail ? `, ${fail} failed` : ""}.`, fail ? "error" : "success");
+  logActivity("Batch Skills", `Updated skills on ${ok} items`);
+}
 
 bootstrap();
