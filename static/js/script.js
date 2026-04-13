@@ -406,6 +406,7 @@ function setAdminMode(enabled) {
   const logoutBtn = document.getElementById("admin-logout-btn");
   if (loginBtn) loginBtn.hidden = state.isAdmin;
   if (logoutBtn) logoutBtn.hidden = !state.isAdmin;
+  if (state.isAdmin) loadResumeKey();
 }
 
 function findItemById(itemId) {
@@ -727,6 +728,7 @@ function wireProjectControls() {
 
 async function bootstrap() {
   initTabs();
+  initTabTransitions();
   initModal();
   initContactForm();
   initAdminAuth();
@@ -738,6 +740,8 @@ async function bootstrap() {
   initKeyboardNav();
   initAutoSaveDraft();
   initExportJSON();
+  initResumeKey();
+  initDblClickEdit();
   setAdminMode(false);
 
   // Show skeletons while data loads
@@ -749,6 +753,8 @@ async function bootstrap() {
   wireProjectControls();
   renderResume();
   renderSkills();
+  updateTabBadges();
+  updateFooterTimestamp();
 }
 
 /* ===== Escape key closes topmost modal ===== */
@@ -771,6 +777,8 @@ function initEscapeKey() {
     }
     const loginModal = document.getElementById("admin-login-modal");
     if (loginModal?.classList.contains("active")) { closeAdminLoginModal(); return; }
+    const resumeKeyModal = document.getElementById("resume-key-modal");
+    if (resumeKeyModal?.classList.contains("active")) { closeResumeKeyModal(); return; }
   });
 }
 
@@ -1151,5 +1159,185 @@ function initExportJSON() {
     }
   });
 }
+
+/* ===== Resume key gated print ===== */
+let resumeKeyUnlocked = false;
+
+function initResumeKey() {
+  const printBtn = document.getElementById("print-resume-btn");
+  if (!printBtn) return;
+
+  printBtn.addEventListener("click", () => {
+    // Admin always gets direct print
+    if (state.isAdmin || resumeKeyUnlocked) {
+      window.print();
+      return;
+    }
+    openResumeKeyModal();
+  });
+
+  // Resume key modal close handlers
+  const modal = document.getElementById("resume-key-modal");
+  if (!modal) return;
+  modal.querySelectorAll("[data-close-resume-key]").forEach((el) => {
+    el.addEventListener("click", closeResumeKeyModal);
+  });
+
+  // Verify form
+  document.getElementById("resume-key-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const feedback = document.getElementById("resume-key-feedback");
+    const input = document.getElementById("resume-key-input");
+    const key = input.value.trim();
+    if (!key) { feedback.textContent = "Key is required."; return; }
+    feedback.textContent = "Verifying...";
+    feedback.style.color = "#94a3b8";
+    try {
+      const res = await fetch("/api/resume-key/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key }),
+      });
+      if (res.ok) {
+        resumeKeyUnlocked = true;
+        closeResumeKeyModal();
+        showToast("Resume unlocked. Printing...", "success");
+        setTimeout(() => window.print(), 400);
+      } else {
+        const data = await res.json();
+        feedback.style.color = "#f87171";
+        feedback.textContent = data.error || "Invalid key.";
+      }
+    } catch {
+      feedback.style.color = "#f87171";
+      feedback.textContent = "Verification failed. Try again.";
+    }
+  });
+
+  // Admin panel: copy & rotate
+  const copyBtn = document.getElementById("resume-key-copy");
+  const rotateBtn = document.getElementById("resume-key-rotate");
+  if (copyBtn) {
+    copyBtn.addEventListener("click", async () => {
+      const display = document.getElementById("resume-key-display");
+      try {
+        await navigator.clipboard.writeText(display.textContent);
+        showToast("Key copied to clipboard.", "success");
+      } catch {
+        showToast("Copy failed.", "error");
+      }
+    });
+  }
+  if (rotateBtn) {
+    rotateBtn.addEventListener("click", async () => {
+      const confirmed = await showConfirm("Rotate Resume Key", "Generate a new key? Anyone with the old key will lose access.");
+      if (!confirmed) return;
+      try {
+        const res = await fetch("/api/admin/resume-key/rotate", { method: "POST" });
+        const data = await res.json();
+        if (res.ok) {
+          document.getElementById("resume-key-display").textContent = data.resume_key;
+          showToast("Key rotated.", "success");
+        } else {
+          showToast(data.error || "Rotate failed.", "error");
+        }
+      } catch {
+        showToast("Rotate failed.", "error");
+      }
+    });
+  }
+}
+
+async function loadResumeKey() {
+  if (!state.isAdmin) return;
+  try {
+    const res = await fetch("/api/admin/resume-key");
+    const data = await res.json();
+    const display = document.getElementById("resume-key-display");
+    if (display) display.textContent = data.resume_key || "—";
+  } catch { /* no-op */ }
+}
+
+function openResumeKeyModal() {
+  const modal = document.getElementById("resume-key-modal");
+  if (!modal) return;
+  document.getElementById("resume-key-form").reset();
+  document.getElementById("resume-key-feedback").textContent = "";
+  modal.classList.add("active");
+  modal.setAttribute("aria-hidden", "false");
+  document.getElementById("resume-key-input").focus();
+}
+
+function closeResumeKeyModal() {
+  const modal = document.getElementById("resume-key-modal");
+  if (!modal) return;
+  modal.classList.remove("active");
+  modal.setAttribute("aria-hidden", "true");
+}
+
+/* ===== Smooth tab transitions ===== */
+function initTabTransitions() {
+  tabs.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const panel = document.getElementById(btn.dataset.tab);
+      if (panel) {
+        panel.style.opacity = "0";
+        requestAnimationFrame(() => {
+          panel.style.transition = "opacity 0.3s ease";
+          panel.style.opacity = "1";
+        });
+      }
+    });
+  });
+}
+
+/* ===== Card count badges on tab buttons ===== */
+function updateTabBadges() {
+  const projBtn = document.querySelector('.tab-btn[data-tab="projects"]');
+  const expBtn = document.querySelector('.tab-btn[data-tab="experiences"]');
+  if (projBtn) projBtn.textContent = `Projects (${state.projects.length})`;
+  if (expBtn) expBtn.textContent = `Experiences (${state.experiences.length})`;
+}
+
+/* ===== Last updated footer timestamp ===== */
+function updateFooterTimestamp() {
+  const allItems = [...state.projects, ...state.experiences];
+  if (allItems.length === 0) return;
+  const latest = allItems.reduce((a, b) => {
+    const da = new Date(a.updated_at || 0);
+    const db = new Date(b.updated_at || 0);
+    return da > db ? a : b;
+  });
+  const ts = document.getElementById("last-updated-ts");
+  if (ts && latest.updated_at) {
+    const d = new Date(latest.updated_at);
+    const now = new Date();
+    const diffMs = now - d;
+    const diffDays = Math.floor(diffMs / 86400000);
+    let ago;
+    if (diffDays === 0) ago = "today";
+    else if (diffDays === 1) ago = "yesterday";
+    else if (diffDays < 30) ago = `${diffDays}d ago`;
+    else ago = d.toLocaleDateString("en-SG", { day: "numeric", month: "short", year: "numeric" });
+    ts.textContent = `Last updated ${ago}`;
+  }
+}
+
+/* ===== Double-click card to edit (admin) ===== */
+function initDblClickEdit() {
+  document.addEventListener("dblclick", (e) => {
+    if (!state.isAdmin) return;
+    const card = e.target.closest(".card");
+    if (!card) return;
+    const title = card.querySelector("h4")?.textContent;
+    const item = [...state.projects, ...state.experiences].find((it) => it.title === title);
+    if (!item) return;
+    e.preventDefault();
+    openAdminItemModal(item, item.section || "project");
+  });
+}
+
+/* ===== Card focus ring for keyboard nav ===== */
+// Handled via CSS below — .card:focus-visible
 
 bootstrap();

@@ -1,4 +1,5 @@
 import os
+import secrets
 import time
 import hmac
 import uuid
@@ -205,7 +206,7 @@ def index():
 @app.route("/api/public-data")
 def api_public_data():
     items_resp = table_items.scan()
-    all_items = [dynamo_to_dict(i) for i in items_resp.get("Items", [])]
+    all_items = [dynamo_to_dict(i) for i in items_resp.get("Items", []) if not i.get("id", "").startswith("__")]
 
     projects = [i for i in all_items if i.get("section") == "project"]
     experiences = [i for i in all_items if i.get("section") == "experience"]
@@ -307,7 +308,7 @@ def api_admin_items():
     if request.method == "GET":
         section = request.args.get("section", "").strip().lower()
         response = table_items.scan()
-        all_items = [dynamo_to_dict(i) for i in response.get("Items", [])]
+        all_items = [dynamo_to_dict(i) for i in response.get("Items", []) if not i.get("id", "").startswith("__")]
 
         if section in {"project", "experience"}:
             all_items = [i for i in all_items if i.get("section") == section]
@@ -597,6 +598,65 @@ Message:
         flash("Message could not be sent right now. Please try again later or email directly.", "error")
 
     return redirect(url_for("index"))
+
+
+# ─── Resume Key (gated print) ───────────────────────────────────────────────
+
+SETTINGS_ID = "__settings"
+
+
+def _get_or_create_resume_key():
+    """Return the current resume key, creating one if it doesn't exist."""
+    resp = table_items.get_item(Key={"id": SETTINGS_ID})
+    item = resp.get("Item")
+    if item and item.get("resume_key"):
+        return item["resume_key"]
+    new_key = secrets.token_urlsafe(32)
+    table_items.put_item(Item={
+        "id": SETTINGS_ID,
+        "resume_key": new_key,
+        "created_at": now_iso(),
+        "updated_at": now_iso(),
+    })
+    return new_key
+
+
+@app.route("/api/resume-key/verify", methods=["POST"])
+def resume_key_verify():
+    payload = request.get_json(silent=True) or {}
+    submitted = (payload.get("key") or "").strip()
+    if not submitted:
+        return jsonify({"error": "Key is required."}), 400
+    actual = _get_or_create_resume_key()
+    if hmac.compare_digest(submitted, actual):
+        return jsonify({"ok": True})
+    return jsonify({"error": "Invalid key."}), 403
+
+
+@app.route("/api/admin/resume-key", methods=["GET"])
+def admin_resume_key_get():
+    unauthorized = unauthorized_admin_response()
+    if unauthorized:
+        return unauthorized
+    key = _get_or_create_resume_key()
+    return jsonify({"resume_key": key})
+
+
+@app.route("/api/admin/resume-key/rotate", methods=["POST"])
+def admin_resume_key_rotate():
+    unauthorized = unauthorized_admin_response()
+    if unauthorized:
+        return unauthorized
+    new_key = secrets.token_urlsafe(32)
+    resp = table_items.get_item(Key={"id": SETTINGS_ID})
+    existing = resp.get("Item") or {}
+    table_items.put_item(Item={
+        "id": SETTINGS_ID,
+        "resume_key": new_key,
+        "created_at": existing.get("created_at", now_iso()),
+        "updated_at": now_iso(),
+    })
+    return jsonify({"resume_key": new_key, "message": "Key rotated."})
 
 
 if __name__ == "__main__":
