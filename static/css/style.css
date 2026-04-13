@@ -1204,6 +1204,129 @@ html { -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent;
   .credential-link, .skip-link, .stats-counters { display: none !important; }
 }
 
+/* ===== Search Result Highlighting ===== */
+.search-highlight {
+  background: rgba(245,158,11,0.25);
+  color: #fbbf24;
+  border-radius: 2px;
+  padding: 0 2px;
+}
+.light-theme .search-highlight { background: rgba(245,158,11,0.2); color: #92400e; }
+
+/* ===== Card Date Display ===== */
+.card-date {
+  display: block;
+  font-size: 0.7rem;
+  color: #64748b;
+  margin-top: 4px;
+  font-weight: 500;
+}
+.light-theme .card-date { color: var(--text-muted); }
+
+/* ===== Reading Time in Modal ===== */
+.modal-read-time {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.modal-read-time::before {
+  content: "\231B";
+  font-size: 0.85rem;
+}
+.light-theme .modal-read-time { color: var(--text-muted); }
+
+/* ===== Collapsible Modal Sections ===== */
+.collapsible-row[data-expanded="false"] {
+  max-height: 120px;
+  overflow: hidden;
+  position: relative;
+}
+.collapsible-row[data-expanded="false"]::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 40px;
+  background: linear-gradient(transparent, rgba(26,26,46,0.95));
+  pointer-events: none;
+}
+.collapsible-row[data-expanded="true"] {
+  max-height: none;
+}
+.collapse-toggle {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 3px 12px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #f59e0b;
+  background: transparent;
+  border: 1px solid rgba(245,158,11,0.3);
+  border-radius: 6px;
+  cursor: pointer;
+  position: relative;
+  z-index: 2;
+  transition: all 0.2s ease;
+}
+.collapse-toggle:hover { background: rgba(245,158,11,0.1); border-color: #f59e0b; }
+.light-theme .collapsible-row[data-expanded="false"]::after {
+  background: linear-gradient(transparent, rgba(255,255,255,0.97));
+}
+
+/* ===== Keyboard Shortcuts Overlay ===== */
+.shortcuts-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(6px);
+  animation: lbIn 0.2s ease-out;
+}
+.shortcuts-card {
+  position: relative;
+  width: min(90vw, 480px);
+  background: rgba(26,26,46,0.97);
+  border: 1.5px solid rgba(255,255,255,0.08);
+  border-radius: 20px;
+  padding: 32px;
+  box-shadow: 0 25px 60px rgba(0,0,0,0.5);
+}
+.shortcuts-grid {
+  display: grid;
+  gap: 12px;
+}
+.shortcut-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.85rem;
+  color: #e2e8f0;
+}
+.shortcut-item kbd {
+  display: inline-block;
+  min-width: 28px;
+  padding: 4px 8px;
+  text-align: center;
+  background: rgba(245,158,11,0.1);
+  border: 1px solid rgba(245,158,11,0.3);
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #f59e0b;
+  font-family: 'Space Grotesk', system-ui, monospace;
+}
+.shortcut-item span { flex: 1; }
+.light-theme .shortcuts-card { background: rgba(255,255,255,0.97); border-color: var(--border-color); }
+.light-theme .shortcut-item { color: var(--text-primary); }
+.light-theme .shortcuts-overlay { background: rgba(0,0,0,0.4); }
+
 /* Print-friendly resume */
 @media print {
   body { background: #fff !important; color: #222 !important; }
@@ -1240,4 +1363,8 @@ html { -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent;
   .counter-card { padding: 16px 12px !important; border-radius: 12px !important; }
   .share-btn { width: 32px; height: 32px; font-size: 0.95rem; }
   .carousel-prev, .carousel-next { width: 30px; height: 30px; font-size: 1rem; }
+  .shortcuts-card { padding: 20px; width: min(94vw, 480px); }
+  .shortcuts-card h3 { font-size: 1rem !important; }
+  .shortcut-item { font-size: 0.78rem; gap: 8px; }
+  .shortcut-item kbd { min-width: 24px; font-size: 0.68rem; padding: 3px 6px; }
 }

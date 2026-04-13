@@ -125,10 +125,19 @@ function uniqueSubsections(items) {
   return result.concat(subs);
 }
 
-function buildCard(item) {
+function highlightText(text, query) {
+  if (!query || !text) return text;
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return text.replace(new RegExp(`(${escaped})`, "gi"), '<mark class="search-highlight">$1</mark>');
+}
+
+function buildCard(item, highlightQuery = "") {
   const card = document.createElement("article");
   card.className = "card";
   card.tabIndex = 0;
+
+  // Tooltip preview
+  if (item.summary) card.title = item.summary;
 
   const imagePath = item.image_path || "../static/images/Projects/WebDev_PortfolioV1.png";
   const img = document.createElement("img");
@@ -140,7 +149,11 @@ function buildCard(item) {
   content.className = "card-content";
 
   const title = document.createElement("h4");
-  title.textContent = item.title;
+  if (highlightQuery) {
+    title.innerHTML = highlightText(item.title, highlightQuery);
+  } else {
+    title.textContent = item.title;
+  }
 
   const tag = document.createElement("span");
   tag.className = "tag";
@@ -148,6 +161,15 @@ function buildCard(item) {
 
   content.appendChild(title);
   content.appendChild(tag);
+
+  // Date display
+  if (item.date_value) {
+    const dateEl = document.createElement("span");
+    dateEl.className = "card-date";
+    const d = new Date(item.date_value);
+    dateEl.textContent = d.toLocaleDateString("en-SG", { month: "short", year: "numeric" });
+    content.appendChild(dateEl);
+  }
 
   // Status badge
   if (item.status) {
@@ -357,8 +379,16 @@ function renderSection(items, categoryId, sortId, targetGridId, subsectionFilter
   const limit = shownCounts[targetGridId] || PAGE_SIZE;
   const visible = filtered.slice(0, limit);
 
+  // Pin favorites to top
+  const favIds = new Set(getFavorites());
+  if (favIds.size > 0) {
+    const pinned = filtered.filter((i) => favIds.has(i.id));
+    const rest = filtered.filter((i) => !favIds.has(i.id));
+    filtered = [...pinned, ...rest];
+  }
+
   visible.forEach((item) => {
-    target.appendChild(buildCard(item));
+    target.appendChild(buildCard(item, searchQuery));
   });
 
   // Observe cards for entrance animation
@@ -409,6 +439,16 @@ function openModal(item) {
     rowToHTML("Notes", item.extra_notes),
   ].join("");
 
+  // Reading time & word count
+  const readTimeEl = document.getElementById("modal-read-time");
+  if (readTimeEl) {
+    const allText = [item.summary, item.description, item.deliverables, item.challenges, item.future_improvements, item.extra_notes].filter(Boolean).join(" ");
+    const wordCount = allText.split(/\s+/).filter(Boolean).length;
+    const minutes = Math.max(1, Math.ceil(wordCount / 200));
+    readTimeEl.textContent = `${wordCount} words · ${minutes} min read`;
+    readTimeEl.style.display = wordCount > 0 ? "" : "none";
+  }
+
   // Apply markdown rendering to modal rows
   body.querySelectorAll(".modal-row").forEach((row) => {
     const strong = row.querySelector("strong");
@@ -416,6 +456,25 @@ function openModal(item) {
     const label = strong.outerHTML;
     const text = row.innerHTML.replace(label, "").trim();
     row.innerHTML = label + " " + renderMarkdown(text);
+  });
+
+  // Collapsible long sections
+  body.querySelectorAll(".modal-row").forEach((row) => {
+    if (row.textContent.length > 300) {
+      row.classList.add("collapsible-row");
+      row.dataset.expanded = "false";
+      const toggle = document.createElement("button");
+      toggle.type = "button";
+      toggle.className = "collapse-toggle";
+      toggle.textContent = "Show more";
+      toggle.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const expanded = row.dataset.expanded === "true";
+        row.dataset.expanded = String(!expanded);
+        toggle.textContent = expanded ? "Show more" : "Show less";
+      });
+      row.appendChild(toggle);
+    }
   });
 
   // Skill tags in modal
@@ -812,6 +871,25 @@ function initInlineAdminEditor() {
     });
   }
 
+  // Clone button
+  const cloneBtn = document.getElementById("modal-clone-btn");
+  if (cloneBtn) {
+    cloneBtn.addEventListener("click", () => {
+      if (!state.isAdmin || !state.modalItem) return;
+      const item = { ...state.modalItem };
+      const section = item.section || "project";
+      item.title = item.title + " (Copy)";
+      closeDetailModal();
+      openAdminItemModal(item, section);
+      document.getElementById("admin-item-id").value = "";
+      const titleEl = document.getElementById("admin-item-title");
+      if (titleEl) titleEl.textContent = "Clone Item";
+      const submitEl = document.getElementById("admin-item-submit");
+      if (submitEl) submitEl.textContent = "Create Clone";
+      showToast("Fields pre-filled from original. Edit and save.", "info");
+    });
+  }
+
   document.querySelectorAll("[data-close-admin-item]").forEach((element) => {
     element.addEventListener("click", closeAdminItemModal);
   });
@@ -830,6 +908,23 @@ function initInlineAdminEditor() {
     }
 
     const formData = new FormData(adminItemForm);
+
+    // Duplicate title warning for new items
+    if (!itemId) {
+      const newTitle = (formData.get("title") || "").trim().toLowerCase();
+      if (newTitle) {
+        const allItems = [...state.projects, ...state.experiences];
+        const duplicate = allItems.find((i) => i.title.toLowerCase() === newTitle);
+        if (duplicate) {
+          const proceed = await showConfirm("Duplicate Title", `An item titled "${duplicate.title}" already exists. Create anyway?`);
+          if (!proceed) {
+            adminItemFeedback.textContent = "";
+            return;
+          }
+        }
+      }
+    }
+
     adminItemFeedback.textContent = "Saving...";
 
     try {
@@ -986,6 +1081,8 @@ async function bootstrap() {
   initAdminStats();
   initAdminBackup();
   initFocusTrap();
+  initKeyboardShortcuts();
+  initJSONImport();
   setAdminMode(false);
 
   // Show skeletons while data loads
@@ -1004,13 +1101,19 @@ async function bootstrap() {
   initHitCounter();
   initAnimatedCounters();
   registerServiceWorker();
+
+  // Smooth page load transition
+  document.body.style.transition = "opacity 0.4s ease";
+  document.body.style.opacity = "1";
 }
 
 /* ===== Escape key closes topmost modal ===== */
 function initEscapeKey() {
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
-    // Close in order: lightbox, confirm overlay, admin item modal, detail modal, admin login modal
+    // Close in order: shortcuts overlay, lightbox, confirm overlay, admin item modal, detail modal, admin login modal
+    const shortcuts = document.getElementById("shortcuts-overlay");
+    if (shortcuts) { shortcuts.remove(); return; }
     const lightbox = document.querySelector(".lightbox-overlay");
     if (lightbox) { lightbox.remove(); return; }
     const confirm = document.querySelector(".confirm-overlay");
@@ -1203,7 +1306,9 @@ const cardObserver = new IntersectionObserver(
 );
 
 function observeCards(container) {
-  container.querySelectorAll(".card:not(.card-visible)").forEach((card) => {
+  const cards = container.querySelectorAll(".card:not(.card-visible)");
+  cards.forEach((card, i) => {
+    card.style.transitionDelay = `${i * 50}ms`;
     cardObserver.observe(card);
   });
 }
@@ -1529,9 +1634,11 @@ function initTabTransitions() {
       const panel = document.getElementById(btn.dataset.tab);
       if (panel) {
         panel.style.opacity = "0";
+        panel.style.transform = "translateY(8px)";
         requestAnimationFrame(() => {
-          panel.style.transition = "opacity 0.3s ease";
+          panel.style.transition = "opacity 0.3s ease, transform 0.3s ease";
           panel.style.opacity = "1";
+          panel.style.transform = "translateY(0)";
         });
       }
     });
@@ -1767,6 +1874,8 @@ function renderMarkdown(text) {
   s = s.replace(/`(.+?)`/g, '<code class="md-code">$1</code>');
   // Links: [text](url) — only allow http/https
   s = s.replace(/\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="md-link">$1</a>');
+  // Auto-linkify bare URLs not already inside href or tag content
+  s = s.replace(/(^|[^">=\/])(https?:\/\/[^\s<"')\]]+)/g, '$1<a href="$2" target="_blank" rel="noopener noreferrer" class="md-link">$2</a>');
   // Line breaks
   s = s.replace(/\n/g, "<br>");
   return s;
@@ -2046,7 +2155,14 @@ function setupCarousel(item) {
 function navigateCarousel(dir) {
   carouselIndex = (carouselIndex + dir + carouselImages.length) % carouselImages.length;
   const img = document.getElementById("modal-image");
-  if (img) img.src = carouselImages[carouselIndex];
+  if (img) {
+    img.style.opacity = "0";
+    img.style.transition = "opacity 0.25s ease";
+    setTimeout(() => {
+      img.src = carouselImages[carouselIndex];
+      img.style.opacity = "1";
+    }, 250);
+  }
   renderCarouselDots();
 }
 
@@ -2066,8 +2182,18 @@ function initImageCarousel() {
   document.getElementById("carousel-dots")?.addEventListener("click", (e) => {
     const dot = e.target.closest(".carousel-dot");
     if (!dot) return;
-    carouselIndex = parseInt(dot.dataset.idx, 10);
-    document.getElementById("modal-image").src = carouselImages[carouselIndex];
+    const newIdx = parseInt(dot.dataset.idx, 10);
+    if (newIdx === carouselIndex) return;
+    carouselIndex = newIdx;
+    const img = document.getElementById("modal-image");
+    if (img) {
+      img.style.opacity = "0";
+      img.style.transition = "opacity 0.25s ease";
+      setTimeout(() => {
+        img.src = carouselImages[carouselIndex];
+        img.style.opacity = "1";
+      }, 250);
+    }
     renderCarouselDots();
   });
 }
@@ -2270,6 +2396,110 @@ function initFocusTrap() {
 function announce(message) {
   const el = document.getElementById("aria-live");
   if (el) { el.textContent = ""; requestAnimationFrame(() => { el.textContent = message; }); }
+}
+
+/* ===== Keyboard Shortcuts Overlay ===== */
+function initKeyboardShortcuts() {
+  document.addEventListener("keydown", (e) => {
+    const tag = e.target.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+    if (document.querySelector(".confirm-overlay") || document.querySelector(".lightbox-overlay")) return;
+    // Don't intercept if any modal is active (except for ? and Esc)
+    const modalActive = document.querySelector(".modal-shell.active");
+
+    switch (e.key) {
+      case "?":
+        e.preventDefault();
+        toggleShortcutsOverlay();
+        break;
+      case "1": case "2": case "3": case "4": case "5": {
+        if (modalActive) return;
+        const tabNames = ["about", "projects", "experiences", "resume", "contact"];
+        const idx = parseInt(e.key) - 1;
+        if (tabNames[idx]) { switchTab(tabNames[idx]); e.preventDefault(); }
+        break;
+      }
+      case "t":
+      case "T":
+        if (!e.ctrlKey && !e.metaKey && !modalActive) {
+          document.getElementById("theme-toggle")?.click();
+          e.preventDefault();
+        }
+        break;
+      case "/":
+        if (modalActive) return;
+        e.preventDefault();
+        const activePanel = document.querySelector(".tab-panel.active");
+        const searchInput = activePanel?.querySelector("input[type=\"text\"]");
+        if (searchInput) searchInput.focus();
+        break;
+    }
+  });
+}
+
+function toggleShortcutsOverlay() {
+  let overlay = document.getElementById("shortcuts-overlay");
+  if (overlay) { overlay.remove(); return; }
+
+  overlay = document.createElement("div");
+  overlay.id = "shortcuts-overlay";
+  overlay.className = "shortcuts-overlay";
+  overlay.innerHTML = `
+    <div class="shortcuts-card">
+      <button class="modal-close" id="shortcuts-close" aria-label="Close shortcuts"><ion-icon name="close-outline"></ion-icon></button>
+      <h3 class="text-xl font-bold text-white mb-4"><ion-icon name="keypad-outline" class="align-middle mr-2 text-accent"></ion-icon>Keyboard Shortcuts</h3>
+      <div class="shortcuts-grid">
+        <div class="shortcut-item"><kbd>?</kbd><span>Toggle this guide</span></div>
+        <div class="shortcut-item"><kbd>\u2190</kbd> <kbd>\u2192</kbd><span>Navigate cards</span></div>
+        <div class="shortcut-item"><kbd>Enter</kbd><span>Open focused card</span></div>
+        <div class="shortcut-item"><kbd>Esc</kbd><span>Close modal / overlay</span></div>
+        <div class="shortcut-item"><kbd>T</kbd><span>Toggle dark / light theme</span></div>
+        <div class="shortcut-item"><kbd>1</kbd>\u2013<kbd>5</kbd><span>Switch tabs</span></div>
+        <div class="shortcut-item"><kbd>/</kbd><span>Focus search field</span></div>
+        <div class="shortcut-item"><kbd>Dbl-click</kbd><span>Edit card (admin)</span></div>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector("#shortcuts-close").addEventListener("click", () => overlay.remove());
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+}
+
+/* ===== Admin JSON Import ===== */
+function initJSONImport() {
+  const btn = document.getElementById("admin-import-btn");
+  if (!btn) return;
+  btn.addEventListener("click", () => {
+    if (!state.isAdmin) return;
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json";
+    input.addEventListener("change", async () => {
+      const file = input.files[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        const res = await fetch("/api/admin/import", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+        const result = await res.json();
+        if (res.ok) {
+          showToast(result.message, "success");
+          logActivity("Import", result.message);
+          await fetchData();
+          wireProjectControls();
+          updateTabBadges();
+        } else {
+          showToast(result.error || "Import failed.", "error");
+        }
+      } catch (err) {
+        showToast("Invalid JSON file.", "error");
+      }
+    });
+    input.click();
+  });
 }
 
 bootstrap();

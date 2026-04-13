@@ -2,6 +2,28 @@
 
 All notable changes to the CtrlAltJay portfolio are documented here.
 
+## QOL Batch 6 — UX Polish & Admin Productivity
+
+### Added
+- **Admin clone item** — Duplicate button (copy icon) in detail modal pre-fills the admin form for quick item cloning.
+- **Keyboard shortcuts overlay** — Press `?` to view all shortcuts. Quick keys: `1`–`5` switch tabs, `T` toggles theme, `/` focuses search.
+- **Staggered card entrance** — Cards cascade in with 50ms delay between each for a smoother visual reveal.
+- **Search result highlighting** — Matching text in card titles is highlighted with amber `<mark>` tags during search.
+- **Card date display** — Cards now show the date (month + year) when `date_value` is set.
+- **Reading time & word count** — Detail modal shows estimated reading time and word count below the tag.
+- **Smooth page load transition** — Body fades in on initial load for a polished first impression.
+- **Auto-linkify bare URLs** — Plain `https://` URLs in modal text fields are automatically converted to clickable links.
+- **Card summary tooltip** — Hovering over a card shows the summary text as a native browser tooltip.
+- **Collapsible long modal sections** — Modal rows with 300+ characters get a "Show more/Show less" toggle to reduce scroll.
+- **Pin favorites to top** — Favorited items are pinned to the top of their grid, preserving sort order within groups.
+- **Admin JSON import** — New backend endpoint (`/api/admin/import`) and sidebar button to bulk-import items from exported JSON files.
+- **Admin duplicate title warning** — Creating a new item with an existing title triggers a confirmation prompt.
+- **Image crossfade in carousel** — Carousel image transitions now use a 250ms opacity fade instead of instant swap.
+- **Enhanced tab transitions** — Tab content switches with a combined fade + slide-up animation.
+
+### Changed
+- Service worker cache version bumped to `v2`.
+
 ## QOL Batch 5 — Infrastructure & Polish
 
 ### Added

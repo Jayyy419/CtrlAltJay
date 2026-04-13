@@ -851,6 +851,57 @@ def admin_backup():
         return jsonify({"error": str(e)}), 500
 
 
+# ─── Admin JSON Import ──────────────────────────────────────────────────────
+
+ALLOWED_IMPORT_FIELDS = set(PORTFOLIO_ITEM_FIELDS)
+
+
+@app.route("/api/admin/import", methods=["POST"])
+def admin_import():
+    unauthorized = unauthorized_admin_response()
+    if unauthorized:
+        return unauthorized
+    try:
+        payload = request.get_json(silent=True)
+        if not payload:
+            return jsonify({"error": "No JSON data provided."}), 400
+
+        # Accept flat list, or { projects: [], experiences: [] } shape
+        if isinstance(payload, list):
+            items = payload
+        else:
+            items = []
+            if isinstance(payload.get("projects"), list):
+                items.extend(payload["projects"])
+            if isinstance(payload.get("experiences"), list):
+                items.extend(payload["experiences"])
+
+        created = 0
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            title = (item.get("title") or "").strip()
+            section = (item.get("section") or "").strip().lower()
+            if not title or section not in {"project", "experience"}:
+                continue
+
+            clean = {}
+            for k, v in item.items():
+                if k in ALLOWED_IMPORT_FIELDS and isinstance(v, str):
+                    clean[k] = v.strip()
+            clean["title"] = title
+            clean["section"] = section
+            clean["id"] = str(uuid.uuid4())
+            clean["created_at"] = now_iso()
+            clean["updated_at"] = now_iso()
+            table_items.put_item(Item=clean)
+            created += 1
+
+        return jsonify({"message": f"Imported {created} item(s)."})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 # ─── PWA: Service Worker & Manifest ─────────────────────────────────────────
 
 @app.route("/sw.js")
