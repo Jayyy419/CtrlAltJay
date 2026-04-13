@@ -29,23 +29,39 @@ function showToast(message, type = "info") {
 }
 
 /* ===== Confirm dialog ===== */
-function showConfirm(title, message) {
+function showConfirm(title, message, options = {}) {
   return new Promise((resolve) => {
     const overlay = document.createElement("div");
     overlay.className = "confirm-overlay";
+    const requireText = options.requireText || "";
+    const confirmLabel = options.confirmLabel || "Delete";
+    const inputHtml = requireText
+      ? `<p class="confirm-hint">Type <strong>${requireText}</strong> to confirm</p>
+         <input type="text" class="confirm-input" placeholder="Type here..." autocomplete="off" spellcheck="false">`
+      : "";
     overlay.innerHTML = `
       <div class="confirm-box">
         <h4>${title}</h4>
         <p>${message}</p>
+        ${inputHtml}
         <div class="confirm-actions">
           <button class="confirm-cancel" data-confirm="cancel">Cancel</button>
-          <button class="confirm-danger" data-confirm="ok">Delete</button>
+          <button class="confirm-danger" data-confirm="ok" ${requireText ? "disabled" : ""}>${confirmLabel}</button>
         </div>
       </div>`;
     document.body.appendChild(overlay);
+    const okBtn = overlay.querySelector('[data-confirm="ok"]');
+    if (requireText) {
+      const input = overlay.querySelector(".confirm-input");
+      input.addEventListener("input", () => {
+        okBtn.disabled = input.value.trim().toLowerCase() !== requireText.toLowerCase();
+      });
+      input.focus();
+    }
     overlay.addEventListener("click", (e) => {
       const btn = e.target.closest("[data-confirm]");
       if (!btn) return;
+      if (btn.disabled) return;
       overlay.remove();
       resolve(btn.dataset.confirm === "ok");
     });
@@ -723,7 +739,10 @@ function setAdminMode(enabled) {
   const logoutBtn = document.getElementById("admin-logout-btn");
   if (loginBtn) loginBtn.hidden = state.isAdmin;
   if (logoutBtn) logoutBtn.hidden = !state.isAdmin;
-  if (state.isAdmin) loadResumeKey();
+  if (state.isAdmin) {
+    loadResumeKey();
+    renderDeletedItems();
+  }
   updateDraftIndicator();
 }
 
@@ -933,7 +952,7 @@ function initInlineAdminEditor() {
     deleteBtn.addEventListener("click", async () => {
       if (!state.isAdmin || !state.modalItem) return;
       const item = state.modalItem;
-      const confirmed = await showConfirm("Delete Item", `Are you sure you want to delete "${item.title}"? This cannot be undone.`);
+      const confirmed = await showConfirm("Delete Item", `This will move "${item.title}" to Recently Deleted.`, { requireText: item.title, confirmLabel: "Delete" });
       if (!confirmed) return;
       try {
         const res = await fetch(`/api/admin/items/${item.id}`, { method: "DELETE" });
@@ -942,7 +961,8 @@ function initInlineAdminEditor() {
         await fetchData();
         wireProjectControls();
         logActivity("Delete", item.title);
-        showToast("Item deleted.", "success");
+        showToast("Item moved to Recently Deleted.", "success");
+        renderDeletedItems();
       } catch (err) {
         showToast("Failed to delete item.", "error");
       }
@@ -1190,6 +1210,7 @@ async function bootstrap() {
   initJSONImport();
   initSurpriseMe();
   initMobileSwipe();
+  initDeletedItems();
   setAdminMode(false);
 
   // Show skeletons while data loads
@@ -1244,21 +1265,44 @@ function initContactForm() {
   const form = document.getElementById("contact-form");
   if (!form) return;
 
+  // Character counter for message textarea
+  const msgField = form.querySelector('textarea[name="message"]');
+  if (msgField) {
+    const counter = document.createElement("div");
+    counter.className = "char-counter";
+    counter.textContent = "0 / 5,000";
+    msgField.parentElement.style.position = "relative";
+    msgField.insertAdjacentElement("afterend", counter);
+    msgField.addEventListener("input", () => {
+      const len = msgField.value.length;
+      counter.textContent = `${len.toLocaleString()} / 5,000`;
+      counter.classList.toggle("near-limit", len > 4500);
+      counter.classList.toggle("at-limit", len >= 5000);
+    });
+  }
+
   // Real-time validation feedback
-  const inputs = form.querySelectorAll("input, textarea");
+  const inputs = form.querySelectorAll("input, textarea, select");
   inputs.forEach((input) => {
     input.addEventListener("blur", () => validateField(input));
     input.addEventListener("input", () => {
-      // Remove error state while typing
       input.classList.remove("invalid");
     });
   });
 
-  // AJAX form submission
+  // AJAX form submission with cooldown
+  let lastSentAt = 0;
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     if (!isFormValid(form)) {
       scrollToFirstError(form);
+      return;
+    }
+    // 60s cooldown
+    const elapsed = Date.now() - lastSentAt;
+    if (lastSentAt && elapsed < 60000) {
+      const wait = Math.ceil((60000 - elapsed) / 1000);
+      showToast(`Please wait ${wait}s before sending again.`, "info");
       return;
     }
     const submitBtn = form.querySelector('button[type="submit"]');
@@ -1273,8 +1317,13 @@ function initContactForm() {
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
+        lastSentAt = Date.now();
         showToast(data.message || "Message sent!", "success");
         form.reset();
+        if (msgField) {
+          const counter = form.querySelector(".char-counter");
+          if (counter) counter.textContent = "0 / 5,000";
+        }
       } else {
         showToast(data.error || "Could not send message.", "error");
       }
@@ -1547,7 +1596,8 @@ function updateBulkBar() {
 
 async function bulkDelete() {
   if (bulkSelected.size === 0) return;
-  const confirmed = await showConfirm("Bulk Delete", `Delete ${bulkSelected.size} item(s)? This cannot be undone.`);
+  const count = bulkSelected.size;
+  const confirmed = await showConfirm("Bulk Delete", `This will move ${count} item(s) to Recently Deleted.`, { requireText: `DELETE ${count}`, confirmLabel: "Delete All" });
   if (!confirmed) return;
   let ok = 0, fail = 0;
   for (const id of bulkSelected) {
@@ -1560,7 +1610,8 @@ async function bulkDelete() {
   updateBulkBar();
   await fetchData();
   wireProjectControls();
-  showToast(`Deleted ${ok} item(s)${fail ? `, ${fail} failed` : ""}.`, fail ? "error" : "success");
+  renderDeletedItems();
+  showToast(`Moved ${ok} item(s) to Recently Deleted${fail ? `, ${fail} failed` : ""}.`, fail ? "error" : "success");
 }
 
 function bulkCancel() {
@@ -1588,6 +1639,84 @@ function addBulkCheckboxes(container) {
       updateBulkBar();
     });
     card.appendChild(cb);
+  });
+}
+
+/* ===== Recently Deleted panel (admin) ===== */
+async function fetchDeletedItems() {
+  try {
+    const res = await fetch("/api/admin/deleted-items");
+    if (!res.ok) return [];
+    return await res.json();
+  } catch { return []; }
+}
+
+async function renderDeletedItems() {
+  const panel = document.getElementById("deleted-items-panel");
+  const list = document.getElementById("deleted-items-list");
+  const badge = document.getElementById("deleted-count-badge");
+  if (!panel || !list) return;
+  if (!state.isAdmin) { panel.style.display = "none"; return; }
+  const items = await fetchDeletedItems();
+  badge.textContent = items.length;
+  badge.style.display = items.length > 0 ? "" : "none";
+  if (items.length === 0) {
+    list.innerHTML = '<p class="text-xs text-ink-muted" style="text-align:center;padding:12px 0">No deleted items</p>';
+    return;
+  }
+  list.innerHTML = items.map((item) => {
+    const deletedDate = item.deleted_at ? new Date(item.deleted_at).toLocaleDateString() : "";
+    return `<div class="deleted-item" data-id="${item.id}">
+      <div class="deleted-item-info">
+        <span class="deleted-item-title">${item.title}</span>
+        <span class="deleted-item-meta">${item.section || ""} · ${item.category || ""} · Deleted ${deletedDate}</span>
+      </div>
+      <div class="deleted-item-actions">
+        <button class="deleted-restore-btn" data-id="${item.id}" title="Restore"><ion-icon name="arrow-undo-outline"></ion-icon></button>
+        <button class="deleted-perm-btn" data-id="${item.id}" data-title="${item.title.replace(/"/g, '&quot;')}" title="Permanently delete"><ion-icon name="trash-outline"></ion-icon></button>
+      </div>
+    </div>`;
+  }).join("");
+  // Wire restore buttons
+  list.querySelectorAll(".deleted-restore-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = btn.dataset.id;
+      try {
+        const res = await fetch(`/api/admin/items/${id}/restore`, { method: "POST" });
+        if (!res.ok) throw new Error();
+        showToast("Item restored.", "success");
+        await fetchData();
+        wireProjectControls();
+        renderDeletedItems();
+        logActivity("Restore", "Restored deleted item");
+      } catch { showToast("Failed to restore item.", "error"); }
+    });
+  });
+  // Wire permanent delete buttons
+  list.querySelectorAll(".deleted-perm-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = btn.dataset.id;
+      const title = btn.dataset.title;
+      const confirmed = await showConfirm("Permanent Delete", `This will permanently erase "${title}" from the database. This CANNOT be undone.`, { requireText: title, confirmLabel: "Erase Forever" });
+      if (!confirmed) return;
+      try {
+        const res = await fetch(`/api/admin/items/${id}/permanent`, { method: "DELETE" });
+        if (!res.ok) throw new Error();
+        showToast("Item permanently deleted.", "success");
+        renderDeletedItems();
+        logActivity("Permanent Delete", title);
+      } catch { showToast("Failed to permanently delete item.", "error"); }
+    });
+  });
+}
+
+function initDeletedItems() {
+  const toggle = document.getElementById("deleted-items-toggle");
+  const panel = document.getElementById("deleted-items-panel");
+  if (!toggle || !panel) return;
+  toggle.addEventListener("click", () => {
+    panel.style.display = panel.style.display === "none" ? "" : "none";
+    renderDeletedItems();
   });
 }
 
