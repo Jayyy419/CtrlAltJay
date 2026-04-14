@@ -58,9 +58,34 @@ const itemForm = document.getElementById("item-form");
 const itemList = document.getElementById("item-list");
 const itemFilterSection = document.getElementById("item-filter-section");
 
+const clearPhotoFormBtn = document.getElementById("item-clear-photo");
+const imagePathInput = document.getElementById("item-image-path");
+
+function updateClearPhotoVisibility() {
+  clearPhotoFormBtn.style.display = imagePathInput.value.trim() ? "inline-block" : "none";
+}
+
+imagePathInput.addEventListener("input", updateClearPhotoVisibility);
+
+clearPhotoFormBtn.addEventListener("click", async () => {
+  const itemId = document.getElementById("item-id").value;
+  if (!confirm("Clear the photo for this item? This cannot be undone.")) return;
+
+  if (itemId) {
+    await fetch(`/api/admin/items/${itemId}/clear-image`, { method: "PATCH" });
+    notify("Photo cleared");
+    await loadItems();
+  }
+
+  imagePathInput.value = "";
+  document.getElementById("item-image-file").value = "";
+  updateClearPhotoVisibility();
+});
+
 function resetItemForm() {
   itemForm.reset();
   document.getElementById("item-id").value = "";
+  updateClearPhotoVisibility();
 }
 
 document.getElementById("item-reset").addEventListener("click", resetItemForm);
@@ -102,6 +127,7 @@ async function loadItems() {
       document.getElementById("item-future").value = item.future_improvements || "";
       document.getElementById("item-notes").value = item.extra_notes || "";
       document.getElementById("item-image-path").value = item.image_path || "";
+      updateClearPhotoVisibility();
       window.scrollTo({ top: 0, behavior: "smooth" });
     });
 
