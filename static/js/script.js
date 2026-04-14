@@ -1451,7 +1451,7 @@ function initAdminAuth() {
           closeAdminLoginModal();
           setAdminMode(true);
           wireProjectControls();
-          showToast("Admin mode active.", "success");
+          showToast("Admin mode active", "success");
         } else {
           feedback.style.color = "#f87171";
           feedback.textContent = data.error || "Authentication failed.";
@@ -2019,11 +2019,20 @@ function trackRecentlyViewed(itemId) {
 }
 
 function renderRecentlyViewed() {
-  const container = document.getElementById("recently-viewed");
-  if (!container) return;
   const recentIds = JSON.parse(localStorage.getItem(RECENT_KEY) || "[]");
   const allItems = [...state.projects, ...state.experiences];
   const items = recentIds.map((id) => allItems.find((it) => it.id === id)).filter(Boolean);
+
+  const projectItems = items.filter((it) => it.section === "project");
+  const experienceItems = items.filter((it) => it.section === "experience");
+
+  renderRecentStrip("recently-viewed-projects", projectItems);
+  renderRecentStrip("recently-viewed-experiences", experienceItems);
+}
+
+function renderRecentStrip(containerId, items) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
 
   if (items.length === 0) {
     container.style.display = "none";

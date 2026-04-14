@@ -766,11 +766,37 @@ html { -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent;
   position: absolute;
   top: 10px;
   left: 10px;
-  width: 22px;
-  height: 22px;
-  accent-color: #f59e0b;
+  width: 20px;
+  height: 20px;
   cursor: pointer;
   z-index: 5;
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(26,26,46,0.85);
+  border: 2px solid rgba(255,255,255,0.15);
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(4px);
+}
+.card-checkbox:hover {
+  border-color: rgba(245,158,11,0.6);
+  background: rgba(245,158,11,0.1);
+}
+.card-checkbox:checked {
+  background: #f59e0b;
+  border-color: #f59e0b;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16' fill='%230a0a18' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3E%3C/svg%3E");
+  background-size: 14px;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.light-theme .card-checkbox {
+  background: rgba(255,255,255,0.9);
+  border-color: rgba(0,0,0,0.2);
+}
+.light-theme .card-checkbox:checked {
+  background: #d97706;
+  border-color: #d97706;
 }
 .card { position: relative; }
 
