@@ -118,6 +118,20 @@ async function loadItems() {
     });
 
     actions.appendChild(editBtn);
+    if (item.image_path) {
+      const clearPhotoBtn = document.createElement("button");
+      clearPhotoBtn.className = "clear-photo";
+      clearPhotoBtn.textContent = "Clear Photo";
+      clearPhotoBtn.addEventListener("click", async () => {
+        if (!confirm(`Clear the photo for "${item.title}"? This cannot be undone.`)) {
+          return;
+        }
+        await fetch(`/api/admin/items/${item.id}/clear-image`, { method: "PATCH" });
+        notify("Photo cleared");
+        await loadItems();
+      });
+      actions.appendChild(clearPhotoBtn);
+    }
     actions.appendChild(deleteBtn);
     row.appendChild(main);
     row.appendChild(actions);
