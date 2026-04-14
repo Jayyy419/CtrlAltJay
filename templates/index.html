@@ -112,55 +112,75 @@
 
       <button type="button" id="admin-logout-btn" class="admin-link admin-logout w-full text-center mt-4 bg-red-500/10 text-red-400 font-semibold rounded-xl px-4 py-3 text-sm border border-red-500/30 transition-all duration-300 hover:bg-red-500/20 hover:border-red-500/60 hover:text-red-300 cursor-pointer" hidden>Exit Admin Mode</button>
 
-      <!-- Activity Log (Admin) -->
+      <!-- Admin Tools Popup (Admin) -->
       <div class="admin-only mt-3" hidden>
-        <button type="button" id="activity-log-toggle" class="w-full text-center bg-surface-100/60 text-ink-soft font-semibold rounded-xl px-4 py-2.5 text-xs border border-white/[0.1] transition-all duration-300 hover:border-accent/60 hover:text-accent cursor-pointer">
-          <ion-icon name="document-text-outline" class="align-middle mr-1"></ion-icon>Activity Log
-        </button>
-        <div id="activity-log-panel" class="activity-log-panel mt-2" style="display:none">
-          <div id="activity-log-list" class="activity-log-list"></div>
-          <button type="button" id="activity-log-clear" class="text-xs text-red-400 mt-2 cursor-pointer bg-transparent border-0 hover:text-red-300">Clear Log</button>
-        </div>
-      </div>
-
-      <!-- Admin Stats -->
-      <div class="admin-only mt-3" hidden>
-        <button type="button" id="admin-stats-toggle" class="w-full text-center bg-surface-100/60 text-ink-soft font-semibold rounded-xl px-4 py-2.5 text-xs border border-white/[0.1] transition-all duration-300 hover:border-accent/60 hover:text-accent cursor-pointer">
-          <ion-icon name="bar-chart-outline" class="align-middle mr-1"></ion-icon>Stats Dashboard
-        </button>
-        <div id="admin-stats-panel" class="activity-log-panel mt-2" style="display:none">
-          <div id="admin-stats-content"></div>
-        </div>
-      </div>
-
-      <!-- Hit Counter (Admin) -->
-      <div class="admin-only mt-3" hidden>
-        <div class="text-center text-xs text-ink-muted bg-surface-100/40 rounded-xl px-4 py-2.5 border border-white/[0.06]">
-          <ion-icon name="eye-outline" class="align-middle mr-1"></ion-icon>Visitors: <span id="hit-counter-display" class="text-accent font-bold">&mdash;</span>
-        </div>
-      </div>
-
-      <!-- Backup (Admin) -->
-      <div class="admin-only mt-3" hidden>
-        <button type="button" id="admin-backup-btn" class="w-full text-center bg-emerald-500/10 text-emerald-400 font-semibold rounded-xl px-4 py-2.5 text-xs border border-emerald-500/25 transition-all duration-300 hover:bg-emerald-500/20 hover:border-emerald-500/50 hover:text-emerald-300 cursor-pointer">
-          <ion-icon name="cloud-upload-outline" class="align-middle mr-1"></ion-icon>Backup to S3
+        <button type="button" id="admin-tools-toggle" class="w-full text-center bg-accent/10 text-accent font-semibold rounded-xl px-4 py-3 text-xs border border-accent/30 transition-all duration-300 hover:bg-accent/20 hover:border-accent/60 cursor-pointer">
+          <ion-icon name="settings-outline" class="align-middle mr-1"></ion-icon>Admin Tools
         </button>
       </div>
 
-      <!-- Import JSON (Admin) -->
-      <div class="admin-only mt-3" hidden>
-        <button type="button" id="admin-import-btn" class="w-full text-center bg-sky-500/10 text-sky-400 font-semibold rounded-xl px-4 py-2.5 text-xs border border-sky-500/25 transition-all duration-300 hover:bg-sky-500/20 hover:border-sky-500/50 hover:text-sky-300 cursor-pointer">
-          <ion-icon name="cloud-download-outline" class="align-middle mr-1"></ion-icon>Import JSON
-        </button>
-      </div>
-
-      <!-- Recently Deleted (Admin) -->
-      <div class="admin-only mt-3" hidden>
-        <button type="button" id="deleted-items-toggle" class="w-full text-center bg-red-500/10 text-red-400 font-semibold rounded-xl px-4 py-2.5 text-xs border border-red-500/25 transition-all duration-300 hover:bg-red-500/20 hover:border-red-500/50 hover:text-red-300 cursor-pointer">
-          <ion-icon name="trash-outline" class="align-middle mr-1"></ion-icon>Recently Deleted <span id="deleted-count-badge" class="deleted-badge" style="display:none">0</span>
-        </button>
-        <div id="deleted-items-panel" class="deleted-panel mt-2" style="display:none">
-          <div id="deleted-items-list"></div>
+      <!-- Admin Tools Popup Overlay -->
+      <div id="admin-tools-popup" class="admin-tools-popup" style="display:none">
+        <div class="admin-tools-popup-backdrop"></div>
+        <div class="admin-tools-popup-content">
+          <div class="admin-tools-popup-header">
+            <h3><ion-icon name="settings-outline"></ion-icon> Admin Tools</h3>
+            <button type="button" id="admin-tools-close" class="admin-tools-close">&times;</button>
+          </div>
+          <div class="admin-tools-grid">
+            <!-- Activity Log -->
+            <div class="admin-tool-card">
+              <button type="button" id="activity-log-toggle" class="admin-tool-btn">
+                <ion-icon name="document-text-outline"></ion-icon>
+                <span>Activity Log</span>
+              </button>
+              <div id="activity-log-panel" class="activity-log-panel mt-2" style="display:none">
+                <div id="activity-log-list" class="activity-log-list"></div>
+                <button type="button" id="activity-log-clear" class="text-xs text-red-400 mt-2 cursor-pointer bg-transparent border-0 hover:text-red-300">Clear Log</button>
+              </div>
+            </div>
+            <!-- Stats Dashboard -->
+            <div class="admin-tool-card">
+              <button type="button" id="admin-stats-toggle" class="admin-tool-btn">
+                <ion-icon name="bar-chart-outline"></ion-icon>
+                <span>Stats Dashboard</span>
+              </button>
+              <div id="admin-stats-panel" class="activity-log-panel mt-2" style="display:none">
+                <div id="admin-stats-content"></div>
+              </div>
+            </div>
+            <!-- Visitors -->
+            <div class="admin-tool-card">
+              <div class="admin-tool-btn admin-tool-static">
+                <ion-icon name="eye-outline"></ion-icon>
+                <span>Visitors: <span id="hit-counter-display" class="text-accent font-bold">&mdash;</span></span>
+              </div>
+            </div>
+            <!-- Backup -->
+            <div class="admin-tool-card">
+              <button type="button" id="admin-backup-btn" class="admin-tool-btn">
+                <ion-icon name="cloud-upload-outline"></ion-icon>
+                <span>Backup to S3</span>
+              </button>
+            </div>
+            <!-- Import JSON -->
+            <div class="admin-tool-card">
+              <button type="button" id="admin-import-btn" class="admin-tool-btn">
+                <ion-icon name="cloud-download-outline"></ion-icon>
+                <span>Import JSON</span>
+              </button>
+            </div>
+            <!-- Recently Deleted -->
+            <div class="admin-tool-card">
+              <button type="button" id="deleted-items-toggle" class="admin-tool-btn">
+                <ion-icon name="trash-outline"></ion-icon>
+                <span>Recently Deleted <span id="deleted-count-badge" class="deleted-badge" style="display:none">0</span></span>
+              </button>
+              <div id="deleted-items-panel" class="deleted-panel mt-2" style="display:none">
+                <div id="deleted-items-list"></div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </aside>
@@ -182,9 +202,9 @@
           <p class="mt-2 text-ink-muted">Building practical systems that blend software, cloud, and AI.</p>
         </header>
 
-        <div class="bio-highlight relative max-w-3xl mb-8 p-6 rounded-2xl bg-gradient-to-br from-surface-100/80 to-surface-200/40 border border-white/[0.06] shadow-[0_0_40px_rgba(245,158,11,0.04)]">
+        <div class="bio-highlight relative max-w-3xl mb-8 p-8 rounded-2xl bg-gradient-to-br from-surface-100/80 to-surface-200/40 border border-white/[0.06] shadow-[0_0_40px_rgba(245,158,11,0.04)]">
           <div class="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-accent via-accent/40 to-transparent rounded-l-2xl"></div>
-          <p class="lead-copy text-ink-soft leading-relaxed pl-4">{{ profile.bio }}</p>
+          <p class="lead-copy text-ink-soft leading-loose pl-5 text-[0.95rem] tracking-wide" style="white-space: pre-line;">{{ profile.bio }}</p>
         </div>
 
         <section>

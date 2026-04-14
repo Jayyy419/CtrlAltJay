@@ -443,16 +443,34 @@ function renderSection(items, categoryId, sortId, targetGridId, subsectionFilter
 
   // Show More button
   if (filtered.length > limit) {
-    const wrap = document.createElement("div");
-    wrap.className = "show-more-wrap";
-    const remaining = filtered.length - limit;
-    wrap.innerHTML = `<button class="show-more-btn"><ion-icon name="chevron-down-outline"></ion-icon> Show ${Math.min(remaining, PAGE_SIZE)} more of ${remaining} remaining</button>`;
-    wrap.querySelector("button").addEventListener("click", () => {
-      shownCounts[targetGridId] = (shownCounts[targetGridId] || PAGE_SIZE) + PAGE_SIZE;
-      renderSection(items, categoryId, sortId, targetGridId, subsectionFilter, searchId);
-    });
-    target.appendChild(wrap);
+    appendShowMore(target, filtered, limit, searchQuery, targetGridId, countEl);
   }
+}
+
+function appendShowMore(target, filtered, currentLimit, searchQuery, targetGridId, countEl) {
+  const remaining = filtered.length - currentLimit;
+  const wrap = document.createElement("div");
+  wrap.className = "show-more-wrap";
+  wrap.innerHTML = `<button class="show-more-btn"><ion-icon name="chevron-down-outline"></ion-icon> Show ${Math.min(remaining, PAGE_SIZE)} more of ${remaining} remaining</button>`;
+  wrap.querySelector("button").addEventListener("click", () => {
+    wrap.remove();
+    const newLimit = currentLimit + PAGE_SIZE;
+    shownCounts[targetGridId] = newLimit;
+    const nextBatch = filtered.slice(currentLimit, newLimit);
+    nextBatch.forEach((item) => target.appendChild(buildCard(item, searchQuery)));
+    observeCards(target);
+    if (state.isAdmin) {
+      addBulkCheckboxes(target);
+      addFavoriteButtons();
+    }
+    if (countEl) {
+      countEl.textContent = `Showing ${Math.min(newLimit, filtered.length)} of ${filtered.length} result${filtered.length !== 1 ? "s" : ""}`;
+    }
+    if (filtered.length > newLimit) {
+      appendShowMore(target, filtered, newLimit, searchQuery, targetGridId, countEl);
+    }
+  });
+  target.appendChild(wrap);
 }
 
 function rowToHTML(label, value) {
@@ -1219,6 +1237,7 @@ async function bootstrap() {
   initSurpriseMe();
   initMobileSwipe();
   initDeletedItems();
+  initAdminToolsPopup();
   setAdminMode(false);
 
   // Show skeletons while data loads
@@ -1716,6 +1735,18 @@ async function renderDeletedItems() {
       } catch { showToast("Failed to permanently delete item.", "error"); }
     });
   });
+}
+
+/* ===== Admin Tools Popup ===== */
+function initAdminToolsPopup() {
+  const toggle = document.getElementById("admin-tools-toggle");
+  const popup = document.getElementById("admin-tools-popup");
+  const closeBtn = document.getElementById("admin-tools-close");
+  const backdrop = popup?.querySelector(".admin-tools-popup-backdrop");
+  if (!toggle || !popup) return;
+  toggle.addEventListener("click", () => { popup.style.display = "flex"; });
+  closeBtn?.addEventListener("click", () => { popup.style.display = "none"; });
+  backdrop?.addEventListener("click", () => { popup.style.display = "none"; });
 }
 
 function initDeletedItems() {

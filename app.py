@@ -911,7 +911,7 @@ def admin_backup():
         return unauthorized
     try:
         s3 = boto3.client("s3", region_name=AWS_REGION)
-        bucket = os.getenv("BACKUP_S3_BUCKET", "ctrlaltjay-backups")
+        bucket = os.getenv("BACKUP_S3_BUCKET", "elasticbeanstalk-ap-southeast-1-140023398409")
         timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
         tables = {
             "portfolio-items": table_items,
