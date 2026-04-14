@@ -461,6 +461,25 @@ def api_admin_item(item_id):
     return jsonify({"message": "Item updated."})
 
 
+@app.route("/api/admin/items/<item_id>/clear-image", methods=["PATCH"])
+def api_admin_item_clear_image(item_id):
+    unauthorized = unauthorized_admin_response()
+    if unauthorized:
+        return unauthorized
+
+    response = table_items.get_item(Key={"id": item_id})
+    existing = response.get("Item")
+    if not existing:
+        return jsonify({"error": "Item not found."}), 404
+
+    table_items.update_item(
+        Key={"id": item_id},
+        UpdateExpression="SET image_path = :empty, updated_at = :ts",
+        ExpressionAttributeValues={":empty": "", ":ts": now_iso()},
+    )
+    return jsonify({"message": "Image cleared."})
+
+
 @app.route("/api/admin/deleted-items", methods=["GET"])
 def api_admin_deleted_items():
     unauthorized = unauthorized_admin_response()

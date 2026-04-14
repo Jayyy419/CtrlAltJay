@@ -241,6 +241,11 @@ button {
   color: #ffd8d8;
 }
 
+.list-actions button.clear-photo {
+  border-color: #6b5a2d;
+  color: #fff3cd;
+}
+
 .toolbar-row {
   margin-bottom: 10px;
   max-width: 280px;
