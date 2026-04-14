@@ -155,15 +155,17 @@ function buildCard(item, highlightQuery = "") {
   // Tooltip preview
   if (item.summary) card.title = item.summary;
 
-  const imagePath = item.image_path || "../static/images/Projects/WebDev_PortfolioV1.png";
-  const img = document.createElement("img");
-  img.src = imagePath;
-  img.alt = item.title;
-  img.loading = "lazy";
-  img.style.opacity = "0";
-  img.style.transition = "opacity 0.3s ease";
-  img.addEventListener("load", () => { img.style.opacity = "1"; });
-  img.addEventListener("error", () => { img.style.opacity = "1"; });
+  let img = null;
+  if (item.image_path) {
+    img = document.createElement("img");
+    img.src = item.image_path;
+    img.alt = item.title;
+    img.loading = "lazy";
+    img.style.opacity = "0";
+    img.style.transition = "opacity 0.3s ease";
+    img.addEventListener("load", () => { img.style.opacity = "1"; });
+    img.addEventListener("error", () => { img.style.opacity = "1"; });
+  }
 
   const content = document.createElement("div");
   content.className = "card-content";
@@ -219,7 +221,7 @@ function buildCard(item, highlightQuery = "") {
     content.appendChild(skillWrap);
   }
 
-  card.appendChild(img);
+  if (img) card.appendChild(img);
   card.appendChild(content);
 
   card.addEventListener("click", () => openModal(item));
@@ -469,7 +471,13 @@ function openModal(item) {
   const body = document.getElementById("modal-body");
   const link = document.getElementById("modal-link");
 
-  image.src = item.image_path || "../static/images/Projects/WebDev_PortfolioV1.png";
+  if (item.image_path) {
+    image.src = item.image_path;
+    image.style.display = "";
+  } else {
+    image.src = "";
+    image.style.display = "none";
+  }
   image.alt = item.title;
   title.textContent = item.title;
   tag.textContent = item.tag || item.category;
@@ -2029,8 +2037,8 @@ function renderRecentlyViewed() {
     const card = document.createElement("div");
     card.className = "recent-card";
     card.tabIndex = 0;
-    const img = item.image_path || "../static/images/Projects/WebDev_PortfolioV1.png";
-    card.innerHTML = `<img src="${img}" alt="${item.title}" loading="lazy"><span>${item.title}</span>`;
+    const imgHtml = item.image_path ? `<img src="${item.image_path}" alt="${item.title}" loading="lazy">` : "";
+    card.innerHTML = `${imgHtml}<span>${item.title}</span>`;
     card.addEventListener("click", () => openModal(item));
     strip.appendChild(card);
   });
@@ -2066,8 +2074,8 @@ function renderRelatedItems(item) {
     const card = document.createElement("div");
     card.className = "related-card";
     card.tabIndex = 0;
-    const img = rel.image_path || "../static/images/Projects/WebDev_PortfolioV1.png";
-    card.innerHTML = `<img src="${img}" alt="${rel.title}" loading="lazy"><span>${rel.title}</span>`;
+    const imgHtml = rel.image_path ? `<img src="${rel.image_path}" alt="${rel.title}" loading="lazy">` : "";
+    card.innerHTML = `${imgHtml}<span>${rel.title}</span>`;
     card.addEventListener("click", () => openModal(rel));
     strip.appendChild(card);
   });
@@ -2395,7 +2403,7 @@ function setupCarousel(item) {
   const nextBtn = document.getElementById("carousel-next");
   const dots = document.getElementById("carousel-dots");
 
-  carouselImages = [item.image_path || "../static/images/Projects/WebDev_PortfolioV1.png"];
+  carouselImages = item.image_path ? [item.image_path] : [];
   if (item.additional_images) {
     const extras = item.additional_images.split(",").map((s) => s.trim()).filter(Boolean);
     carouselImages = carouselImages.concat(extras);
