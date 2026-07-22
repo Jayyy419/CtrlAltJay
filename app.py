@@ -70,10 +70,14 @@ app.config["SESSION_COOKIE_SECURE"] = os.getenv("FLASK_DEBUG", "").lower() not i
 
 mail = Mail(app)
 
-if not os.getenv("ADMIN_PASSCODE_HASH", "").strip() and not os.getenv("ADMIN_PASSCODE", "").strip():
+if not any(
+    os.getenv(name, "").strip()
+    for name in ("ADMIN_PASSCODE_HASH", "ADMIN_PASSCODE", "ADMIN_PASSWORD")
+):
     print(
-        "WARNING: Neither ADMIN_PASSCODE_HASH nor ADMIN_PASSCODE is set — "
-        "admin login is disabled until one is configured.",
+        "WARNING: No admin passcode is configured (ADMIN_PASSCODE_HASH, "
+        "ADMIN_PASSCODE, or ADMIN_PASSWORD) — admin login is disabled until "
+        "one is set.",
         flush=True,
     )
 
@@ -108,7 +112,12 @@ def login_required(view_func):
 
 def verify_admin_passcode(submitted_passcode):
     configured_hash = os.getenv("ADMIN_PASSCODE_HASH", "").strip()
-    configured_plain = os.getenv("ADMIN_PASSCODE", "").strip()
+    # ADMIN_PASSWORD is accepted as a legacy alias for ADMIN_PASSCODE — earlier
+    # versions of the docs told deployers to set that name instead.
+    configured_plain = (
+        os.getenv("ADMIN_PASSCODE", "").strip()
+        or os.getenv("ADMIN_PASSWORD", "").strip()
+    )
 
     if configured_hash:
         return check_password_hash(configured_hash, submitted_passcode)

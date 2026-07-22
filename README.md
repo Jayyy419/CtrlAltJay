@@ -57,7 +57,7 @@ MAIL_USE_SSL=false
 
 Important:
 
-- The app checks `ADMIN_PASSCODE_HASH` first, then `ADMIN_PASSCODE`. If neither is set, admin login is disabled (fails closed) — there is no hardcoded default passcode.
+- The app checks `ADMIN_PASSCODE_HASH` first, then `ADMIN_PASSCODE`, then `ADMIN_PASSWORD` (legacy alias, kept for older deployments). If none are set, admin login is disabled (fails closed) — there is no hardcoded default passcode.
 - Prefer `ADMIN_PASSCODE_HASH` in production. Generate one with:
   `python -c "from werkzeug.security import generate_password_hash as g; print(g('your-passcode'))"`
 - Change `SECRET_KEY` before deploying.
