@@ -1054,9 +1054,12 @@ html { -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent;
 .light-theme .panel-head h2 { color: var(--text-primary) !important; }
 .light-theme .panel-head p { color: var(--text-secondary) !important; }
 .light-theme .lead-copy { color: var(--text-secondary) !important; }
+.light-theme .bio-highlight { background: var(--bg-input) !important; border-color: var(--border-color) !important; }
 .light-theme .focus-card { background: var(--bg-input) !important; border-color: var(--border-color) !important; }
 .light-theme .focus-card h4 { color: var(--text-primary) !important; }
 .light-theme .focus-card p { color: var(--text-secondary) !important; }
+.light-theme #about h3 { color: var(--text-primary) !important; }
+.light-theme .counter-label { color: var(--text-secondary) !important; }
 .light-theme input, .light-theme textarea, .light-theme select { background: var(--bg-input) !important; color: var(--text-primary) !important; border-color: var(--border-color) !important; }
 .light-theme .confirm-box { background: rgba(255,255,255,0.97) !important; border-color: var(--border-color) !important; }
 .light-theme .confirm-box h4 { color: var(--text-primary) !important; }
