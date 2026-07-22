@@ -94,11 +94,17 @@ function showSkeletons(gridId, count = 6) {
 }
 
 function switchTab(tabName) {
-  tabs.forEach((it) => it.classList.remove("active"));
+  tabs.forEach((it) => {
+    it.classList.remove("active");
+    it.setAttribute("aria-selected", "false");
+  });
   panels.forEach((panel) => panel.classList.remove("active"));
   const btn = document.querySelector(`.tab-btn[data-tab="${tabName}"]`);
   const panel = document.getElementById(tabName);
-  if (btn) btn.classList.add("active");
+  if (btn) {
+    btn.classList.add("active");
+    btn.setAttribute("aria-selected", "true");
+  }
   if (panel) panel.classList.add("active");
 }
 
