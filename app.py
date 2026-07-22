@@ -1100,15 +1100,17 @@ def admin_import():
         if not payload:
             return jsonify({"error": "No JSON data provided."}), 400
 
-        # Accept flat list, or { projects: [], experiences: [] } shape
+        # Accept flat list, or { projects: [], experiences: [], resume: [] } shape
         if isinstance(payload, list):
             items = payload
+            resume_items = []
         else:
             items = []
             if isinstance(payload.get("projects"), list):
                 items.extend(payload["projects"])
             if isinstance(payload.get("experiences"), list):
                 items.extend(payload["experiences"])
+            resume_items = payload.get("resume") if isinstance(payload.get("resume"), list) else []
 
         created = 0
         for item in items:
@@ -1129,6 +1131,29 @@ def admin_import():
             clean["created_at"] = now_iso()
             clean["updated_at"] = now_iso()
             table_items.put_item(Item=clean)
+            created += 1
+
+        for item in resume_items:
+            if not isinstance(item, dict):
+                continue
+            title = (item.get("title") or "").strip()
+            period = (item.get("period") or "").strip()
+            lane = (item.get("lane") or "").strip().lower()
+            if not title or not period or lane not in {"education", "work"}:
+                continue
+
+            now = now_iso()
+            table_resume.put_item(Item={
+                "id": str(uuid.uuid4()),
+                "lane": lane,
+                "title": title,
+                "subtitle": (item.get("subtitle") or "").strip(),
+                "period": period,
+                "description": (item.get("description") or "").strip(),
+                "sort_order": Decimal(str(int(item.get("sort_order") or 0))),
+                "created_at": now,
+                "updated_at": now,
+            })
             created += 1
 
         if created:
