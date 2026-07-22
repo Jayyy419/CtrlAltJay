@@ -342,7 +342,7 @@ def set_security_headers(response):
 def index():
     profile = {
         "name": "Rone Peh",
-        "headline": "Information Technology student @ NYP | SWE Intern @ J.P. Morgan Chase",
+        "headline": "NTU CS Undergraduate | Founder @ Sentrix",
         "location": "Singapore",
         "email": "Rone_peh@hotmail.com",
         "phone": "+65 8808 1760",
@@ -362,16 +362,16 @@ def index():
         ),
         "now_building": [
             {
-                "title": "Cloud Migration @ JPMC",
-                "description": "Working on server workloads migration from on-premise to public cloud within Currencies & Emerging Markets.",
+                "title": "Sentrix",
+                "description": "Founder — TODO: one-line description of what Sentrix does.",
             },
             {
-                "title": "ASEAN Youth Advocates",
-                "description": "Leading operations and finance to strengthen organisational sustainability and programme delivery.",
+                "title": "NTU Computer Science",
+                "description": "Starting a Bachelor of Computing (Hons) in Computer Science with a Second Major in Entrepreneurship.",
             },
             {
-                "title": "AI Prototyping Sprint",
-                "description": "Exploring rapid prototypes in GenAI, RAG, and product UX alignment.",
+                "title": "Spark SG",
+                "description": "Leading operations and finance to strengthen organisational sustainability and programme delivery as Head of Operations & Finance.",
             },
         ],
     }

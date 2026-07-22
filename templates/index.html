@@ -185,15 +185,34 @@
       </div>
     </aside>
 
-    <!-- Content -->
-    <section class="content bg-surface-50/80 backdrop-blur-xl border border-white/[0.06] rounded-2xl p-8 shadow-2xl">
-      <nav class="main-nav flex gap-3 mb-8 pb-5 border-b border-white/[0.06] overflow-x-auto -mx-2 px-2 scrollbar-hide" role="tablist" aria-label="Site sections">
-        <button class="tab-btn active shrink-0 px-5 py-2.5 bg-surface-100 text-ink-soft border-2 border-white/[0.06] rounded-xl cursor-pointer font-medium text-sm transition-all duration-300 hover:border-accent/60 hover:text-accent" data-tab="about" role="tab" aria-selected="true" aria-controls="about" id="tab-about">About</button>
-        <button class="tab-btn shrink-0 px-5 py-2.5 bg-surface-100 text-ink-soft border-2 border-white/[0.06] rounded-xl cursor-pointer font-medium text-sm transition-all duration-300 hover:border-accent/60 hover:text-accent" data-tab="projects" role="tab" aria-selected="false" aria-controls="projects" id="tab-projects">Projects</button>
-        <button class="tab-btn shrink-0 px-5 py-2.5 bg-surface-100 text-ink-soft border-2 border-white/[0.06] rounded-xl cursor-pointer font-medium text-sm transition-all duration-300 hover:border-accent/60 hover:text-accent" data-tab="experiences" role="tab" aria-selected="false" aria-controls="experiences" id="tab-experiences">Experiences</button>
-        <button class="tab-btn shrink-0 px-5 py-2.5 bg-surface-100 text-ink-soft border-2 border-white/[0.06] rounded-xl cursor-pointer font-medium text-sm transition-all duration-300 hover:border-accent/60 hover:text-accent" data-tab="resume" role="tab" aria-selected="false" aria-controls="resume" id="tab-resume">Resume</button>
-        <button class="tab-btn shrink-0 px-5 py-2.5 bg-surface-100 text-ink-soft border-2 border-white/[0.06] rounded-xl cursor-pointer font-medium text-sm transition-all duration-300 hover:border-accent/60 hover:text-accent" data-tab="contact" role="tab" aria-selected="false" aria-controls="contact" id="tab-contact">Contact</button>
+    <!-- Content: IDE-style shell -->
+    <section class="ide-shell">
+      <nav class="activity-bar" role="tablist" aria-label="Site sections">
+        <button class="tab-btn active" data-tab="about" role="tab" aria-selected="true" aria-controls="about" id="tab-about" title="About" aria-label="About"><ion-icon aria-hidden="true" name="person-outline"></ion-icon></button>
+        <button class="tab-btn" data-tab="projects" role="tab" aria-selected="false" aria-controls="projects" id="tab-projects" title="Projects" aria-label="Projects"><ion-icon aria-hidden="true" name="folder-outline"></ion-icon></button>
+        <button class="tab-btn" data-tab="experiences" role="tab" aria-selected="false" aria-controls="experiences" id="tab-experiences" title="Experiences" aria-label="Experiences"><ion-icon aria-hidden="true" name="briefcase-outline"></ion-icon></button>
+        <button class="tab-btn" data-tab="resume" role="tab" aria-selected="false" aria-controls="resume" id="tab-resume" title="Resume" aria-label="Resume"><ion-icon aria-hidden="true" name="document-text-outline"></ion-icon></button>
+        <button class="tab-btn" data-tab="contact" role="tab" aria-selected="false" aria-controls="contact" id="tab-contact" title="Contact" aria-label="Contact"><ion-icon aria-hidden="true" name="mail-outline"></ion-icon></button>
       </nav>
+
+      <div class="ide-sidebar" id="file-tree" aria-hidden="true">
+        <div class="ide-sidebar-head">PORTFOLIO</div>
+        <div class="file-tree-folder" data-tab="about"><span class="chev">▾</span> about</div>
+        <div class="file-tree-item" data-tab="about"><span class="fdot md"></span> bio.md</div>
+
+        <div class="file-tree-folder" data-tab="projects"><span class="chev">▾</span> projects</div>
+        <div class="file-tree-children" id="tree-projects-items"></div>
+
+        <div class="file-tree-folder" data-tab="experiences"><span class="chev">▾</span> experiences</div>
+        <div class="file-tree-children" id="tree-experiences-items"></div>
+
+        <div class="file-tree-folder collapsed" data-tab="resume"><span class="chev">▸</span> resume</div>
+        <div class="file-tree-folder collapsed" data-tab="contact"><span class="chev">▸</span> contact</div>
+      </div>
+
+      <div class="ide-editor-area">
+        <div class="ide-tabbar" id="ide-tabbar"></div>
+        <div class="ide-panel-scroll">
 
       <!-- About -->
       <article id="about" class="tab-panel active animate-fade-up" role="tabpanel" aria-labelledby="tab-about" tabindex="0">
@@ -431,6 +450,19 @@
           <p class="form-note text-xs text-ink-muted mt-3">I'll get back to you within 24-48 hours.</p>
         </form>
       </article>
+
+        </div>
+        <div class="ide-statusbar">
+          <div class="side">
+            <span id="ide-status-section">about</span>
+            <span id="ide-status-count"></span>
+          </div>
+          <div class="side">
+            <span><span class="dot-live"></span>Live</span>
+            <span id="ide-status-clock"></span>
+          </div>
+        </div>
+      </div>
     </section>
   </main>
 
