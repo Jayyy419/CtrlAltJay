@@ -43,8 +43,9 @@ Create a `.env` file in the project root:
 ```env
 SECRET_KEY=replace_with_a_long_random_secret
 
-ADMIN_USERNAME=admin
-ADMIN_PASSWORD=change_me
+# Set ONE of these — the app reads these exact variable names.
+ADMIN_PASSCODE_HASH=
+ADMIN_PASSCODE=change_me
 
 MAIL_SERVER=smtp.office365.com
 MAIL_PORT=587
@@ -56,8 +57,11 @@ MAIL_USE_SSL=false
 
 Important:
 
-- Change `ADMIN_PASSWORD` immediately.
+- The app checks `ADMIN_PASSCODE_HASH` first, then `ADMIN_PASSCODE`, then `ADMIN_PASSWORD` (legacy alias, kept for older deployments). If none are set, admin login is disabled (fails closed) — there is no hardcoded default passcode.
+- Prefer `ADMIN_PASSCODE_HASH` in production. Generate one with:
+  `python -c "from werkzeug.security import generate_password_hash as g; print(g('your-passcode'))"`
 - Change `SECRET_KEY` before deploying.
+- Do not set `FLASK_DEBUG=1` in production — it enables the Werkzeug debugger (remote code execution risk) and disables the Secure cookie flag.
 - If email is not configured, contact form still loads but sending can fail gracefully.
 
 ## 3. Run App

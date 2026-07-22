@@ -1,4 +1,5 @@
 import os
+import re
 import secrets
 import time
 import hmac
@@ -23,6 +24,7 @@ from flask import (
     url_for,
 )
 from flask_mail import Mail, Message
+from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
@@ -38,7 +40,10 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent
 UPLOAD_DIR = BASE_DIR / "static" / "uploads"
-ALLOWED_IMAGE_EXT = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".ico"}
+ALLOWED_IMAGE_EXT = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".ico"}
+# .svg intentionally excluded: an uploaded SVG can embed <script>, which executes
+# if the file is ever opened via direct navigation (not just <img src>) — the
+# current CSP allows 'unsafe-inline' script-src, so it wouldn't block this.
 
 AWS_REGION = os.getenv("AWS_REGION", "ap-southeast-1")
 dynamodb = boto3.resource("dynamodb", region_name=AWS_REGION)
@@ -47,7 +52,22 @@ table_resume = dynamodb.Table("ctrlaltjay-resume-items")
 table_skills = dynamodb.Table("ctrlaltjay-skills")
 
 app = Flask(__name__)
-app.secret_key = os.getenv("SECRET_KEY", "change-this-secret")
+
+_secret_key = os.getenv("SECRET_KEY", "").strip()
+if not _secret_key or _secret_key == "change-this-secret":
+    raise RuntimeError(
+        "SECRET_KEY is not set (or is still the placeholder from .env.example). "
+        "Flask signs session cookies — including the admin login flag — with this "
+        "key, so an unset/default value lets anyone forge an authenticated admin "
+        "session. Set a long random SECRET_KEY environment variable before starting "
+        "the app."
+    )
+app.secret_key = _secret_key
+
+# Trust the single reverse proxy (nginx, per .platform config) for client IP/proto
+# so request.remote_addr reflects the real visitor instead of 127.0.0.1.
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
 app.config["MAIL_SERVER"] = os.getenv("MAIL_SERVER", "default_server")
 app.config["MAIL_PORT"] = int(os.getenv("MAIL_PORT", 587))
 app.config["MAIL_USERNAME"] = os.getenv("MAIL_USERNAME", "default_username")
@@ -56,11 +76,29 @@ app.config["MAIL_USE_TLS"] = os.getenv("MAIL_USE_TLS", "true").lower() in ["true
 app.config["MAIL_USE_SSL"] = os.getenv("MAIL_USE_SSL", "false").lower() in ["true", "1", "t"]
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB upload limit
 
+# Session cookie hardening — explicit rather than relying on framework/browser defaults.
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = os.getenv("FLASK_DEBUG", "").lower() not in ("1", "true", "t")
+
 mail = Mail(app)
 
-DEFAULT_ADMIN_PASSCODE_HASH = generate_password_hash("controlalternatejay")
+if not any(
+    os.getenv(name, "").strip()
+    for name in ("ADMIN_PASSCODE_HASH", "ADMIN_PASSCODE", "ADMIN_PASSWORD")
+):
+    print(
+        "WARNING: No admin passcode is configured (ADMIN_PASSCODE_HASH, "
+        "ADMIN_PASSCODE, or ADMIN_PASSWORD) — admin login is disabled until "
+        "one is set.",
+        flush=True,
+    )
+
 MAX_ADMIN_ATTEMPTS = 5
 ADMIN_LOCK_SECONDS = 600
+MAX_CONTACT_ATTEMPTS = 5
+CONTACT_RATE_WINDOW_SECONDS = 600
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 PORTFOLIO_ITEM_FIELDS = [
     "additional_images", "byline", "category", "challenges",
@@ -87,7 +125,12 @@ def login_required(view_func):
 
 def verify_admin_passcode(submitted_passcode):
     configured_hash = os.getenv("ADMIN_PASSCODE_HASH", "").strip()
-    configured_plain = os.getenv("ADMIN_PASSCODE", "").strip()
+    # ADMIN_PASSWORD is accepted as a legacy alias for ADMIN_PASSCODE — earlier
+    # versions of the docs told deployers to set that name instead.
+    configured_plain = (
+        os.getenv("ADMIN_PASSCODE", "").strip()
+        or os.getenv("ADMIN_PASSWORD", "").strip()
+    )
 
     if configured_hash:
         return check_password_hash(configured_hash, submitted_passcode)
@@ -95,7 +138,9 @@ def verify_admin_passcode(submitted_passcode):
     if configured_plain:
         return hmac.compare_digest(configured_plain, submitted_passcode)
 
-    return check_password_hash(DEFAULT_ADMIN_PASSCODE_HASH, submitted_passcode)
+    # No admin passcode configured — fail closed instead of falling back to a
+    # hardcoded default (which would be visible to anyone reading this source).
+    return False
 
 
 def unauthorized_admin_response():
@@ -148,6 +193,21 @@ def save_additional_images(files):
     return ",".join(filter(None, (save_uploaded_image(f) for f in files)))
 
 
+def scan_all(table):
+    """Scan a DynamoDB table across pages — table.scan() alone caps out at
+    1MB per call and silently truncates larger tables via LastEvaluatedKey."""
+    items = []
+    kwargs = {}
+    while True:
+        resp = table.scan(**kwargs)
+        items.extend(resp.get("Items", []))
+        last_key = resp.get("LastEvaluatedKey")
+        if not last_key:
+            break
+        kwargs["ExclusiveStartKey"] = last_key
+    return items
+
+
 def dynamo_to_dict(item):
     """Convert DynamoDB item (with Decimals) to JSON-safe dict."""
     result = {}
@@ -157,6 +217,57 @@ def dynamo_to_dict(item):
         else:
             result[k] = v
     return result
+
+
+# ─── IP-based rate limiting (shared table, DynamoDB-backed so it works across
+# multiple gunicorn workers/instances — unlike session-based counters, which
+# an attacker can reset just by dropping cookies) ───────────────────────────
+
+def _client_ip():
+    return request.remote_addr or "unknown"
+
+
+def _rate_limit_id(bucket, ip):
+    return f"__ratelimit_{bucket}_{ip}"
+
+
+def _rate_limit_locked_seconds(bucket, ip):
+    """Seconds remaining in an active lockout for this bucket/ip, or 0 if none."""
+    resp = table_items.get_item(Key={"id": _rate_limit_id(bucket, ip)})
+    item = resp.get("Item")
+    if not item:
+        return 0
+    remaining = int(item.get("lock_until", 0)) - int(time.time())
+    return max(0, remaining)
+
+
+def _record_rate_limit_failure(bucket, ip, max_attempts, lock_seconds):
+    """Record a failed attempt. Returns (locked_out, remaining_attempts)."""
+    key = _rate_limit_id(bucket, ip)
+    resp = table_items.get_item(Key={"id": key})
+    existing = resp.get("Item") or {}
+    attempts = int(existing.get("attempts", 0)) + 1
+
+    if attempts >= max_attempts:
+        table_items.put_item(Item={
+            "id": key,
+            "attempts": Decimal(0),
+            "lock_until": Decimal(int(time.time()) + lock_seconds),
+            "updated_at": now_iso(),
+        })
+        return True, 0
+
+    table_items.put_item(Item={
+        "id": key,
+        "attempts": Decimal(attempts),
+        "lock_until": Decimal(0),
+        "updated_at": now_iso(),
+    })
+    return False, max_attempts - attempts
+
+
+def _clear_rate_limit(bucket, ip):
+    table_items.delete_item(Key={"id": _rate_limit_id(bucket, ip)})
 
 
 @app.before_request
@@ -243,40 +354,46 @@ def index():
     return render_template("index.html", profile=profile)
 
 
+_public_data_cache = {"payload": None, "expires_at": 0.0}
+PUBLIC_DATA_CACHE_SECONDS = 30
+
+
+def invalidate_public_data_cache():
+    _public_data_cache["payload"] = None
+    _public_data_cache["expires_at"] = 0.0
+
+
 @app.route("/api/public-data")
 def api_public_data():
-    items_resp = table_items.scan()
-    all_items = [dynamo_to_dict(i) for i in items_resp.get("Items", []) if not i.get("id", "").startswith("__") and not i.get("deleted_at")]
+    now = time.time()
+    cached = _public_data_cache["payload"]
+    if cached is not None and _public_data_cache["expires_at"] > now:
+        return jsonify(cached)
+
+    all_items = [dynamo_to_dict(i) for i in scan_all(table_items) if not i.get("id", "").startswith("__") and not i.get("deleted_at")]
 
     projects = [i for i in all_items if i.get("section") == "project"]
     experiences = [i for i in all_items if i.get("section") == "experience"]
 
-    resume_resp = table_resume.scan()
     resume_items = sorted(
-        [dynamo_to_dict(i) for i in resume_resp.get("Items", [])],
+        [dynamo_to_dict(i) for i in scan_all(table_resume)],
         key=lambda x: (x.get("lane", ""), x.get("sort_order", 0), x.get("id", "")),
     )
 
-    skills_resp = table_skills.scan()
     skills = sorted(
-        [dynamo_to_dict(i) for i in skills_resp.get("Items", [])],
+        [dynamo_to_dict(i) for i in scan_all(table_skills)],
         key=lambda x: (x.get("sort_order", 0), x.get("id", "")),
     )
 
-    return jsonify(
-        {
-            "projects": projects,
-            "experiences": experiences,
-            "resume": resume_items,
-            "skills": skills,
-        }
-    )
-
-
-@app.route("/admin/login/<secret_key>", methods=["GET", "POST"])
-def admin_login(secret_key):
-    # Legacy route retained for compatibility; auth now happens via popup on index.
-    return redirect(url_for("index"))
+    payload = {
+        "projects": projects,
+        "experiences": experiences,
+        "resume": resume_items,
+        "skills": skills,
+    }
+    _public_data_cache["payload"] = payload
+    _public_data_cache["expires_at"] = now + PUBLIC_DATA_CACHE_SECONDS
+    return jsonify(payload)
 
 
 @app.route("/api/admin/auth-status", methods=["GET"])
@@ -286,12 +403,10 @@ def admin_auth_status():
 
 @app.route("/admin/auth", methods=["POST"])
 def admin_auth():
-    lock_until = int(session.get("admin_lock_until", 0) or 0)
-    now_epoch = int(time.time())
-
-    if lock_until > now_epoch:
-        remaining = lock_until - now_epoch
-        return jsonify({"error": "Too many attempts. Please wait and try again.", "retry_in": remaining}), 429
+    ip = _client_ip()
+    remaining_lock = _rate_limit_locked_seconds("admin", ip)
+    if remaining_lock > 0:
+        return jsonify({"error": "Too many attempts. Please wait and try again.", "retry_in": remaining_lock}), 429
 
     payload = request.get_json(silent=True) or {}
     submitted_passcode = (
@@ -304,20 +419,16 @@ def admin_auth():
 
     if verify_admin_passcode(submitted_passcode):
         session["is_admin"] = True
-        session.pop("admin_attempts", None)
-        session.pop("admin_lock_until", None)
+        _clear_rate_limit("admin", ip)
         return jsonify({"message": "Authenticated.", "redirect_url": url_for("index")})
 
-    attempts = int(session.get("admin_attempts", 0) or 0) + 1
-    session["admin_attempts"] = attempts
-
-    if attempts >= MAX_ADMIN_ATTEMPTS:
-        session["admin_lock_until"] = now_epoch + ADMIN_LOCK_SECONDS
-        session["admin_attempts"] = 0
+    locked_out, remaining_attempts = _record_rate_limit_failure(
+        "admin", ip, MAX_ADMIN_ATTEMPTS, ADMIN_LOCK_SECONDS
+    )
+    if locked_out:
         return jsonify({"error": "Too many attempts. Please wait and try again."}), 429
 
-    remaining = MAX_ADMIN_ATTEMPTS - attempts
-    return jsonify({"error": "Invalid passcode.", "remaining_attempts": remaining}), 401
+    return jsonify({"error": "Invalid passcode.", "remaining_attempts": remaining_attempts}), 401
 
 
 @app.route("/admin/logout", methods=["GET", "POST"])
@@ -347,8 +458,7 @@ def api_admin_items():
     
     if request.method == "GET":
         section = request.args.get("section", "").strip().lower()
-        response = table_items.scan()
-        all_items = [dynamo_to_dict(i) for i in response.get("Items", []) if not i.get("id", "").startswith("__") and not i.get("deleted_at")]
+        all_items = [dynamo_to_dict(i) for i in scan_all(table_items) if not i.get("id", "").startswith("__") and not i.get("deleted_at")]
 
         if section in {"project", "experience"}:
             all_items = [i for i in all_items if i.get("section") == section]
@@ -396,6 +506,7 @@ def api_admin_items():
     payload["created_at"] = now
     payload["updated_at"] = now
     table_items.put_item(Item=payload)
+    invalidate_public_data_cache()
 
     return jsonify({"message": "Item created."}), 201
 
@@ -418,6 +529,7 @@ def api_admin_item(item_id):
             UpdateExpression="SET deleted_at = :ts",
             ExpressionAttributeValues={":ts": now_iso()},
         )
+        invalidate_public_data_cache()
         return jsonify({"message": "Item moved to Recently Deleted."})
 
     form = request.form
@@ -457,6 +569,7 @@ def api_admin_item(item_id):
     updated_payload["created_at"] = existing.get("created_at", "")
     updated_payload["updated_at"] = updated_at
     table_items.put_item(Item=updated_payload)
+    invalidate_public_data_cache()
 
     return jsonify({"message": "Item updated."})
 
@@ -477,6 +590,7 @@ def api_admin_item_clear_image(item_id):
         UpdateExpression="SET image_path = :empty, updated_at = :ts",
         ExpressionAttributeValues={":empty": "", ":ts": now_iso()},
     )
+    invalidate_public_data_cache()
     return jsonify({"message": "Image cleared."})
 
 
@@ -485,10 +599,9 @@ def api_admin_deleted_items():
     unauthorized = unauthorized_admin_response()
     if unauthorized:
         return unauthorized
-    response = table_items.scan()
     deleted = [
         dynamo_to_dict(i)
-        for i in response.get("Items", [])
+        for i in scan_all(table_items)
         if not i.get("id", "").startswith("__") and i.get("deleted_at")
     ]
     deleted.sort(key=lambda x: x.get("deleted_at", ""), reverse=True)
@@ -508,6 +621,7 @@ def api_admin_item_restore(item_id):
         Key={"id": item_id},
         UpdateExpression="REMOVE deleted_at",
     )
+    invalidate_public_data_cache()
     return jsonify({"message": "Item restored."})
 
 
@@ -531,9 +645,8 @@ def api_admin_resume():
         return unauthorized
     
     if request.method == "GET":
-        response = table_resume.scan()
         items = sorted(
-            [dynamo_to_dict(i) for i in response.get("Items", [])],
+            [dynamo_to_dict(i) for i in scan_all(table_resume)],
             key=lambda x: (x.get("lane", ""), x.get("sort_order", 0), x.get("id", "")),
         )
         return jsonify(items)
@@ -562,6 +675,7 @@ def api_admin_resume():
         "created_at": now,
         "updated_at": now,
     })
+    invalidate_public_data_cache()
     return jsonify({"message": "Resume item created."}), 201
 
 
@@ -578,6 +692,7 @@ def api_admin_resume_item(item_id):
 
     if request.method == "DELETE":
         table_resume.delete_item(Key={"id": item_id})
+        invalidate_public_data_cache()
         return jsonify({"message": "Resume item deleted."})
 
     lane = request.form.get("lane", existing.get("lane", "")).strip().lower()
@@ -596,6 +711,7 @@ def api_admin_resume_item(item_id):
         "updated_at": now_iso(),
     })
 
+    invalidate_public_data_cache()
     return jsonify({"message": "Resume item updated."})
 
 
@@ -606,9 +722,8 @@ def api_admin_skills():
         return unauthorized
     
     if request.method == "GET":
-        response = table_skills.scan()
         items = sorted(
-            [dynamo_to_dict(i) for i in response.get("Items", [])],
+            [dynamo_to_dict(i) for i in scan_all(table_skills)],
             key=lambda x: (x.get("sort_order", 0), x.get("id", "")),
         )
         return jsonify(items)
@@ -631,6 +746,7 @@ def api_admin_skills():
         "created_at": now,
         "updated_at": now,
     })
+    invalidate_public_data_cache()
     return jsonify({"message": "Skill created."}), 201
 
 
@@ -647,6 +763,7 @@ def api_admin_skill_item(item_id):
 
     if request.method == "DELETE":
         table_skills.delete_item(Key={"id": item_id})
+        invalidate_public_data_cache()
         return jsonify({"message": "Skill deleted."})
 
     level = int(request.form.get("level", existing.get("level", 0)) or 0)
@@ -663,11 +780,22 @@ def api_admin_skill_item(item_id):
         "updated_at": now_iso(),
     })
 
+    invalidate_public_data_cache()
     return jsonify({"message": "Skill updated."})
 
 
 @app.route("/send_message", methods=["POST"])
 def send_message():
+    ip = _client_ip()
+    remaining_lock = _rate_limit_locked_seconds("contact", ip)
+    if remaining_lock > 0:
+        error_msg = "Too many messages sent recently. Please wait a bit before trying again."
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return jsonify({"error": error_msg, "retry_in": remaining_lock}), 429
+        flash(error_msg, "error")
+        return redirect(url_for("index"))
+    _record_rate_limit_failure("contact", ip, MAX_CONTACT_ATTEMPTS, CONTACT_RATE_WINDOW_SECONDS)
+
     # Collect form data
     fullname = request.form.get("fullname", "").strip()
     email = request.form.get("email", "").strip()
@@ -689,13 +817,13 @@ def send_message():
             return jsonify({"error": "Please provide your full name."}), 400
         flash("Please provide your full name.", "error")
         return redirect(url_for("index"))
-    
-    if not email:
+
+    if not email or not EMAIL_RE.match(email):
         if request.headers.get("X-Requested-With") == "XMLHttpRequest":
             return jsonify({"error": "Please provide a valid email address."}), 400
         flash("Please provide a valid email address.", "error")
         return redirect(url_for("index"))
-    
+
     if not subject:
         if request.headers.get("X-Requested-With") == "XMLHttpRequest":
             return jsonify({"error": "Please provide a subject for your message."}), 400
@@ -804,17 +932,17 @@ def admin_resume_key_rotate():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    debug_mode = os.getenv("FLASK_DEBUG", "").lower() in ("1", "true", "t")
+    app.run(debug=debug_mode)
 
 
 # ─── SEO: Sitemap & Robots ──────────────────────────────────────────────────
 
 @app.route("/sitemap.xml")
 def sitemap():
-    items_resp = table_items.scan()
     all_items = [
         dynamo_to_dict(i)
-        for i in items_resp.get("Items", [])
+        for i in scan_all(table_items)
         if not i.get("id", "").startswith("__")
     ]
     base_url = "https://ctrlaltjay.dev"
@@ -909,9 +1037,11 @@ def admin_backup():
     unauthorized = unauthorized_admin_response()
     if unauthorized:
         return unauthorized
+    bucket = os.getenv("BACKUP_S3_BUCKET", "").strip()
+    if not bucket:
+        return jsonify({"error": "BACKUP_S3_BUCKET is not configured."}), 500
     try:
         s3 = boto3.client("s3", region_name=AWS_REGION)
-        bucket = os.getenv("BACKUP_S3_BUCKET", "elasticbeanstalk-ap-southeast-1-140023398409")
         timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
         tables = {
             "portfolio-items": table_items,
@@ -919,8 +1049,7 @@ def admin_backup():
             "skills": table_skills,
         }
         for name, tbl in tables.items():
-            resp = tbl.scan()
-            items_list = [dynamo_to_dict(i) for i in resp.get("Items", [])]
+            items_list = [dynamo_to_dict(i) for i in scan_all(tbl)]
             s3.put_object(
                 Bucket=bucket,
                 Key=f"backups/{timestamp}/{name}.json",
@@ -978,6 +1107,8 @@ def admin_import():
             table_items.put_item(Item=clean)
             created += 1
 
+        if created:
+            invalidate_public_data_cache()
         return jsonify({"message": f"Imported {created} item(s)."})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
