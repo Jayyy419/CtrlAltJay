@@ -193,6 +193,21 @@ def save_additional_images(files):
     return ",".join(filter(None, (save_uploaded_image(f) for f in files)))
 
 
+def scan_all(table):
+    """Scan a DynamoDB table across pages — table.scan() alone caps out at
+    1MB per call and silently truncates larger tables via LastEvaluatedKey."""
+    items = []
+    kwargs = {}
+    while True:
+        resp = table.scan(**kwargs)
+        items.extend(resp.get("Items", []))
+        last_key = resp.get("LastEvaluatedKey")
+        if not last_key:
+            break
+        kwargs["ExclusiveStartKey"] = last_key
+    return items
+
+
 def dynamo_to_dict(item):
     """Convert DynamoDB item (with Decimals) to JSON-safe dict."""
     result = {}
@@ -339,34 +354,46 @@ def index():
     return render_template("index.html", profile=profile)
 
 
+_public_data_cache = {"payload": None, "expires_at": 0.0}
+PUBLIC_DATA_CACHE_SECONDS = 30
+
+
+def invalidate_public_data_cache():
+    _public_data_cache["payload"] = None
+    _public_data_cache["expires_at"] = 0.0
+
+
 @app.route("/api/public-data")
 def api_public_data():
-    items_resp = table_items.scan()
-    all_items = [dynamo_to_dict(i) for i in items_resp.get("Items", []) if not i.get("id", "").startswith("__") and not i.get("deleted_at")]
+    now = time.time()
+    cached = _public_data_cache["payload"]
+    if cached is not None and _public_data_cache["expires_at"] > now:
+        return jsonify(cached)
+
+    all_items = [dynamo_to_dict(i) for i in scan_all(table_items) if not i.get("id", "").startswith("__") and not i.get("deleted_at")]
 
     projects = [i for i in all_items if i.get("section") == "project"]
     experiences = [i for i in all_items if i.get("section") == "experience"]
 
-    resume_resp = table_resume.scan()
     resume_items = sorted(
-        [dynamo_to_dict(i) for i in resume_resp.get("Items", [])],
+        [dynamo_to_dict(i) for i in scan_all(table_resume)],
         key=lambda x: (x.get("lane", ""), x.get("sort_order", 0), x.get("id", "")),
     )
 
-    skills_resp = table_skills.scan()
     skills = sorted(
-        [dynamo_to_dict(i) for i in skills_resp.get("Items", [])],
+        [dynamo_to_dict(i) for i in scan_all(table_skills)],
         key=lambda x: (x.get("sort_order", 0), x.get("id", "")),
     )
 
-    return jsonify(
-        {
-            "projects": projects,
-            "experiences": experiences,
-            "resume": resume_items,
-            "skills": skills,
-        }
-    )
+    payload = {
+        "projects": projects,
+        "experiences": experiences,
+        "resume": resume_items,
+        "skills": skills,
+    }
+    _public_data_cache["payload"] = payload
+    _public_data_cache["expires_at"] = now + PUBLIC_DATA_CACHE_SECONDS
+    return jsonify(payload)
 
 
 @app.route("/api/admin/auth-status", methods=["GET"])
@@ -431,8 +458,7 @@ def api_admin_items():
     
     if request.method == "GET":
         section = request.args.get("section", "").strip().lower()
-        response = table_items.scan()
-        all_items = [dynamo_to_dict(i) for i in response.get("Items", []) if not i.get("id", "").startswith("__") and not i.get("deleted_at")]
+        all_items = [dynamo_to_dict(i) for i in scan_all(table_items) if not i.get("id", "").startswith("__") and not i.get("deleted_at")]
 
         if section in {"project", "experience"}:
             all_items = [i for i in all_items if i.get("section") == section]
@@ -480,6 +506,7 @@ def api_admin_items():
     payload["created_at"] = now
     payload["updated_at"] = now
     table_items.put_item(Item=payload)
+    invalidate_public_data_cache()
 
     return jsonify({"message": "Item created."}), 201
 
@@ -502,6 +529,7 @@ def api_admin_item(item_id):
             UpdateExpression="SET deleted_at = :ts",
             ExpressionAttributeValues={":ts": now_iso()},
         )
+        invalidate_public_data_cache()
         return jsonify({"message": "Item moved to Recently Deleted."})
 
     form = request.form
@@ -541,6 +569,7 @@ def api_admin_item(item_id):
     updated_payload["created_at"] = existing.get("created_at", "")
     updated_payload["updated_at"] = updated_at
     table_items.put_item(Item=updated_payload)
+    invalidate_public_data_cache()
 
     return jsonify({"message": "Item updated."})
 
@@ -561,6 +590,7 @@ def api_admin_item_clear_image(item_id):
         UpdateExpression="SET image_path = :empty, updated_at = :ts",
         ExpressionAttributeValues={":empty": "", ":ts": now_iso()},
     )
+    invalidate_public_data_cache()
     return jsonify({"message": "Image cleared."})
 
 
@@ -569,10 +599,9 @@ def api_admin_deleted_items():
     unauthorized = unauthorized_admin_response()
     if unauthorized:
         return unauthorized
-    response = table_items.scan()
     deleted = [
         dynamo_to_dict(i)
-        for i in response.get("Items", [])
+        for i in scan_all(table_items)
         if not i.get("id", "").startswith("__") and i.get("deleted_at")
     ]
     deleted.sort(key=lambda x: x.get("deleted_at", ""), reverse=True)
@@ -592,6 +621,7 @@ def api_admin_item_restore(item_id):
         Key={"id": item_id},
         UpdateExpression="REMOVE deleted_at",
     )
+    invalidate_public_data_cache()
     return jsonify({"message": "Item restored."})
 
 
@@ -615,9 +645,8 @@ def api_admin_resume():
         return unauthorized
     
     if request.method == "GET":
-        response = table_resume.scan()
         items = sorted(
-            [dynamo_to_dict(i) for i in response.get("Items", [])],
+            [dynamo_to_dict(i) for i in scan_all(table_resume)],
             key=lambda x: (x.get("lane", ""), x.get("sort_order", 0), x.get("id", "")),
         )
         return jsonify(items)
@@ -646,6 +675,7 @@ def api_admin_resume():
         "created_at": now,
         "updated_at": now,
     })
+    invalidate_public_data_cache()
     return jsonify({"message": "Resume item created."}), 201
 
 
@@ -662,6 +692,7 @@ def api_admin_resume_item(item_id):
 
     if request.method == "DELETE":
         table_resume.delete_item(Key={"id": item_id})
+        invalidate_public_data_cache()
         return jsonify({"message": "Resume item deleted."})
 
     lane = request.form.get("lane", existing.get("lane", "")).strip().lower()
@@ -680,6 +711,7 @@ def api_admin_resume_item(item_id):
         "updated_at": now_iso(),
     })
 
+    invalidate_public_data_cache()
     return jsonify({"message": "Resume item updated."})
 
 
@@ -690,9 +722,8 @@ def api_admin_skills():
         return unauthorized
     
     if request.method == "GET":
-        response = table_skills.scan()
         items = sorted(
-            [dynamo_to_dict(i) for i in response.get("Items", [])],
+            [dynamo_to_dict(i) for i in scan_all(table_skills)],
             key=lambda x: (x.get("sort_order", 0), x.get("id", "")),
         )
         return jsonify(items)
@@ -715,6 +746,7 @@ def api_admin_skills():
         "created_at": now,
         "updated_at": now,
     })
+    invalidate_public_data_cache()
     return jsonify({"message": "Skill created."}), 201
 
 
@@ -731,6 +763,7 @@ def api_admin_skill_item(item_id):
 
     if request.method == "DELETE":
         table_skills.delete_item(Key={"id": item_id})
+        invalidate_public_data_cache()
         return jsonify({"message": "Skill deleted."})
 
     level = int(request.form.get("level", existing.get("level", 0)) or 0)
@@ -747,6 +780,7 @@ def api_admin_skill_item(item_id):
         "updated_at": now_iso(),
     })
 
+    invalidate_public_data_cache()
     return jsonify({"message": "Skill updated."})
 
 
@@ -906,10 +940,9 @@ if __name__ == "__main__":
 
 @app.route("/sitemap.xml")
 def sitemap():
-    items_resp = table_items.scan()
     all_items = [
         dynamo_to_dict(i)
-        for i in items_resp.get("Items", [])
+        for i in scan_all(table_items)
         if not i.get("id", "").startswith("__")
     ]
     base_url = "https://ctrlaltjay.dev"
@@ -1016,8 +1049,7 @@ def admin_backup():
             "skills": table_skills,
         }
         for name, tbl in tables.items():
-            resp = tbl.scan()
-            items_list = [dynamo_to_dict(i) for i in resp.get("Items", [])]
+            items_list = [dynamo_to_dict(i) for i in scan_all(tbl)]
             s3.put_object(
                 Bucket=bucket,
                 Key=f"backups/{timestamp}/{name}.json",
@@ -1075,6 +1107,8 @@ def admin_import():
             table_items.put_item(Item=clean)
             created += 1
 
+        if created:
+            invalidate_public_data_cache()
         return jsonify({"message": f"Imported {created} item(s)."})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
