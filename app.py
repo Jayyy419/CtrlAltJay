@@ -49,7 +49,17 @@ table_resume = dynamodb.Table("ctrlaltjay-resume-items")
 table_skills = dynamodb.Table("ctrlaltjay-skills")
 
 app = Flask(__name__)
-app.secret_key = os.getenv("SECRET_KEY", "change-this-secret")
+
+_secret_key = os.getenv("SECRET_KEY", "").strip()
+if not _secret_key or _secret_key == "change-this-secret":
+    raise RuntimeError(
+        "SECRET_KEY is not set (or is still the placeholder from .env.example). "
+        "Flask signs session cookies — including the admin login flag — with this "
+        "key, so an unset/default value lets anyone forge an authenticated admin "
+        "session. Set a long random SECRET_KEY environment variable before starting "
+        "the app."
+    )
+app.secret_key = _secret_key
 
 # Trust the single reverse proxy (nginx, per .platform config) for client IP/proto
 # so request.remote_addr reflects the real visitor instead of 127.0.0.1.
