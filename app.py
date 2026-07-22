@@ -185,7 +185,14 @@ def save_uploaded_image(upload):
     # Optimise with Pillow when available (skip SVG/ICO)
     if HAS_PILLOW and ext in {".jpg", ".jpeg", ".png", ".webp"}:
         try:
-            with PILImage.open(destination) as img:
+            # Restrict format identification to what this app actually needs.
+            # Pillow detects the real format from file content, not the
+            # extension, so a file saved as "x.jpg" could contain PSD/FITS/
+            # JPEG2000/TGA/PDF/etc bytes and still get parsed by that format's
+            # decoder — several of which have had parser-level CVEs. Passing
+            # formats= here means Pillow never attempts those decoders at all
+            # for anything that isn't actually JPEG/PNG/WEBP.
+            with PILImage.open(destination, formats=["JPEG", "PNG", "WEBP"]) as img:
                 if img.mode in ("RGBA", "P") and ext in {".jpg", ".jpeg"}:
                     img = img.convert("RGB")
                 max_w = 1200
