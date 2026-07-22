@@ -1706,3 +1706,15 @@ html { -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent;
 }
 
 /* (Mobile overrides for late-declared components — merged into main @media 640px block above) */
+
+/* Respect OS-level reduced-motion preference — disables/shortens all
+   animations and transitions (fade-ups, glow, scroll-smooth, etc.) for
+   users who've asked for it, without touching each rule individually. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
