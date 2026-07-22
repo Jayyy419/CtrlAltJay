@@ -17,6 +17,18 @@ const state = {
 const tabs = document.querySelectorAll(".tab-btn");
 const panels = document.querySelectorAll(".tab-panel");
 
+/* Escape untrusted strings (admin-authored content, search input) before
+   interpolating into innerHTML template strings. */
+function escapeHtml(value) {
+  if (value === null || value === undefined) return "";
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 /* ===== Toast notifications ===== */
 function showToast(message, type = "info") {
   const container = document.getElementById("toast-container");
@@ -142,9 +154,10 @@ function uniqueSubsections(items) {
 }
 
 function highlightText(text, query) {
-  if (!query || !text) return text;
-  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return text.replace(new RegExp(`(${escaped})`, "gi"), '<mark class="search-highlight">$1</mark>');
+  const safeText = escapeHtml(text);
+  if (!query || !text) return safeText;
+  const escapedQuery = escapeHtml(query).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return safeText.replace(new RegExp(`(${escapedQuery})`, "gi"), '<mark class="search-highlight">$1</mark>');
 }
 
 function buildCard(item, highlightQuery = "") {
@@ -407,7 +420,7 @@ function renderSection(items, categoryId, sortId, targetGridId, subsectionFilter
 
   target.innerHTML = "";
   if (filtered.length === 0) {
-    target.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><ion-icon name="search-outline"></ion-icon><p>${searchQuery ? "No results for \u201c" + searchQuery + "\u201d" : "No items in this category yet."}</p></div>`;
+    target.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><ion-icon name="search-outline"></ion-icon><p>${searchQuery ? "No results for \u201c" + escapeHtml(searchQuery) + "\u201d" : "No items in this category yet."}</p></div>`;
     shownCounts[targetGridId] = 0;
     return;
   }
@@ -477,7 +490,7 @@ function rowToHTML(label, value) {
   if (!value) {
     return "";
   }
-  return `<div class="modal-row"><strong>${label}:</strong> ${value}</div>`;
+  return `<div class="modal-row"><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value)}</div>`;
 }
 
 function openModal(item) {
@@ -1552,7 +1565,7 @@ function initLightbox() {
     if (!img || !img.src) return;
     const overlay = document.createElement("div");
     overlay.className = "lightbox-overlay";
-    overlay.innerHTML = `<img src="${img.src}" alt="${img.alt || ""}">`;
+    overlay.innerHTML = `<img src="${img.src}" alt="${escapeHtml(img.alt || "")}">`;
     overlay.addEventListener("click", () => overlay.remove());
     document.body.appendChild(overlay);
   });
@@ -1693,14 +1706,14 @@ async function renderDeletedItems() {
   }
   list.innerHTML = items.map((item) => {
     const deletedDate = item.deleted_at ? new Date(item.deleted_at).toLocaleDateString() : "";
-    return `<div class="deleted-item" data-id="${item.id}">
+    return `<div class="deleted-item" data-id="${escapeHtml(item.id)}">
       <div class="deleted-item-info">
-        <span class="deleted-item-title">${item.title}</span>
-        <span class="deleted-item-meta">${item.section || ""} · ${item.category || ""} · Deleted ${deletedDate}</span>
+        <span class="deleted-item-title">${escapeHtml(item.title)}</span>
+        <span class="deleted-item-meta">${escapeHtml(item.section || "")} · ${escapeHtml(item.category || "")} · Deleted ${escapeHtml(deletedDate)}</span>
       </div>
       <div class="deleted-item-actions">
-        <button class="deleted-restore-btn" data-id="${item.id}" title="Restore"><ion-icon name="arrow-undo-outline"></ion-icon></button>
-        <button class="deleted-perm-btn" data-id="${item.id}" data-title="${item.title.replace(/"/g, '&quot;')}" title="Permanently delete"><ion-icon name="trash-outline"></ion-icon></button>
+        <button class="deleted-restore-btn" data-id="${escapeHtml(item.id)}" title="Restore"><ion-icon name="arrow-undo-outline"></ion-icon></button>
+        <button class="deleted-perm-btn" data-id="${escapeHtml(item.id)}" data-title="${escapeHtml(item.title)}" title="Permanently delete"><ion-icon name="trash-outline"></ion-icon></button>
       </div>
     </div>`;
   }).join("");
@@ -2077,8 +2090,8 @@ function renderRecentStrip(containerId, items) {
     const card = document.createElement("div");
     card.className = "recent-card";
     card.tabIndex = 0;
-    const imgHtml = item.image_path ? `<img src="${item.image_path}" alt="${item.title}" loading="lazy">` : "";
-    card.innerHTML = `${imgHtml}<span>${item.title}</span>`;
+    const imgHtml = item.image_path ? `<img src="${item.image_path}" alt="${escapeHtml(item.title)}" loading="lazy">` : "";
+    card.innerHTML = `${imgHtml}<span>${escapeHtml(item.title)}</span>`;
     card.addEventListener("click", () => openModal(item));
     strip.appendChild(card);
   });
@@ -2114,8 +2127,8 @@ function renderRelatedItems(item) {
     const card = document.createElement("div");
     card.className = "related-card";
     card.tabIndex = 0;
-    const imgHtml = rel.image_path ? `<img src="${rel.image_path}" alt="${rel.title}" loading="lazy">` : "";
-    card.innerHTML = `${imgHtml}<span>${rel.title}</span>`;
+    const imgHtml = rel.image_path ? `<img src="${rel.image_path}" alt="${escapeHtml(rel.title)}" loading="lazy">` : "";
+    card.innerHTML = `${imgHtml}<span>${escapeHtml(rel.title)}</span>`;
     card.addEventListener("click", () => openModal(rel));
     strip.appendChild(card);
   });
@@ -2144,7 +2157,7 @@ function renderActivityLog() {
   container.innerHTML = log.map((entry) => {
     const d = new Date(entry.timestamp);
     const time = d.toLocaleDateString("en-SG", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-    return `<div class="activity-entry"><span class="activity-action">${entry.action}</span><span class="activity-detail">${entry.detail}</span><span class="activity-time">${time}</span></div>`;
+    return `<div class="activity-entry"><span class="activity-action">${escapeHtml(entry.action)}</span><span class="activity-detail">${escapeHtml(entry.detail)}</span><span class="activity-time">${escapeHtml(time)}</span></div>`;
   }).join("");
 }
 

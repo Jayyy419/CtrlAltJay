@@ -1,5 +1,15 @@
 "use strict";
 
+function escapeHtml(value) {
+  if (value === null || value === undefined) return "";
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 const tabButtons = document.querySelectorAll(".admin-tab");
 const panels = {
   items: document.getElementById("items-panel"),
@@ -103,7 +113,7 @@ async function loadItems() {
 
     const main = document.createElement("div");
     main.className = "list-main";
-    main.innerHTML = `<h4>${item.title}</h4><p>${item.section} | ${item.category} | Updated ${item.updated_at}</p>`;
+    main.innerHTML = `<h4>${escapeHtml(item.title)}</h4><p>${escapeHtml(item.section)} | ${escapeHtml(item.category)} | Updated ${escapeHtml(item.updated_at)}</p>`;
 
     const actions = document.createElement("div");
     actions.className = "list-actions";
@@ -210,7 +220,7 @@ async function loadResume() {
 
     const main = document.createElement("div");
     main.className = "list-main";
-    main.innerHTML = `<h4>${row.title}</h4><p>${row.lane} | ${row.period} | order ${row.sort_order}</p>`;
+    main.innerHTML = `<h4>${escapeHtml(row.title)}</h4><p>${escapeHtml(row.lane)} | ${escapeHtml(row.period)} | order ${escapeHtml(row.sort_order)}</p>`;
 
     const actions = document.createElement("div");
     actions.className = "list-actions";
@@ -290,7 +300,7 @@ async function loadSkills() {
 
     const main = document.createElement("div");
     main.className = "list-main";
-    main.innerHTML = `<h4>${row.name} (${row.level}%)</h4><p>${row.focus || "No focus"} | order ${row.sort_order}</p>`;
+    main.innerHTML = `<h4>${escapeHtml(row.name)} (${escapeHtml(row.level)}%)</h4><p>${escapeHtml(row.focus) || "No focus"} | order ${escapeHtml(row.sort_order)}</p>`;
 
     const actions = document.createElement("div");
     actions.className = "list-actions";

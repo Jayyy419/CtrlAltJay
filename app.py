@@ -1,4 +1,5 @@
 import os
+import re
 import secrets
 import time
 import hmac
@@ -23,6 +24,7 @@ from flask import (
     url_for,
 )
 from flask_mail import Mail, Message
+from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
@@ -48,6 +50,11 @@ table_skills = dynamodb.Table("ctrlaltjay-skills")
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "change-this-secret")
+
+# Trust the single reverse proxy (nginx, per .platform config) for client IP/proto
+# so request.remote_addr reflects the real visitor instead of 127.0.0.1.
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
 app.config["MAIL_SERVER"] = os.getenv("MAIL_SERVER", "default_server")
 app.config["MAIL_PORT"] = int(os.getenv("MAIL_PORT", 587))
 app.config["MAIL_USERNAME"] = os.getenv("MAIL_USERNAME", "default_username")
@@ -56,11 +63,25 @@ app.config["MAIL_USE_TLS"] = os.getenv("MAIL_USE_TLS", "true").lower() in ["true
 app.config["MAIL_USE_SSL"] = os.getenv("MAIL_USE_SSL", "false").lower() in ["true", "1", "t"]
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB upload limit
 
+# Session cookie hardening — explicit rather than relying on framework/browser defaults.
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = os.getenv("FLASK_DEBUG", "").lower() not in ("1", "true", "t")
+
 mail = Mail(app)
 
-DEFAULT_ADMIN_PASSCODE_HASH = generate_password_hash("controlalternatejay")
+if not os.getenv("ADMIN_PASSCODE_HASH", "").strip() and not os.getenv("ADMIN_PASSCODE", "").strip():
+    print(
+        "WARNING: Neither ADMIN_PASSCODE_HASH nor ADMIN_PASSCODE is set — "
+        "admin login is disabled until one is configured.",
+        flush=True,
+    )
+
 MAX_ADMIN_ATTEMPTS = 5
 ADMIN_LOCK_SECONDS = 600
+MAX_CONTACT_ATTEMPTS = 5
+CONTACT_RATE_WINDOW_SECONDS = 600
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 PORTFOLIO_ITEM_FIELDS = [
     "additional_images", "byline", "category", "challenges",
@@ -95,7 +116,9 @@ def verify_admin_passcode(submitted_passcode):
     if configured_plain:
         return hmac.compare_digest(configured_plain, submitted_passcode)
 
-    return check_password_hash(DEFAULT_ADMIN_PASSCODE_HASH, submitted_passcode)
+    # No admin passcode configured — fail closed instead of falling back to a
+    # hardcoded default (which would be visible to anyone reading this source).
+    return False
 
 
 def unauthorized_admin_response():
@@ -157,6 +180,57 @@ def dynamo_to_dict(item):
         else:
             result[k] = v
     return result
+
+
+# ─── IP-based rate limiting (shared table, DynamoDB-backed so it works across
+# multiple gunicorn workers/instances — unlike session-based counters, which
+# an attacker can reset just by dropping cookies) ───────────────────────────
+
+def _client_ip():
+    return request.remote_addr or "unknown"
+
+
+def _rate_limit_id(bucket, ip):
+    return f"__ratelimit_{bucket}_{ip}"
+
+
+def _rate_limit_locked_seconds(bucket, ip):
+    """Seconds remaining in an active lockout for this bucket/ip, or 0 if none."""
+    resp = table_items.get_item(Key={"id": _rate_limit_id(bucket, ip)})
+    item = resp.get("Item")
+    if not item:
+        return 0
+    remaining = int(item.get("lock_until", 0)) - int(time.time())
+    return max(0, remaining)
+
+
+def _record_rate_limit_failure(bucket, ip, max_attempts, lock_seconds):
+    """Record a failed attempt. Returns (locked_out, remaining_attempts)."""
+    key = _rate_limit_id(bucket, ip)
+    resp = table_items.get_item(Key={"id": key})
+    existing = resp.get("Item") or {}
+    attempts = int(existing.get("attempts", 0)) + 1
+
+    if attempts >= max_attempts:
+        table_items.put_item(Item={
+            "id": key,
+            "attempts": Decimal(0),
+            "lock_until": Decimal(int(time.time()) + lock_seconds),
+            "updated_at": now_iso(),
+        })
+        return True, 0
+
+    table_items.put_item(Item={
+        "id": key,
+        "attempts": Decimal(attempts),
+        "lock_until": Decimal(0),
+        "updated_at": now_iso(),
+    })
+    return False, max_attempts - attempts
+
+
+def _clear_rate_limit(bucket, ip):
+    table_items.delete_item(Key={"id": _rate_limit_id(bucket, ip)})
 
 
 @app.before_request
@@ -273,12 +347,6 @@ def api_public_data():
     )
 
 
-@app.route("/admin/login/<secret_key>", methods=["GET", "POST"])
-def admin_login(secret_key):
-    # Legacy route retained for compatibility; auth now happens via popup on index.
-    return redirect(url_for("index"))
-
-
 @app.route("/api/admin/auth-status", methods=["GET"])
 def admin_auth_status():
     return jsonify({"is_admin": bool(session.get("is_admin"))})
@@ -286,12 +354,10 @@ def admin_auth_status():
 
 @app.route("/admin/auth", methods=["POST"])
 def admin_auth():
-    lock_until = int(session.get("admin_lock_until", 0) or 0)
-    now_epoch = int(time.time())
-
-    if lock_until > now_epoch:
-        remaining = lock_until - now_epoch
-        return jsonify({"error": "Too many attempts. Please wait and try again.", "retry_in": remaining}), 429
+    ip = _client_ip()
+    remaining_lock = _rate_limit_locked_seconds("admin", ip)
+    if remaining_lock > 0:
+        return jsonify({"error": "Too many attempts. Please wait and try again.", "retry_in": remaining_lock}), 429
 
     payload = request.get_json(silent=True) or {}
     submitted_passcode = (
@@ -304,20 +370,16 @@ def admin_auth():
 
     if verify_admin_passcode(submitted_passcode):
         session["is_admin"] = True
-        session.pop("admin_attempts", None)
-        session.pop("admin_lock_until", None)
+        _clear_rate_limit("admin", ip)
         return jsonify({"message": "Authenticated.", "redirect_url": url_for("index")})
 
-    attempts = int(session.get("admin_attempts", 0) or 0) + 1
-    session["admin_attempts"] = attempts
-
-    if attempts >= MAX_ADMIN_ATTEMPTS:
-        session["admin_lock_until"] = now_epoch + ADMIN_LOCK_SECONDS
-        session["admin_attempts"] = 0
+    locked_out, remaining_attempts = _record_rate_limit_failure(
+        "admin", ip, MAX_ADMIN_ATTEMPTS, ADMIN_LOCK_SECONDS
+    )
+    if locked_out:
         return jsonify({"error": "Too many attempts. Please wait and try again."}), 429
 
-    remaining = MAX_ADMIN_ATTEMPTS - attempts
-    return jsonify({"error": "Invalid passcode.", "remaining_attempts": remaining}), 401
+    return jsonify({"error": "Invalid passcode.", "remaining_attempts": remaining_attempts}), 401
 
 
 @app.route("/admin/logout", methods=["GET", "POST"])
@@ -668,6 +730,16 @@ def api_admin_skill_item(item_id):
 
 @app.route("/send_message", methods=["POST"])
 def send_message():
+    ip = _client_ip()
+    remaining_lock = _rate_limit_locked_seconds("contact", ip)
+    if remaining_lock > 0:
+        error_msg = "Too many messages sent recently. Please wait a bit before trying again."
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return jsonify({"error": error_msg, "retry_in": remaining_lock}), 429
+        flash(error_msg, "error")
+        return redirect(url_for("index"))
+    _record_rate_limit_failure("contact", ip, MAX_CONTACT_ATTEMPTS, CONTACT_RATE_WINDOW_SECONDS)
+
     # Collect form data
     fullname = request.form.get("fullname", "").strip()
     email = request.form.get("email", "").strip()
@@ -689,13 +761,13 @@ def send_message():
             return jsonify({"error": "Please provide your full name."}), 400
         flash("Please provide your full name.", "error")
         return redirect(url_for("index"))
-    
-    if not email:
+
+    if not email or not EMAIL_RE.match(email):
         if request.headers.get("X-Requested-With") == "XMLHttpRequest":
             return jsonify({"error": "Please provide a valid email address."}), 400
         flash("Please provide a valid email address.", "error")
         return redirect(url_for("index"))
-    
+
     if not subject:
         if request.headers.get("X-Requested-With") == "XMLHttpRequest":
             return jsonify({"error": "Please provide a subject for your message."}), 400
@@ -804,7 +876,8 @@ def admin_resume_key_rotate():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    debug_mode = os.getenv("FLASK_DEBUG", "").lower() in ("1", "true", "t")
+    app.run(debug=debug_mode)
 
 
 # ─── SEO: Sitemap & Robots ──────────────────────────────────────────────────
