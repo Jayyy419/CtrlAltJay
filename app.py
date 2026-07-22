@@ -68,10 +68,27 @@ app.secret_key = _secret_key
 # so request.remote_addr reflects the real visitor instead of 127.0.0.1.
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
+def _resolve_secret(env_var, secret_id_env_var, default=""):
+    """Read a config value from AWS Secrets Manager if <secret_id_env_var> is
+    set (naming a secret name or ARN), otherwise fall back to the plain
+    <env_var> environment variable. Never raises — a Secrets Manager fetch
+    failure degrades to the env var/default rather than crashing the app,
+    matching how mail errors are already handled elsewhere (best-effort,
+    not security-critical like SECRET_KEY/admin passcode)."""
+    secret_id = os.getenv(secret_id_env_var, "").strip()
+    if secret_id:
+        try:
+            sm = boto3.client("secretsmanager", region_name=AWS_REGION)
+            return sm.get_secret_value(SecretId=secret_id)["SecretString"]
+        except Exception as e:
+            print(f"WARNING: could not fetch secret {secret_id!r} ({secret_id_env_var}): {e}", flush=True)
+    return os.getenv(env_var, default)
+
+
 app.config["MAIL_SERVER"] = os.getenv("MAIL_SERVER", "default_server")
 app.config["MAIL_PORT"] = int(os.getenv("MAIL_PORT", 587))
 app.config["MAIL_USERNAME"] = os.getenv("MAIL_USERNAME", "default_username")
-app.config["MAIL_PASSWORD"] = os.getenv("MAIL_PASSWORD", "default_password")
+app.config["MAIL_PASSWORD"] = _resolve_secret("MAIL_PASSWORD", "MAIL_PASSWORD_SECRET_ID", "default_password")
 app.config["MAIL_USE_TLS"] = os.getenv("MAIL_USE_TLS", "true").lower() in ["true", "1", "t"]
 app.config["MAIL_USE_SSL"] = os.getenv("MAIL_USE_SSL", "false").lower() in ["true", "1", "t"]
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB upload limit
@@ -168,7 +185,14 @@ def save_uploaded_image(upload):
     # Optimise with Pillow when available (skip SVG/ICO)
     if HAS_PILLOW and ext in {".jpg", ".jpeg", ".png", ".webp"}:
         try:
-            with PILImage.open(destination) as img:
+            # Restrict format identification to what this app actually needs.
+            # Pillow detects the real format from file content, not the
+            # extension, so a file saved as "x.jpg" could contain PSD/FITS/
+            # JPEG2000/TGA/PDF/etc bytes and still get parsed by that format's
+            # decoder — several of which have had parser-level CVEs. Passing
+            # formats= here means Pillow never attempts those decoders at all
+            # for anything that isn't actually JPEG/PNG/WEBP.
+            with PILImage.open(destination, formats=["JPEG", "PNG", "WEBP"]) as img:
                 if img.mode in ("RGBA", "P") and ext in {".jpg", ".jpeg"}:
                     img = img.convert("RGB")
                 max_w = 1200
