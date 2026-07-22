@@ -40,7 +40,10 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent
 UPLOAD_DIR = BASE_DIR / "static" / "uploads"
-ALLOWED_IMAGE_EXT = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".ico"}
+ALLOWED_IMAGE_EXT = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".ico"}
+# .svg intentionally excluded: an uploaded SVG can embed <script>, which executes
+# if the file is ever opened via direct navigation (not just <img src>) — the
+# current CSP allows 'unsafe-inline' script-src, so it wouldn't block this.
 
 AWS_REGION = os.getenv("AWS_REGION", "ap-southeast-1")
 dynamodb = boto3.resource("dynamodb", region_name=AWS_REGION)
@@ -1001,9 +1004,11 @@ def admin_backup():
     unauthorized = unauthorized_admin_response()
     if unauthorized:
         return unauthorized
+    bucket = os.getenv("BACKUP_S3_BUCKET", "").strip()
+    if not bucket:
+        return jsonify({"error": "BACKUP_S3_BUCKET is not configured."}), 500
     try:
         s3 = boto3.client("s3", region_name=AWS_REGION)
-        bucket = os.getenv("BACKUP_S3_BUCKET", "elasticbeanstalk-ap-southeast-1-140023398409")
         timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
         tables = {
             "portfolio-items": table_items,
