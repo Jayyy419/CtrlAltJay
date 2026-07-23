@@ -4236,6 +4236,9 @@ function getCommandPaletteItems() {
     { icon: "settings-outline", label: "Settings", hint: "Cmd/Ctrl+,", action: () => openIdeTabByName("settings") },
     { icon: "keypad-outline", label: "Keyboard Shortcuts", hint: "?", action: () => toggleShortcutsOverlay() },
   ];
+  if (!state.isAdmin) {
+    items.push({ icon: "lock-closed-outline", label: "Admin Sign In", hint: "manage content", action: () => openAdminLoginModal() });
+  }
   if (typeof toggleTerminalPanel === "function") {
     items.push({ icon: "terminal-outline", label: "Open Terminal", hint: "`", action: () => toggleTerminalPanel() });
     items.push({ icon: "warning-outline", label: "Open Problems Panel", hint: `${PROBLEMS_DATA.length} items`, action: () => openProblemsPanel() });
@@ -4494,6 +4497,7 @@ function runTerminalCommand(raw) {
       printTermLine("  theme <dark|light>   switch theme");
       printTermLine("  contact | resume | scm | stack | profile    jump to a section");
       printTermLine("  zen                  toggle distraction-free zen mode");
+      printTermLine("  admin                sign in to the admin panel");
       printTermLine("  banner               print an intro banner");
       printTermLine("  clear                clear the terminal");
       printTermLine("  exit                 close the terminal");
@@ -4584,6 +4588,16 @@ function runTerminalCommand(raw) {
     case "zen":
       closeTerminalPanel();
       toggleZenMode(true);
+      break;
+    case "admin":
+    case "sudo":
+      if (state.isAdmin) {
+        printTermLine("Already signed in as admin.", "term-line--accent");
+      } else {
+        printTermLine("Opening admin sign-in...", "term-line--accent");
+        openAdminLoginModal();
+        closeTerminalPanel();
+      }
       break;
     case "clear":
       document.getElementById("ide-terminal-body").innerHTML = "";
