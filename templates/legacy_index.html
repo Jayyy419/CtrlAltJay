@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>CtrlAltJay — Rone Peh | Portfolio</title>
+  <meta name="description" content="Portfolio of Rone Peh — Information Technology student, SWE Intern at J.P. Morgan Chase. Projects in cloud, AI/ML, web development, and more.">
+  <meta name="author" content="Rone Peh">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://ctrlaltjay.dev/">
+  <meta property="og:title" content="CtrlAltJay — Rone Peh | Portfolio">
+  <meta property="og:description" content="Portfolio of Rone Peh — Information Technology student, SWE Intern at J.P. Morgan Chase.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://ctrlaltjay.dev/">
+  <meta property="og:locale" content="en_SG">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="CtrlAltJay — Rone Peh | Portfolio">
+  <meta name="twitter:description" content="Portfolio of Rone Peh — Information Technology student, SWE Intern at J.P. Morgan Chase.">
+  <link rel="shortcut icon" href="../static/images/PersonalLogo.ico" type="image/x-icon">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            display: ['Space Grotesk', 'system-ui', 'sans-serif'],
+          },
+          colors: {
+            surface: { 50: '#1a1a2e', 100: '#16162a', 200: '#121226', 300: '#0e0e1f', 400: '#0a0a18' },
+            accent: { DEFAULT: '#f59e0b', light: '#fbbf24', dark: '#d97706', muted: 'rgba(245,158,11,0.15)' },
+            ink: { DEFAULT: '#e2e8f0', soft: '#94a3b8', muted: '#64748b' },
+          },
+          animation: {
+            'fade-up': 'fadeUp 0.4s ease-out',
+            'glow': 'glow 2s ease-in-out infinite alternate',
+          },
+          keyframes: {
+            fadeUp: { '0%': { opacity: '0', transform: 'translateY(12px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+            glow: { '0%': { boxShadow: '0 0 5px rgba(245,158,11,0.2)' }, '100%': { boxShadow: '0 0 20px rgba(245,158,11,0.4)' } },
+          },
+        },
+      },
+    }
+  </script>
+  <link rel="stylesheet" href="../static/legacy/css/style.css">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#0a0a18">
+</head>
+<body class="bg-surface-400 text-ink font-sans min-h-screen flex flex-col antialiased" style="opacity:0">
+
+  <!-- Skip link for accessibility -->
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  <!-- Scroll progress bar -->
+  <div class="scroll-progress" id="scroll-progress"></div>
+
+  <!-- Back-to-top button -->
+  <button class="back-to-top" id="back-to-top" aria-label="Back to top">
+    <ion-icon name="chevron-up-outline"></ion-icon>
+  </button>
+
+  <!-- Theme toggle -->
+  <button class="theme-toggle-btn" id="theme-toggle" aria-label="Toggle theme">
+    <ion-icon name="sunny-outline"></ion-icon>
+  </button>
+
+  <!-- View toggle -->
+  <button class="view-toggle-btn" id="view-toggle" aria-label="Toggle grid/list view">
+    <ion-icon name="list-outline"></ion-icon>
+  </button>
+
+    <main id="main-content" class="layout max-w-[1440px] mx-auto w-full px-5 py-10 sm:py-10 gap-8 flex-1" role="main">
+    <!-- Sidebar -->
+    <aside class="sidebar bg-surface-50/80 backdrop-blur-xl border border-white/[0.06] rounded-2xl p-8 sticky top-10 h-fit shadow-2xl">
+      <div class="portrait-wrap relative mx-auto w-36 h-36 rounded-2xl overflow-hidden ring-2 ring-accent/60 ring-offset-2 ring-offset-surface-400 mb-6">
+        <img src="../static/images/Portrait_ZoomedIn.JPG" alt="{{ profile.name }}" class="w-full h-full object-cover portrait">
+      </div>
+      <h1 class="text-2xl font-bold text-white text-center tracking-tight">{{ profile.name }}</h1>
+      <p class="headline mt-2 mb-6 text-ink-soft text-center text-sm leading-relaxed">{{ profile.headline }}</p>
+
+      <div class="contact-cluster grid gap-2.5 mb-6">
+        <a href="mailto:{{ profile.email }}" class="chip group flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-100 border border-white/[0.06] text-ink-soft text-sm no-underline transition-all duration-300 hover:bg-accent hover:text-surface-400 hover:border-accent">
+          <ion-icon name="mail-outline" class="text-lg text-accent group-hover:text-surface-400 transition-colors"></ion-icon>
+          <span>{{ profile.email }}</span>
+        </a>
+        <a href="tel:{{ profile.phone|replace(' ', '') }}" class="chip group flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-100 border border-white/[0.06] text-ink-soft text-sm no-underline transition-all duration-300 hover:bg-accent hover:text-surface-400 hover:border-accent">
+          <ion-icon name="call-outline" class="text-lg text-accent group-hover:text-surface-400 transition-colors"></ion-icon>
+          <span>{{ profile.phone }}</span>
+        </a>
+        <span class="chip group flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-100 border border-white/[0.06] text-ink-soft text-sm">
+          <ion-icon name="location-outline" class="text-lg text-accent"></ion-icon>
+          <span>{{ profile.location }}</span>
+        </span>
+        <a href="{{ profile.credly }}" class="chip group flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-100 border border-white/[0.06] text-ink-soft text-sm no-underline transition-all duration-300 hover:bg-accent hover:text-surface-400 hover:border-accent" target="_blank" rel="noopener noreferrer">
+          <ion-icon name="ribbon-outline" class="text-lg text-accent group-hover:text-surface-400 transition-colors"></ion-icon>
+          <span>Credly</span>
+        </a>
+        <a href="{{ profile.github }}" class="chip group flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-100 border border-white/[0.06] text-ink-soft text-sm no-underline transition-all duration-300 hover:bg-accent hover:text-surface-400 hover:border-accent" target="_blank" rel="noopener noreferrer">
+          <ion-icon name="logo-github" class="text-lg text-accent group-hover:text-surface-400 transition-colors"></ion-icon>
+          <span>GitHub</span>
+        </a>
+        <a href="{{ profile.linkedin }}" class="chip group flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-100 border border-white/[0.06] text-ink-soft text-sm no-underline transition-all duration-300 hover:bg-accent hover:text-surface-400 hover:border-accent" target="_blank" rel="noopener noreferrer">
+          <ion-icon name="logo-linkedin" class="text-lg text-accent group-hover:text-surface-400 transition-colors"></ion-icon>
+          <span>LinkedIn</span>
+        </a>
+      </div>
+
+      <button type="button" id="admin-logout-btn" class="admin-link admin-logout w-full text-center mt-4 bg-red-500/10 text-red-400 font-semibold rounded-xl px-4 py-3 text-sm border border-red-500/30 transition-all duration-300 hover:bg-red-500/20 hover:border-red-500/60 hover:text-red-300 cursor-pointer" hidden>Exit Admin Mode</button>
+
+      <!-- Admin Tools Popup (Admin) -->
+      <div class="admin-only mt-3" hidden>
+        <button type="button" id="admin-tools-toggle" class="w-full text-center bg-accent/10 text-accent font-semibold rounded-xl px-4 py-3 text-xs border border-accent/30 transition-all duration-300 hover:bg-accent/20 hover:border-accent/60 cursor-pointer">
+          <ion-icon name="settings-outline" class="align-middle mr-1"></ion-icon>Admin Tools
+        </button>
+      </div>
+
+      <!-- Admin Tools Popup Overlay -->
+      <div id="admin-tools-popup" class="admin-tools-popup" style="display:none">
+        <div class="admin-tools-popup-backdrop"></div>
+        <div class="admin-tools-popup-content">
+          <div class="admin-tools-popup-header">
+            <h3><ion-icon name="settings-outline"></ion-icon> Admin Tools</h3>
+            <button type="button" id="admin-tools-close" class="admin-tools-close">&times;</button>
+          </div>
+          <div class="admin-tools-grid">
+            <!-- Activity Log -->
+            <div class="admin-tool-card">
+              <button type="button" id="activity-log-toggle" class="admin-tool-btn">
+                <ion-icon name="document-text-outline"></ion-icon>
+                <span>Activity Log</span>
+              </button>
+              <div id="activity-log-panel" class="activity-log-panel mt-2" style="display:none">
+                <div id="activity-log-list" class="activity-log-list"></div>
+                <button type="button" id="activity-log-clear" class="text-xs text-red-400 mt-2 cursor-pointer bg-transparent border-0 hover:text-red-300">Clear Log</button>
+              </div>
+            </div>
+            <!-- Stats Dashboard -->
+            <div class="admin-tool-card">
+              <button type="button" id="admin-stats-toggle" class="admin-tool-btn">
+                <ion-icon name="bar-chart-outline"></ion-icon>
+                <span>Stats Dashboard</span>
+              </button>
+              <div id="admin-stats-panel" class="activity-log-panel mt-2" style="display:none">
+                <div id="admin-stats-content"></div>
+              </div>
+            </div>
+            <!-- Visitors -->
+            <div class="admin-tool-card">
+              <div class="admin-tool-btn admin-tool-static">
+                <ion-icon name="eye-outline"></ion-icon>
+                <span>Visitors: <span id="hit-counter-display" class="text-accent font-bold">&mdash;</span></span>
+              </div>
+            </div>
+            <!-- Backup -->
+            <div class="admin-tool-card">
+              <button type="button" id="admin-backup-btn" class="admin-tool-btn">
+                <ion-icon name="cloud-upload-outline"></ion-icon>
+                <span>Backup to S3</span>
+              </button>
+            </div>
+            <!-- Import JSON -->
+            <div class="admin-tool-card">
+              <button type="button" id="admin-import-btn" class="admin-tool-btn">
+                <ion-icon name="cloud-download-outline"></ion-icon>
+                <span>Import JSON</span>
+              </button>
+            </div>
+            <!-- Recently Deleted -->
+            <div class="admin-tool-card">
+              <button type="button" id="deleted-items-toggle" class="admin-tool-btn">
+                <ion-icon name="trash-outline"></ion-icon>
+                <span>Recently Deleted <span id="deleted-count-badge" class="deleted-badge" style="display:none">0</span></span>
+              </button>
+              <div id="deleted-items-panel" class="deleted-panel mt-2" style="display:none">
+                <div id="deleted-items-list"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Content -->
+    <section class="content bg-surface-50/80 backdrop-blur-xl border border-white/[0.06] rounded-2xl p-8 shadow-2xl">
+      <nav class="main-nav flex gap-3 mb-8 pb-5 border-b border-white/[0.06] overflow-x-auto -mx-2 px-2 scrollbar-hide">
+        <button class="tab-btn active shrink-0 px-5 py-2.5 bg-surface-100 text-ink-soft border-2 border-white/[0.06] rounded-xl cursor-pointer font-medium text-sm transition-all duration-300 hover:border-accent/60 hover:text-accent" data-tab="about">About</button>
+        <button class="tab-btn shrink-0 px-5 py-2.5 bg-surface-100 text-ink-soft border-2 border-white/[0.06] rounded-xl cursor-pointer font-medium text-sm transition-all duration-300 hover:border-accent/60 hover:text-accent" data-tab="projects">Projects</button>
+        <button class="tab-btn shrink-0 px-5 py-2.5 bg-surface-100 text-ink-soft border-2 border-white/[0.06] rounded-xl cursor-pointer font-medium text-sm transition-all duration-300 hover:border-accent/60 hover:text-accent" data-tab="experiences">Experiences</button>
+        <button class="tab-btn shrink-0 px-5 py-2.5 bg-surface-100 text-ink-soft border-2 border-white/[0.06] rounded-xl cursor-pointer font-medium text-sm transition-all duration-300 hover:border-accent/60 hover:text-accent" data-tab="resume">Resume</button>
+        <button class="tab-btn shrink-0 px-5 py-2.5 bg-surface-100 text-ink-soft border-2 border-white/[0.06] rounded-xl cursor-pointer font-medium text-sm transition-all duration-300 hover:border-accent/60 hover:text-accent" data-tab="contact">Contact</button>
+      </nav>
+
+      <!-- About -->
+      <article id="about" class="tab-panel active animate-fade-up">
+        <header class="panel-head mb-6">
+          <h2 class="font-display text-3xl font-bold text-white tracking-tight">About Me</h2>
+          <p class="mt-2 text-ink-muted">Building practical systems that blend software, cloud, and AI.</p>
+        </header>
+
+        <div class="bio-highlight relative max-w-3xl mb-8 p-8 rounded-2xl bg-gradient-to-br from-surface-100/80 to-surface-200/40 border border-white/[0.06] shadow-[0_0_40px_rgba(245,158,11,0.04)]">
+          <div class="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-accent via-accent/40 to-transparent rounded-l-2xl"></div>
+          <p class="lead-copy text-ink-soft leading-loose pl-5 text-[0.95rem] tracking-wide" style="white-space: pre-line;">{{ profile.bio }}</p>
+        </div>
+
+        <section>
+          <h3 class="font-display text-xl font-semibold text-white mb-4">Current Focus</h3>
+          <div class="focus-grid grid grid-cols-[repeat(auto-fit,minmax(min(240px,100%),1fr))] gap-4">
+            {% for item in profile.now_building %}
+            <article class="focus-card group bg-surface-100/60 border border-white/[0.06] rounded-2xl p-5 transition-all duration-300 hover:border-accent/40 hover:shadow-[0_0_30px_rgba(245,158,11,0.08)]">
+              <h4 class="font-display font-semibold text-white mb-2 group-hover:text-accent transition-colors">{{ item.title }}</h4>
+              <p class="text-ink-soft text-sm leading-relaxed">{{ item.description }}</p>
+            </article>
+            {% endfor %}
+          </div>
+        </section>
+
+        <section class="stats-counters mt-10" id="stats-counters">
+          <h3 class="font-display text-xl font-semibold text-white mb-4">By the Numbers</h3>
+          <div class="counter-grid grid grid-cols-3 gap-4">
+            <div class="counter-card">
+              <span class="counter-number" id="counter-projects">0</span>
+              <span class="counter-label">Projects</span>
+            </div>
+            <div class="counter-card">
+              <span class="counter-number" id="counter-experiences">0</span>
+              <span class="counter-label">Experiences</span>
+            </div>
+            <div class="counter-card">
+              <span class="counter-number" id="counter-skills">0</span>
+              <span class="counter-label">Skills</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="mt-8 text-center">
+          <button type="button" id="surprise-me-btn" class="surprise-me-btn">
+            <ion-icon name="shuffle-outline"></ion-icon> Surprise Me
+          </button>
+          <p class="text-xs text-ink-muted mt-2">Open a random portfolio item</p>
+        </section>
+      </article>
+
+      <!-- Projects -->
+      <article id="projects" class="tab-panel animate-fade-up">
+        <header class="panel-head mb-6">
+          <div class="panel-head-top flex items-center justify-between gap-3">
+            <h2 class="font-display text-3xl font-bold text-white tracking-tight">Projects</h2>
+            <button type="button" id="create-project-btn" class="admin-inline-btn admin-only border-2 border-accent bg-transparent text-accent rounded-xl px-4 py-2 cursor-pointer text-sm font-semibold transition-all duration-200 hover:bg-accent-muted" hidden>Create New Project</button>
+          </div>
+          <p class="mt-2 text-ink-muted">Latest projects first. Filter and sort to explore the full build history.</p>
+        </header>
+
+        <div class="subsection-nav flex gap-3 mb-5 pb-4 border-b border-white/[0.06] overflow-x-auto scrollbar-hide" id="projects-subsection-nav">
+          <button class="subsection-btn shrink-0 active" data-subsection="all">All</button>
+        </div>
+
+        <div class="controls-row flex gap-3 flex-wrap items-center my-5">
+          <div class="search-field-group flex flex-1 min-w-[180px] gap-0">
+            <select id="projects-search-field" class="search-field-select bg-surface-100 border border-white/[0.06] border-r-0 rounded-l-xl px-3 py-2.5 text-ink-soft text-xs focus:outline-none focus:border-accent transition-colors" title="Search in field">
+              <option value="all">All Fields</option>
+              <option value="title">Title</option>
+              <option value="summary">Summary</option>
+              <option value="description">Description</option>
+              <option value="deliverables">Deliverables</option>
+              <option value="challenges">Challenges</option>
+              <option value="extra_notes">Notes</option>
+            </select>
+            <input type="text" id="projects-search" placeholder="Search projects..." class="bg-surface-100 border border-white/[0.06] rounded-r-xl px-4 py-2.5 text-ink text-sm placeholder:text-ink-muted focus:outline-none focus:border-accent transition-colors flex-1">
+          </div>
+          <select id="projects-sort" class="bg-surface-100 border border-white/[0.06] rounded-xl px-4 py-2.5 text-ink-soft text-sm focus:outline-none focus:border-accent transition-colors">
+            <option value="created_desc">Newest Created</option>
+            <option value="created_asc">Oldest Created</option>
+            <option value="updated_desc">Recently Updated</option>
+            <option value="updated_asc">Least Recently Updated</option>
+            <option value="title_asc">Title A to Z</option>
+            <option value="title_desc">Title Z to A</option>
+          </select>
+        </div>
+        <div class="skills-filter-row flex gap-2 flex-wrap items-center mb-4" id="projects-skills-filter"></div>
+        <div id="projects-grid" class="card-grid grid grid-cols-[repeat(auto-fill,minmax(min(280px,100%),1fr))] gap-5 py-2"></div>
+        <!-- Recently Viewed Projects -->
+        <div id="recently-viewed-projects" class="recently-viewed-section mt-8" style="display:none">
+          <h4 class="text-sm font-semibold text-ink-soft mb-2"><ion-icon name="time-outline" class="align-middle mr-1"></ion-icon>Recently Viewed</h4>
+          <div class="recent-strip"></div>
+        </div>
+      </article>
+
+      <!-- Experiences -->
+      <article id="experiences" class="tab-panel animate-fade-up">
+        <header class="panel-head mb-6">
+          <div class="panel-head-top flex items-center justify-between gap-3">
+            <h2 class="font-display text-3xl font-bold text-white tracking-tight">Experiences</h2>
+            <button type="button" id="create-experience-btn" class="admin-inline-btn admin-only border-2 border-accent bg-transparent text-accent rounded-xl px-4 py-2 cursor-pointer text-sm font-semibold transition-all duration-200 hover:bg-accent-muted" hidden>Create New Experience</button>
+          </div>
+          <p class="mt-2 text-ink-muted">Achievements, certifications, events, and more moments that shaped my journey.</p>
+        </header>
+
+        <div class="subsection-nav flex gap-3 mb-5 pb-4 border-b border-white/[0.06] overflow-x-auto scrollbar-hide" id="experiences-subsection-nav">
+          <button class="subsection-btn shrink-0 active" data-subsection="all">All</button>
+        </div>
+
+        <div class="controls-row flex gap-3 flex-wrap items-center my-5">
+          <div class="search-field-group flex flex-1 min-w-[180px] gap-0">
+            <select id="experiences-search-field" class="search-field-select bg-surface-100 border border-white/[0.06] border-r-0 rounded-l-xl px-3 py-2.5 text-ink-soft text-xs focus:outline-none focus:border-accent transition-colors" title="Search in field">
+              <option value="all">All Fields</option>
+              <option value="title">Title</option>
+              <option value="summary">Summary</option>
+              <option value="description">Description</option>
+              <option value="deliverables">Deliverables</option>
+              <option value="challenges">Challenges</option>
+              <option value="extra_notes">Notes</option>
+            </select>
+            <input type="text" id="experiences-search" placeholder="Search experiences..." class="bg-surface-100 border border-white/[0.06] rounded-r-xl px-4 py-2.5 text-ink text-sm placeholder:text-ink-muted focus:outline-none focus:border-accent transition-colors flex-1">
+          </div>
+          <select id="experiences-sort" class="bg-surface-100 border border-white/[0.06] rounded-xl px-4 py-2.5 text-ink-soft text-sm focus:outline-none focus:border-accent transition-colors">
+            <option value="created_desc">Newest Created</option>
+            <option value="created_asc">Oldest Created</option>
+            <option value="updated_desc">Recently Updated</option>
+            <option value="updated_asc">Least Recently Updated</option>
+            <option value="title_asc">Title A to Z</option>
+            <option value="title_desc">Title Z to A</option>
+          </select>
+        </div>
+        <div class="skills-filter-row flex gap-2 flex-wrap items-center mb-4" id="experiences-skills-filter"></div>
+        <div id="experiences-grid" class="card-grid grid grid-cols-[repeat(auto-fill,minmax(min(280px,100%),1fr))] gap-5 py-2"></div>
+        <!-- Recently Viewed Experiences -->
+        <div id="recently-viewed-experiences" class="recently-viewed-section mt-8" style="display:none">
+          <h4 class="text-sm font-semibold text-ink-soft mb-2"><ion-icon name="time-outline" class="align-middle mr-1"></ion-icon>Recently Viewed</h4>
+          <div class="recent-strip"></div>
+        </div>
+      </article>
+
+      <!-- Resume -->
+      <article id="resume" class="tab-panel animate-fade-up">
+        <header class="panel-head mb-6">
+          <div class="panel-head-top flex items-center justify-between gap-3">
+            <h2 class="font-display text-3xl font-bold text-white tracking-tight">Resume</h2>
+            <div class="flex items-center gap-2 flex-wrap">
+              <button type="button" id="export-json-btn" class="export-btn admin-only" hidden>
+                <ion-icon name="download-outline"></ion-icon> Export JSON
+              </button>
+              <button type="button" id="print-resume-btn" class="export-btn">
+                <ion-icon name="print-outline"></ion-icon> Print
+              </button>
+            </div>
+          </div>
+          <p class="mt-2 text-ink-muted">Timeline is dynamically managed from admin, including additions to education and work lanes.</p>
+        </header>
+
+        <!-- Admin resume-key panel -->
+        <div id="resume-key-panel" class="admin-only resume-key-panel mb-6" hidden>
+          <div class="flex items-center gap-3 flex-wrap">
+            <span class="text-sm text-ink-soft font-semibold">Resume Key:</span>
+            <code id="resume-key-display" class="resume-key-code">Loading...</code>
+            <button type="button" id="resume-key-copy" class="export-btn" title="Copy key">
+              <ion-icon name="copy-outline"></ion-icon> Copy
+            </button>
+            <button type="button" id="resume-key-rotate" class="export-btn" style="border-color:rgba(239,68,68,0.3);color:#ef4444" title="Generate new key">
+              <ion-icon name="refresh-outline"></ion-icon> Rotate
+            </button>
+          </div>
+        </div>
+
+        <section class="timeline-wrap grid grid-cols-2 gap-10 max-lg:grid-cols-1">
+          <div>
+            <h3 class="font-display text-xl font-semibold text-white mb-4">Education</h3>
+            <ol id="resume-education" class="timeline"></ol>
+          </div>
+          <div>
+            <h3 class="font-display text-xl font-semibold text-white mb-4">Work Experience</h3>
+            <ol id="resume-work" class="timeline"></ol>
+          </div>
+        </section>
+
+        <section class="mt-10">
+          <h3 class="font-display text-xl font-semibold text-white mb-4">Tech Stack</h3>
+          <div id="skills-grid" class="mt-4"></div>
+        </section>
+      </article>
+
+      <!-- Contact -->
+      <article id="contact" class="tab-panel animate-fade-up">
+        <header class="panel-head mb-6">
+          <h2 class="font-display text-3xl font-bold text-white tracking-tight">Contact</h2>
+          <p class="mt-2 text-ink-muted">If you are hiring, collaborating, or proposing a challenge, let us talk.</p>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <ul class="flash-list list-none my-3 grid gap-2">
+              {% for category, message in messages %}
+                <li class="flash-item {{ category }} rounded-xl px-4 py-3 border border-white/[0.06] text-sm">{{ message }}</li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+        {% endwith %}
+
+        <form action="/send_message" method="POST" class="contact-form mt-4 space-y-4" id="contact-form">
+          <div class="field-grid grid grid-cols-2 gap-3 max-sm:grid-cols-1">
+            <input type="text" name="fullname" placeholder="Full name" required minlength="2" maxlength="100" pattern="[a-zA-Z\s'-]+" title="Name should contain only letters, spaces, hyphens, and apostrophes"
+              class="w-full px-4 py-3 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm placeholder:text-ink-muted focus:outline-none focus:border-accent transition-colors">
+            <input type="email" name="email" placeholder="Email address" required title="Please enter a valid email address"
+              class="w-full px-4 py-3 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm placeholder:text-ink-muted focus:outline-none focus:border-accent transition-colors">
+          </div>
+          <div class="field-grid grid grid-cols-2 gap-3 max-sm:grid-cols-1">
+            <input type="text" name="company" placeholder="Company (optional)" maxlength="100"
+              class="w-full px-4 py-3 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm placeholder:text-ink-muted focus:outline-none focus:border-accent transition-colors">
+            <input type="text" name="subject" placeholder="Subject" required minlength="5" maxlength="100" title="Subject should be between 5 and 100 characters"
+              class="w-full px-4 py-3 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm placeholder:text-ink-muted focus:outline-none focus:border-accent transition-colors">
+          </div>
+          <select name="reason" class="w-full px-4 py-3 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent transition-colors">
+            <option value="">Reason for reaching out (optional)</option>
+            <option value="hiring">Hiring / Job Opportunity</option>
+            <option value="collaboration">Collaboration / Partnership</option>
+            <option value="freelance">Freelance / Contract Work</option>
+            <option value="feedback">Feedback on Portfolio</option>
+            <option value="question">General Question</option>
+            <option value="other">Other</option>
+          </select>
+          <textarea name="message" placeholder="Tell me what you are building or hiring for" required minlength="10" maxlength="5000" title="Message should be between 10 and 5000 characters" rows="6"
+            class="w-full px-4 py-3 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm placeholder:text-ink-muted focus:outline-none focus:border-accent transition-colors resize-y min-h-[160px]"></textarea>
+          <div class="hp-field" aria-hidden="true" tabindex="-1">
+            <input type="text" name="website" tabindex="-1" autocomplete="off">
+          </div>
+          <button type="submit" class="btn-primary bg-gradient-to-r from-accent to-accent-dark text-surface-400 font-bold rounded-xl px-6 py-3 text-sm border-none cursor-pointer transition-all duration-300 hover:shadow-[0_0_24px_rgba(245,158,11,0.4)] active:scale-[0.98]">Send Message</button>
+          <p class="form-note text-xs text-ink-muted mt-3">I'll get back to you within 24-48 hours.</p>
+        </form>
+      </article>
+    </section>
+  </main>
+
+  <footer class="max-w-[1440px] w-full mx-auto px-5 py-4 text-ink-muted text-xs flex justify-between items-center border-t border-white/[0.04] flex-col sm:flex-row gap-1 sm:gap-0">
+    <p>&copy; {{ 2026 }} CtrlAltJay</p>
+    <p id="last-updated-ts" class="text-ink-muted/70"></p>
+    <p>Built with Flask, cloud-native thinking, and practical AI workflows.</p>
+  </footer>
+
+  <!-- Admin Login Modal -->
+  <div class="modal-shell" id="admin-login-modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-admin-login></div>
+    <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="admin-login-title" style="max-width:400px">
+      <button class="modal-close" data-close-admin-login aria-label="Close login">
+        <ion-icon name="close-outline"></ion-icon>
+      </button>
+      <h3 id="admin-login-title" class="text-xl font-bold text-white mb-1">Admin Login</h3>
+      <p class="text-ink-muted text-sm mb-5">Enter passcode to manage content.</p>
+      <form id="admin-login-form" class="grid gap-3">
+        <input type="password" id="admin-login-passcode" name="passcode" placeholder="Passcode" required autocomplete="current-password"
+          class="w-full px-4 py-3 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm placeholder:text-ink-muted focus:outline-none focus:border-accent transition-colors">
+        <button type="submit" class="btn-primary bg-gradient-to-r from-accent to-accent-dark text-surface-400 font-bold rounded-xl px-6 py-3 text-sm border-none cursor-pointer transition-all duration-300 hover:shadow-[0_0_24px_rgba(245,158,11,0.4)]">Sign In</button>
+      </form>
+      <p id="admin-login-feedback" class="text-xs mt-3" style="color:#f87171" aria-live="polite"></p>
+    </section>
+  </div>
+
+  <!-- Admin Item Modal -->
+  <div class="modal-shell" id="admin-item-modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-admin-item></div>
+    <section class="modal-card admin-item-card" role="dialog" aria-modal="true" aria-labelledby="admin-item-title">
+      <button class="modal-close" data-close-admin-item aria-label="Close item editor">
+        <ion-icon name="close-outline"></ion-icon>
+      </button>
+      <h3 id="admin-item-title" class="text-xl font-bold text-white mb-4">Create Item</h3>
+      <form id="admin-item-form" class="admin-item-form grid gap-3">
+        <input type="hidden" id="admin-item-id" name="id">
+        <div class="field-grid grid grid-cols-2 gap-3 max-sm:grid-cols-1" id="section-field-group">
+          <div>
+            <label for="admin-item-section" class="text-sm text-ink-soft">Section <span class="required-star text-red-400 font-bold">*</span></label>
+            <select id="admin-item-section" name="section" required class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent">
+              <option value="">Select an option</option>
+              <option value="project">Project</option>
+              <option value="experience">Experience</option>
+            </select>
+          </div>
+          <div>
+            <label for="admin-item-category" class="text-sm text-ink-soft">Category <span class="required-star text-red-400 font-bold">*</span></label>
+            <select id="admin-item-category" name="category" required class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent">
+              <option value="">Select section first</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label for="admin-item-title-input" class="text-sm text-ink-soft">Title <span class="required-star text-red-400 font-bold">*</span></label>
+          <input id="admin-item-title-input" type="text" name="title" required class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent">
+        </div>
+        <div>
+          <label for="admin-item-summary" class="text-sm text-ink-soft">Summary</label>
+          <textarea id="admin-item-summary" name="summary" rows="2" class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent resize-y"></textarea>
+        </div>
+        <div>
+          <label for="admin-item-description" class="text-sm text-ink-soft">Description</label>
+          <textarea id="admin-item-description" name="description" rows="4" class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent resize-y"></textarea>
+        </div>
+        <div class="field-grid grid grid-cols-2 gap-3 max-sm:grid-cols-1">
+          <div>
+            <label for="admin-item-date-label" class="text-sm text-ink-soft">Date Label</label>
+            <select id="admin-item-date-label" name="date_label" class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent">
+              <option value="">None</option>
+              <option value="Released">Released</option>
+              <option value="Work in Progress">Work in Progress</option>
+              <option value="Completed">Completed</option>
+              <option value="Ongoing">Ongoing</option>
+            </select>
+          </div>
+          <div>
+            <label for="admin-item-date-value" class="text-sm text-ink-soft">Date Value</label>
+            <input id="admin-item-date-value" type="date" name="date_value" class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent">
+          </div>
+        </div>
+        <div>
+          <label for="admin-item-status" class="text-sm text-ink-soft">Status</label>
+          <select id="admin-item-status" name="status" class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent">
+            <option value="">None</option>
+            <option value="Active">Active</option>
+            <option value="Archived">Archived</option>
+            <option value="Completed">Completed</option>
+            <option value="In Progress">In Progress</option>
+          </select>
+        </div>
+        <div>
+          <label for="admin-item-deliverables" class="text-sm text-ink-soft">Deliverables</label>
+          <textarea id="admin-item-deliverables" name="deliverables" rows="2" class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent resize-y"></textarea>
+        </div>
+        <div>
+          <label for="admin-item-challenges" class="text-sm text-ink-soft">Challenges</label>
+          <textarea id="admin-item-challenges" name="challenges" rows="2" class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent resize-y"></textarea>
+        </div>
+        <div>
+          <label for="admin-item-future" class="text-sm text-ink-soft">Future Improvements</label>
+          <textarea id="admin-item-future" name="future_improvements" rows="2" class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent resize-y"></textarea>
+        </div>
+        <div>
+          <label for="admin-item-extra" class="text-sm text-ink-soft">Extra Notes</label>
+          <textarea id="admin-item-extra" name="extra_notes" rows="2" class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent resize-y"></textarea>
+        </div>
+        <div class="field-grid grid grid-cols-2 gap-3 max-sm:grid-cols-1">
+          <div>
+            <label for="admin-item-image" class="text-sm text-ink-soft">Image</label>
+            <input id="admin-item-image" type="file" name="image" accept="image/*" class="w-full mt-1 text-sm text-ink file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-accent file:text-surface-400 file:cursor-pointer hover:file:bg-accent-dark">
+            <input type="hidden" id="admin-item-image-path" name="image_path">
+            <p id="admin-item-image-info" class="text-xs text-ink-muted mt-1 truncate"></p>
+            <img id="admin-item-image-preview" class="hidden mt-2 rounded-lg max-h-32 object-cover" alt="Preview">
+          </div>
+          <div>
+            <label for="admin-item-link" class="text-sm text-ink-soft">External Link</label>
+            <input id="admin-item-link" type="url" name="external_link" placeholder="https://..." class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm placeholder:text-ink-muted focus:outline-none focus:border-accent">
+          </div>
+        </div>
+        <div>
+          <label for="admin-item-credential-url" class="text-sm text-ink-soft">Credential / Verification URL</label>
+          <input id="admin-item-credential-url" type="url" name="credential_url" placeholder="https://www.credly.com/badges/..." class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm placeholder:text-ink-muted focus:outline-none focus:border-accent">
+        </div>
+        <div>
+          <label for="admin-item-additional-images" class="text-sm text-ink-soft">Additional Images</label>
+          <input id="admin-item-additional-images" type="file" name="additional_images" accept="image/*" multiple class="w-full mt-1 text-sm text-ink file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-accent file:text-surface-400 file:cursor-pointer hover:file:bg-accent-dark">
+          <input type="hidden" id="admin-item-existing-additional" name="existing_additional_images">
+          <div id="admin-item-additional-preview" class="flex gap-2 mt-2 flex-wrap"></div>
+        </div>
+        <div>
+          <label class="text-sm text-ink-soft">Skills</label>
+          <div id="admin-item-skills-picker" class="skills-picker mt-1"></div>
+          <input type="hidden" id="admin-item-skills" name="skills">
+        </div>
+        <div class="admin-item-actions flex justify-end gap-3 mt-4">
+          <button type="submit" class="btn-primary bg-gradient-to-r from-accent to-accent-dark text-surface-400 font-bold rounded-xl px-6 py-3 text-sm border-none cursor-pointer transition-all duration-300 hover:shadow-[0_0_24px_rgba(245,158,11,0.4)]" id="admin-item-submit">Save Item</button>
+        </div>
+      </form>
+      <p id="admin-item-feedback" class="form-note text-xs text-ink-muted mt-3" aria-live="polite"></p>
+    </section>
+  </div>
+
+  <!-- Detail Modal -->
+  <div class="modal-shell" id="detail-modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal></div>
+    <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <button class="modal-close" data-close-modal>
+        <ion-icon name="close-outline"></ion-icon>
+      </button>
+      <div id="modal-carousel" class="modal-carousel">
+        <img id="modal-image" alt="Detail image">
+        <button type="button" class="carousel-prev" id="carousel-prev" aria-label="Previous image" style="display:none"><ion-icon name="chevron-back-outline"></ion-icon></button>
+        <button type="button" class="carousel-next" id="carousel-next" aria-label="Next image" style="display:none"><ion-icon name="chevron-forward-outline"></ion-icon></button>
+        <div id="carousel-dots" class="carousel-dots"></div>
+      </div>
+      <div class="modal-title-row flex items-center justify-between gap-3">
+        <h3 id="modal-title" class="text-xl font-bold text-white flex-1"></h3>
+        <div class="flex items-center gap-2">
+          <button type="button" id="modal-copy-id-btn" class="icon-edit-btn admin-only" aria-label="Copy item ID" hidden style="color:#94a3b8">
+            <ion-icon name="clipboard-outline"></ion-icon>
+          </button>
+          <button type="button" id="modal-export-item-btn" class="icon-edit-btn" aria-label="Export item as JSON" style="color:#22c55e">
+            <ion-icon name="download-outline"></ion-icon>
+          </button>
+          <button type="button" id="modal-clone-btn" class="icon-edit-btn admin-only" aria-label="Clone this card" hidden style="color:#38bdf8">
+            <ion-icon name="copy-outline"></ion-icon>
+          </button>
+          <button type="button" id="modal-delete-btn" class="icon-edit-btn admin-only" aria-label="Delete this card" hidden style="color:#ef4444">
+            <ion-icon name="trash-outline"></ion-icon>
+          </button>
+          <button type="button" id="modal-edit-btn" class="icon-edit-btn admin-only" aria-label="Edit this card" hidden>
+            <ion-icon name="pencil-outline"></ion-icon>
+          </button>
+        </div>
+      </div>
+
+      <div id="modal-tag" class="modal-tag"></div>
+      <div id="modal-read-time" class="modal-read-time" style="display:none"></div>
+      <div id="modal-body" class="modal-body"></div>
+      <a id="modal-link" target="_blank" rel="noopener noreferrer" class="modal-link inline-block mt-4 text-accent font-bold no-underline hover:text-accent-light transition-colors">Open external link</a>
+
+      <!-- Credential Verification -->
+      <a id="modal-credential-link" target="_blank" rel="noopener noreferrer" class="credential-link" style="display:none">
+        <ion-icon name="shield-checkmark-outline"></ion-icon> Verify Credential
+      </a>
+
+      <!-- Social Share -->
+      <div id="modal-share" class="share-buttons mt-4">
+        <span class="text-xs text-ink-muted font-semibold mr-2">Share:</span>
+        <button type="button" class="share-btn" data-platform="linkedin" aria-label="Share on LinkedIn"><ion-icon name="logo-linkedin"></ion-icon></button>
+        <button type="button" class="share-btn" data-platform="twitter" aria-label="Share on X"><ion-icon name="logo-twitter"></ion-icon></button>
+        <button type="button" class="share-btn" data-platform="telegram" aria-label="Share on Telegram"><ion-icon name="paper-plane-outline"></ion-icon></button>
+        <button type="button" class="share-btn" data-platform="copy" aria-label="Copy link"><ion-icon name="link-outline"></ion-icon></button>
+      </div>
+
+      <!-- Related Items -->
+      <div id="related-items" class="related-section mt-6" style="display:none">
+        <h4 class="text-sm font-semibold text-ink-soft mb-3"><ion-icon name="git-branch-outline" class="align-middle mr-1"></ion-icon>Related</h4>
+        <div class="related-strip"></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Resume Key Modal -->
+  <div class="modal-shell" id="resume-key-modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-resume-key></div>
+    <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="resume-key-modal-title" style="max-width:440px">
+      <button class="modal-close" data-close-resume-key aria-label="Close">
+        <ion-icon name="close-outline"></ion-icon>
+      </button>
+      <div class="flex items-center gap-3 mb-1">
+        <ion-icon name="lock-closed-outline" class="text-2xl text-accent"></ion-icon>
+        <h3 id="resume-key-modal-title" class="text-xl font-bold text-white">Print Resume</h3>
+      </div>
+      <p class="text-ink-muted text-sm mb-5">Enter the resume key to access the printable version.</p>
+      <form id="resume-key-form" class="grid gap-3">
+        <input type="password" id="resume-key-input" placeholder="Paste resume key" required autocomplete="off"
+          class="w-full px-4 py-3 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm placeholder:text-ink-muted focus:outline-none focus:border-accent transition-colors font-mono">
+        <button type="submit" class="btn-primary bg-gradient-to-r from-accent to-accent-dark text-surface-400 font-bold rounded-xl px-6 py-3 text-sm border-none cursor-pointer transition-all duration-300 hover:shadow-[0_0_24px_rgba(245,158,11,0.4)]">
+          <ion-icon name="print-outline" class="mr-1 align-middle"></ion-icon> Unlock &amp; Print
+        </button>
+      </form>
+      <p id="resume-key-feedback" class="text-xs mt-3" style="color:#f87171" aria-live="polite"></p>
+    </section>
+  </div>
+
+  <!-- Batch Skill Assignment Modal -->
+  <div class="modal-shell" id="batch-skill-modal" aria-hidden="true">
+    <div class="modal-backdrop" onclick="closeBatchSkillModal()"></div>
+    <section class="modal-card" role="dialog" aria-modal="true" style="max-width:500px">
+      <button class="modal-close" onclick="closeBatchSkillModal()" aria-label="Close">
+        <ion-icon name="close-outline"></ion-icon>
+      </button>
+      <h3 class="text-xl font-bold text-white mb-1">Batch Skill Assignment</h3>
+      <p class="text-ink-muted text-sm mb-4">Choose skills and mode to apply to selected items.</p>
+      <div class="flex gap-4 mb-4">
+        <label class="text-sm text-ink-soft flex items-center gap-1.5 cursor-pointer">
+          <input type="radio" name="batch-skill-mode" value="add" checked class="accent-accent"> Add
+        </label>
+        <label class="text-sm text-ink-soft flex items-center gap-1.5 cursor-pointer">
+          <input type="radio" name="batch-skill-mode" value="remove" class="accent-accent"> Remove
+        </label>
+        <label class="text-sm text-ink-soft flex items-center gap-1.5 cursor-pointer">
+          <input type="radio" name="batch-skill-mode" value="replace" class="accent-accent"> Replace
+        </label>
+      </div>
+      <div id="batch-skills-picker" class="skills-picker mb-4"></div>
+      <button type="button" onclick="applyBatchSkills()" class="btn-primary bg-gradient-to-r from-accent to-accent-dark text-surface-400 font-bold rounded-xl px-6 py-3 text-sm border-none cursor-pointer transition-all duration-300 hover:shadow-[0_0_24px_rgba(245,158,11,0.4)]">Apply to Selected</button>
+    </section>
+  </div>
+
+  <script src="../static/legacy/js/script.js"></script>
+  <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js" integrity="sha384-xyQ/Vpt1cq1pdPYlRaT/QkcSj2vrYyWI3WOhxGBzqnP1vgvsS2yrhWXe3/wIoCr5" crossorigin="anonymous"></script>
+  <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js" integrity="sha384-KAUcUASKfGZ0sxENVFRiH12jtpvd9SsVpgzvYdvv8ZMLqB99G3gX3DAts418wzIC" crossorigin="anonymous"></script>
+
+  <!-- Toast container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- ARIA live region for dynamic updates -->
+  <div id="aria-live" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+</body>
+</html>

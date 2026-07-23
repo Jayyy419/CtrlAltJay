@@ -208,34 +208,46 @@ function slugifyTitle(title) {
   return (title || "untitled").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 }
 
-function renderIdeFileTreeItems() {
-  const projTarget = document.getElementById("tree-projects-items");
-  const expTarget = document.getElementById("tree-experiences-items");
+function renderCategoryGroupedTree(items, containerId, sectionTab, ext) {
+  const target = document.getElementById(containerId);
+  if (!target) return;
 
-  if (projTarget) {
-    projTarget.innerHTML = state.projects.map((item) => {
-      const filename = `${slugifyTitle(item.title)}.py`;
-      return `<div class="file-tree-item" data-id="${escapeHtml(item.id)}" title="${escapeHtml(filename)}"><span class="fdot py"></span><span class="ftext">${escapeHtml(filename)}</span></div>`;
+  const groups = {};
+  items.forEach((item) => {
+    const cat = item.category || "Uncategorised";
+    if (!groups[cat]) groups[cat] = [];
+    groups[cat].push(item);
+  });
+  const categories = Object.keys(groups).sort();
+
+  target.innerHTML = categories.map((cat) => {
+    const groupItems = groups[cat];
+    const itemsHtml = groupItems.map((item) => {
+      const filename = `${slugifyTitle(item.title)}.${ext}`;
+      return `<div class="file-tree-item" data-id="${escapeHtml(item.id)}" title="${escapeHtml(filename)}"><span class="fdot ${ext}"></span><span class="ftext">${escapeHtml(filename)}</span></div>`;
     }).join("");
-    projTarget.querySelectorAll(".file-tree-item").forEach((el) => {
-      el.addEventListener("click", () => {
-        const item = state.projects.find((p) => String(p.id) === el.dataset.id);
-        if (item) openItemTab(item, "projects");
-      });
+    const catId = slugifyTitle(cat);
+    return `<div class="file-tree-subfolder" data-cat="${escapeHtml(catId)}"><span class="chev">▾</span> ${escapeHtml(cat)}<span class="fcount">${groupItems.length}</span></div>
+      <div class="file-tree-subchildren" data-cat="${escapeHtml(catId)}">${itemsHtml}</div>`;
+  }).join("");
+
+  target.querySelectorAll(".file-tree-subfolder").forEach((folder) => {
+    folder.addEventListener("click", () => {
+      folder.classList.toggle("collapsed");
+      target.querySelector(`.file-tree-subchildren[data-cat="${CSS.escape(folder.dataset.cat)}"]`)?.classList.toggle("collapsed");
     });
-  }
-  if (expTarget) {
-    expTarget.innerHTML = state.experiences.map((item) => {
-      const filename = `${slugifyTitle(item.title)}.md`;
-      return `<div class="file-tree-item" data-id="${escapeHtml(item.id)}" title="${escapeHtml(filename)}"><span class="fdot md"></span><span class="ftext">${escapeHtml(filename)}</span></div>`;
-    }).join("");
-    expTarget.querySelectorAll(".file-tree-item").forEach((el) => {
-      el.addEventListener("click", () => {
-        const item = state.experiences.find((p) => String(p.id) === el.dataset.id);
-        if (item) openItemTab(item, "experiences");
-      });
+  });
+  target.querySelectorAll(".file-tree-item").forEach((el) => {
+    el.addEventListener("click", () => {
+      const item = items.find((p) => String(p.id) === el.dataset.id);
+      if (item) openItemTab(item, sectionTab);
     });
-  }
+  });
+}
+
+function renderIdeFileTreeItems() {
+  renderCategoryGroupedTree(state.projects, "tree-projects-items", "projects", "py");
+  renderCategoryGroupedTree(state.experiences, "tree-experiences-items", "experiences", "md");
 }
 
 const SIDEBAR_WIDTH_KEY = "ctrlaltjay-filetree-width";
