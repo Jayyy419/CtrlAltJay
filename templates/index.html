@@ -220,10 +220,12 @@
 
         <div class="file-tree-section" data-tree-section="resume">
           <div class="file-tree-item" data-tab="resume"><span class="fdot pdf"></span> resume.pdf</div>
+          <div class="file-tree-children" id="tree-resume-items"></div>
         </div>
 
         <div class="file-tree-section" data-tree-section="stack">
           <div class="file-tree-item" data-tab="stack"><span class="fdot json"></span> stack.json</div>
+          <div class="file-tree-children" id="tree-stack-items"></div>
         </div>
 
         <div class="file-tree-section" data-tree-section="contact">
@@ -430,6 +432,13 @@
 
       </article>
 
+      <!-- Resume Item Viewer: opened when a resume/experience sidebar entry is clicked -->
+      <article id="resume-item-viewer" class="tab-panel animate-fade-up" role="tabpanel" tabindex="0">
+        <h2 id="resume-item-title" class="font-display text-2xl font-bold text-white tracking-tight"></h2>
+        <div id="resume-item-tag" class="modal-tag"></div>
+        <div id="resume-item-body" class="modal-body"></div>
+      </article>
+
       <!-- Stack -->
       <article id="stack" class="tab-panel animate-fade-up" role="tabpanel" aria-labelledby="tab-stack" tabindex="0">
         <header class="panel-head mb-6">
@@ -438,6 +447,17 @@
         </header>
         <input type="text" id="stack-search" class="stack-search-input" placeholder="Search the marketplace..." autocomplete="off" spellcheck="false">
         <div id="skills-grid" class="mt-4"></div>
+      </article>
+
+      <!-- Skill Item Viewer: opened when a stack sidebar entry is clicked -->
+      <article id="skill-item-viewer" class="tab-panel animate-fade-up" role="tabpanel" tabindex="0">
+        <h2 id="skill-item-title" class="font-display text-2xl font-bold text-white tracking-tight"></h2>
+        <div id="skill-item-tag" class="modal-tag"></div>
+        <div id="skill-item-body" class="modal-body"></div>
+        <div id="skill-related-items" class="related-section mt-6" style="display:none">
+          <h4 class="text-sm font-semibold text-ink-soft mb-3"><ion-icon aria-hidden="true" name="git-branch-outline" class="align-middle mr-1"></ion-icon>Used in</h4>
+          <div class="h-scroll-wrap"><div id="skill-related-strip" class="related-strip"></div></div>
+        </div>
       </article>
 
       <!-- Contact -->
