@@ -23,7 +23,13 @@ const IDE_TAB_META = {
   resume: { label: "resume.pdf", icon: "md" },
   stack: { label: "stack.json", icon: "json" },
   contact: { label: "contact.md", icon: "md" },
+  profile: { label: "profile.md", icon: "md" },
+  credly: { label: "credly.md", icon: "md" },
+  linkedin: { label: "linkedin.md", icon: "md" },
 };
+
+/* Sidebar section a tab belongs to, for tabs that aren't their own section (e.g. profile sub-pages) */
+const TAB_SECTION_OVERRIDE = { credly: "profile", linkedin: "profile" };
 
 const tabs = document.querySelectorAll(".tab-btn");
 const panels = document.querySelectorAll(".tab-panel");
@@ -142,7 +148,7 @@ function syncIdeChrome(tabName) {
   if (!IDE_TAB_META[tabName]) return;
   if (!state.ideOpenTabs.includes(tabName)) state.ideOpenTabs.push(tabName);
   renderIdeTabbar(tabName);
-  showFileTreeSection(tabName);
+  showFileTreeSection(TAB_SECTION_OVERRIDE[tabName] || tabName);
   document.querySelectorAll(".file-tree-item[data-tab]").forEach((el) => {
     el.classList.toggle("active", el.dataset.tab === tabName);
   });
@@ -150,6 +156,7 @@ function syncIdeChrome(tabName) {
   const label = IDE_TAB_META[tabName].label;
   if (sectionEl) sectionEl.textContent = label.endsWith("/") ? `${tabName}/` : label;
   updateIdeStatusCount(tabName);
+  if (tabName === "credly") renderCredlyBody();
   refreshMinimap();
 }
 
@@ -453,6 +460,28 @@ function renderSkillItemViewer(skill) {
     strip.appendChild(card);
   });
   initHScrollFade(strip);
+}
+
+function renderCredlyBody() {
+  const body = document.getElementById("credly-body");
+  if (!body) return;
+  const certs = state.experiences.filter((it) => (it.category || "").toLowerCase() === "certifications");
+  if (!certs.length) {
+    body.innerHTML = `<div class="modal-row"><strong>Certifications:</strong> No certifications listed yet.</div>`;
+    return;
+  }
+  body.innerHTML = `<div class="modal-row"><strong>Certifications:</strong></div>`;
+  const list = document.createElement("div");
+  list.className = "credly-cert-list";
+  certs.forEach((cert) => {
+    const row = document.createElement("div");
+    row.className = "credly-cert-row";
+    row.tabIndex = 0;
+    row.textContent = cert.title;
+    row.addEventListener("click", () => openItemTab(cert, "experiences"));
+    list.appendChild(row);
+  });
+  body.appendChild(list);
 }
 
 const SIDEBAR_WIDTH_KEY = "ctrlaltjay-filetree-width";
@@ -1858,7 +1887,6 @@ async function bootstrap() {
   initMobileSwipe();
   initDeletedItems();
   initAdminToolsPopup();
-  initProfileFlyout();
   initIdeFileTree();
   initSidebarResize();
   initMinimap();
@@ -1919,12 +1947,6 @@ function initEscapeKey() {
     if (loginModal?.classList.contains("active")) { closeAdminLoginModal(); return; }
     const resumeKeyModal = document.getElementById("resume-key-modal");
     if (resumeKeyModal?.classList.contains("active")) { closeResumeKeyModal(); return; }
-    const profileFlyout = document.getElementById("profile-flyout");
-    if (profileFlyout && profileFlyout.style.display === "flex") {
-      profileFlyout.style.display = "none";
-      document.getElementById("profile-flyout-toggle")?.classList.remove("active");
-      return;
-    }
   });
 }
 
@@ -2387,19 +2409,6 @@ function initAdminToolsPopup() {
   toggle.addEventListener("click", () => { popup.style.display = "flex"; });
   closeBtn?.addEventListener("click", () => { popup.style.display = "none"; });
   backdrop?.addEventListener("click", () => { popup.style.display = "none"; });
-}
-
-function initProfileFlyout() {
-  const toggle = document.getElementById("profile-flyout-toggle");
-  const popup = document.getElementById("profile-flyout");
-  const closeBtn = document.getElementById("profile-flyout-close");
-  const backdrop = document.getElementById("profile-flyout-backdrop");
-  if (!toggle || !popup) return;
-  const open = () => { popup.style.display = "flex"; toggle.classList.add("active"); toggle.setAttribute("aria-expanded", "true"); };
-  const close = () => { popup.style.display = "none"; toggle.classList.remove("active"); toggle.setAttribute("aria-expanded", "false"); };
-  toggle.addEventListener("click", open);
-  closeBtn?.addEventListener("click", close);
-  backdrop?.addEventListener("click", close);
 }
 
 function initDeletedItems() {
@@ -3437,9 +3446,9 @@ function initKeyboardShortcuts() {
         e.preventDefault();
         toggleShortcutsOverlay();
         break;
-      case "1": case "2": case "3": case "4": case "5": case "6": {
+      case "1": case "2": case "3": case "4": case "5": case "6": case "7": {
         if (modalActive) return;
-        const tabNames = ["about", "projects", "experiences", "resume", "stack", "contact"];
+        const tabNames = ["about", "projects", "experiences", "resume", "stack", "contact", "profile"];
         const idx = parseInt(e.key) - 1;
         if (tabNames[idx]) { switchTab(tabNames[idx]); e.preventDefault(); }
         break;
@@ -3502,7 +3511,7 @@ function toggleShortcutsOverlay() {
         <div class="shortcut-item"><kbd>Enter</kbd><span>Open focused card</span></div>
         <div class="shortcut-item"><kbd>Esc</kbd><span>Close modal / overlay</span></div>
         <div class="shortcut-item"><kbd>T</kbd><span>Toggle dark / light theme</span></div>
-        <div class="shortcut-item"><kbd>1</kbd>\u2013<kbd>6</kbd><span>Switch tabs</span></div>
+        <div class="shortcut-item"><kbd>1</kbd>\u2013<kbd>7</kbd><span>Switch tabs</span></div>
         <div class="shortcut-item"><kbd>/</kbd><span>Focus search field</span></div>
         <div class="shortcut-item"><kbd>[</kbd> <kbd>]</kbd><span>Previous / next open tab</span></div>
         <div class="shortcut-item"><kbd>W</kbd><span>Close current tab</span></div>
@@ -3539,6 +3548,9 @@ function getCommandPaletteItems() {
     { icon: "document-text-outline", label: "Resume", hint: "resume.pdf", action: () => openIdeTabByName("resume") },
     { icon: "extension-puzzle-outline", label: "Stack", hint: "stack.json", action: () => openIdeTabByName("stack") },
     { icon: "mail-outline", label: "Contact", hint: "contact.md", action: () => openIdeTabByName("contact") },
+    { icon: "person-circle-outline", label: "Profile", hint: "profile.md", action: () => openIdeTabByName("profile") },
+    { icon: "ribbon-outline", label: "Credly", hint: "credly.md", action: () => openIdeTabByName("credly") },
+    { icon: "logo-linkedin", label: "LinkedIn", hint: "linkedin.md", action: () => openIdeTabByName("linkedin") },
     { icon: "contrast-outline", label: "Toggle Theme", hint: "dark / light", action: () => document.getElementById("theme-toggle")?.click() },
     { icon: "keypad-outline", label: "Keyboard Shortcuts", hint: "?", action: () => toggleShortcutsOverlay() },
   ];
@@ -3728,20 +3740,20 @@ function runTerminalCommand(raw) {
       printTermLine("  cat <file>           open a file (e.g. cat about.md)");
       printTermLine("  open <github|linkedin>       open a social profile");
       printTermLine("  theme <dark|light>   switch theme");
-      printTermLine("  resume | stack | contact    jump to a section");
+      printTermLine("  resume | stack | contact | profile    jump to a section");
       printTermLine("  banner               print an intro banner");
       printTermLine("  clear                clear the terminal");
       printTermLine("  exit                 close the terminal");
       break;
     case "whoami": {
-      const name = document.querySelector(".profile-flyout-head h1")?.textContent.trim() || "visitor";
-      const headline = document.querySelector(".profile-flyout-head .headline")?.textContent.trim() || "";
+      const name = document.querySelector(".profile-head h1")?.textContent.trim() || "visitor";
+      const headline = document.querySelector(".profile-head .headline")?.textContent.trim() || "";
       printTermLine(name, "term-line--accent");
       if (headline) printTermLine(headline);
       break;
     }
     case "banner": {
-      const name = document.querySelector(".profile-flyout-head h1")?.textContent.trim() || "CtrlAltJay";
+      const name = document.querySelector(".profile-head h1")?.textContent.trim() || "CtrlAltJay";
       printTermLine(`> ${name}`, "term-line--accent");
       printTermLine("> Building practical systems that blend software, cloud, and AI.");
       printTermLine("> Type 'help' to explore this shell.");
@@ -3749,7 +3761,7 @@ function runTerminalCommand(raw) {
     }
     case "ls": {
       if (!arg) {
-        printTermLine("about/  projects/  experiences/  resume.pdf  contact.md");
+        printTermLine("about/  projects/  experiences/  resume.pdf  stack.json  contact.md  profile.md");
       } else if (arg === "projects" || arg === "experiences") {
         const files = getAllTerminalFiles().filter((f) => f.sectionTab === arg);
         if (!files.length) printTermLine(`ls: ${arg}/: no entries yet`);
@@ -3806,6 +3818,10 @@ function runTerminalCommand(raw) {
       break;
     case "contact":
       openIdeTabByName("contact");
+      closeTerminalPanel();
+      break;
+    case "profile":
+      openIdeTabByName("profile");
       closeTerminalPanel();
       break;
     case "clear":
@@ -3913,7 +3929,7 @@ function initMobileSwipe() {
   let touchStartY = 0;
   const content = document.querySelector(".content");
   if (!content) return;
-  const tabOrder = ["about", "projects", "experiences", "resume", "stack", "contact"];
+  const tabOrder = ["about", "projects", "experiences", "resume", "stack", "contact", "profile"];
   content.addEventListener("touchstart", (e) => {
     touchStartX = e.changedTouches[0].screenX;
     touchStartY = e.changedTouches[0].screenY;
