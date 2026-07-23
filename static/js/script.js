@@ -1442,6 +1442,8 @@ async function bootstrap() {
   initAdminBackup();
   initFocusTrap();
   initKeyboardShortcuts();
+  initCommandPalette();
+  initTerminalPanel();
   initJSONImport();
   initSurpriseMe();
   initMobileSwipe();
@@ -1483,7 +1485,11 @@ async function bootstrap() {
 function initEscapeKey() {
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
-    // Close in order: shortcuts overlay, lightbox, confirm overlay, admin item modal, detail modal, admin login modal
+    // Close in order: command palette, shortcuts overlay, lightbox, confirm overlay, admin item modal, detail modal, admin login modal
+    const cmdPalette = document.getElementById("command-palette-overlay");
+    if (cmdPalette) { closeCommandPalette(); return; }
+    const terminalPanel = document.getElementById("ide-terminal-panel");
+    if (terminalPanel && terminalPanel.style.display !== "none") { closeTerminalPanel(); return; }
     const shortcuts = document.getElementById("shortcuts-overlay");
     if (shortcuts) { shortcuts.remove(); return; }
     const lightbox = document.querySelector(".lightbox-overlay");
@@ -2943,8 +2949,29 @@ function initKeyboardShortcuts() {
         const searchInput = activePanel?.querySelector("input[type=\"text\"]");
         if (searchInput) searchInput.focus();
         break;
+      case "[":
+      case "]":
+        if (modalActive) return;
+        cycleIdeTab(e.key === "]" ? 1 : -1);
+        e.preventDefault();
+        break;
+      case "w":
+        if (!e.ctrlKey && !e.metaKey && !modalActive) {
+          const activeTab = document.querySelector(".ide-tab.active")?.dataset.tab;
+          if (activeTab) { closeIdeTab(activeTab, activeTab); e.preventDefault(); }
+        }
+        break;
     }
   });
+}
+
+function cycleIdeTab(dir) {
+  const tabs = state.ideOpenTabs;
+  if (tabs.length < 2) return;
+  const activeTab = document.querySelector(".ide-tab.active")?.dataset.tab;
+  const idx = tabs.indexOf(activeTab);
+  const nextIdx = (idx + dir + tabs.length) % tabs.length;
+  openIdeTabByName(tabs[nextIdx]);
 }
 
 function toggleShortcutsOverlay() {
@@ -2959,6 +2986,8 @@ function toggleShortcutsOverlay() {
       <button class="modal-close" id="shortcuts-close" aria-label="Close shortcuts"><ion-icon name="close-outline"></ion-icon></button>
       <h3 class="text-xl font-bold text-white mb-4"><ion-icon name="keypad-outline" class="align-middle mr-2 text-accent"></ion-icon>Keyboard Shortcuts</h3>
       <div class="shortcuts-grid">
+        <div class="shortcut-item"><kbd>\u2318</kbd>/<kbd>Ctrl</kbd>+<kbd>K</kbd><span>Command palette</span></div>
+        <div class="shortcut-item"><kbd>\`</kbd><span>Toggle terminal</span></div>
         <div class="shortcut-item"><kbd>?</kbd><span>Toggle this guide</span></div>
         <div class="shortcut-item"><kbd>\u2190</kbd> <kbd>\u2192</kbd><span>Navigate cards</span></div>
         <div class="shortcut-item"><kbd>Enter</kbd><span>Open focused card</span></div>
@@ -2966,12 +2995,351 @@ function toggleShortcutsOverlay() {
         <div class="shortcut-item"><kbd>T</kbd><span>Toggle dark / light theme</span></div>
         <div class="shortcut-item"><kbd>1</kbd>\u2013<kbd>5</kbd><span>Switch tabs</span></div>
         <div class="shortcut-item"><kbd>/</kbd><span>Focus search field</span></div>
+        <div class="shortcut-item"><kbd>[</kbd> <kbd>]</kbd><span>Previous / next open tab</span></div>
+        <div class="shortcut-item"><kbd>W</kbd><span>Close current tab</span></div>
         <div class="shortcut-item"><kbd>Dbl-click</kbd><span>Edit card (admin)</span></div>
       </div>
     </div>`;
   document.body.appendChild(overlay);
   overlay.querySelector("#shortcuts-close").addEventListener("click", () => overlay.remove());
   overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+}
+
+/* ===== Command Palette ===== */
+const cmdPaletteState = { items: [], filtered: [], activeIndex: 0 };
+
+function fuzzyScore(query, target) {
+  query = query.toLowerCase();
+  target = target.toLowerCase();
+  if (!query) return 0;
+  const idx = target.indexOf(query);
+  if (idx !== -1) return 1000 - idx;
+  let qi = 0;
+  let score = 0;
+  for (let ti = 0; ti < target.length && qi < query.length; ti++) {
+    if (target[ti] === query[qi]) { qi++; score++; }
+  }
+  return qi === query.length ? score : null;
+}
+
+function getCommandPaletteItems() {
+  const items = [
+    { icon: "person-outline", label: "About Me", hint: "bio.md", action: () => openIdeTabByName("about") },
+    { icon: "folder-outline", label: "Projects", hint: "projects/", action: () => openIdeTabByName("projects") },
+    { icon: "briefcase-outline", label: "Experiences", hint: "experiences/", action: () => openIdeTabByName("experiences") },
+    { icon: "document-text-outline", label: "Resume", hint: "resume.pdf", action: () => openIdeTabByName("resume") },
+    { icon: "mail-outline", label: "Contact", hint: "contact.md", action: () => openIdeTabByName("contact") },
+    { icon: "contrast-outline", label: "Toggle Theme", hint: "dark / light", action: () => document.getElementById("theme-toggle")?.click() },
+    { icon: "keypad-outline", label: "Keyboard Shortcuts", hint: "?", action: () => toggleShortcutsOverlay() },
+  ];
+  if (typeof toggleTerminalPanel === "function") {
+    items.push({ icon: "terminal-outline", label: "Open Terminal", hint: "`", action: () => toggleTerminalPanel() });
+  }
+  state.projects.forEach((p) => {
+    items.push({ icon: "logo-python", label: p.title, hint: `projects/${p.category || ""}`, action: () => openItemTab(p, "projects") });
+  });
+  state.experiences.forEach((p) => {
+    items.push({ icon: "document-outline", label: p.title, hint: `experiences/${p.category || ""}`, action: () => openItemTab(p, "experiences") });
+  });
+  const github = document.querySelector('a[href*="github.com"]');
+  if (github?.href) items.push({ icon: "logo-github", label: "Open GitHub Profile", hint: "external", action: () => window.open(github.href, "_blank", "noopener") });
+  const linkedin = document.querySelector('a[href*="linkedin.com"]');
+  if (linkedin?.href) items.push({ icon: "logo-linkedin", label: "Open LinkedIn Profile", hint: "external", action: () => window.open(linkedin.href, "_blank", "noopener") });
+  const mailLink = document.querySelector('a[href^="mailto:"]');
+  if (mailLink?.href) {
+    const email = mailLink.href.replace(/^mailto:/, "");
+    items.push({ icon: "clipboard-outline", label: "Copy Email Address", hint: email, action: () => {
+      navigator.clipboard?.writeText(email);
+      showToast("Email copied to clipboard", "success");
+    } });
+  }
+  return items;
+}
+
+function openCommandPalette() {
+  if (document.getElementById("command-palette-overlay")) return;
+  cmdPaletteState.items = getCommandPaletteItems();
+  cmdPaletteState.filtered = cmdPaletteState.items;
+  cmdPaletteState.activeIndex = 0;
+
+  const overlay = document.createElement("div");
+  overlay.id = "command-palette-overlay";
+  overlay.className = "command-palette-overlay";
+  overlay.innerHTML = `
+    <div class="command-palette">
+      <div class="command-palette-input-row">
+        <span class="command-palette-prompt">&gt;</span>
+        <input type="text" id="command-palette-input" class="command-palette-input" placeholder="Type a command or search..." autocomplete="off" spellcheck="false">
+      </div>
+      <div class="command-palette-results" id="command-palette-results"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  renderCommandPaletteResults();
+
+  const input = document.getElementById("command-palette-input");
+  input.focus();
+  input.addEventListener("input", () => {
+    const q = input.value.trim();
+    if (!q) {
+      cmdPaletteState.filtered = cmdPaletteState.items;
+    } else {
+      cmdPaletteState.filtered = cmdPaletteState.items
+        .map((item) => ({ item, score: fuzzyScore(q, item.label) }))
+        .filter((r) => r.score !== null)
+        .sort((a, b) => b.score - a.score)
+        .map((r) => r.item);
+    }
+    cmdPaletteState.activeIndex = 0;
+    renderCommandPaletteResults();
+  });
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowDown") { e.preventDefault(); moveCommandPaletteSelection(1); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); moveCommandPaletteSelection(-1); }
+    else if (e.key === "Enter") { e.preventDefault(); activateCommandPaletteSelection(); }
+    else if (e.key === "Escape") { e.preventDefault(); closeCommandPalette(); }
+  });
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) closeCommandPalette(); });
+}
+
+function closeCommandPalette() {
+  document.getElementById("command-palette-overlay")?.remove();
+}
+
+function renderCommandPaletteResults() {
+  const results = document.getElementById("command-palette-results");
+  if (!results) return;
+  if (cmdPaletteState.filtered.length === 0) {
+    results.innerHTML = `<div class="command-palette-empty">No matching commands</div>`;
+    return;
+  }
+  results.innerHTML = cmdPaletteState.filtered.slice(0, 50).map((item, i) => `
+    <div class="command-palette-item${i === cmdPaletteState.activeIndex ? " active" : ""}" data-idx="${i}">
+      <ion-icon name="${item.icon}" aria-hidden="true"></ion-icon>
+      <span class="command-palette-label">${escapeHtml(item.label)}</span>
+      ${item.hint ? `<span class="command-palette-hint">${escapeHtml(item.hint)}</span>` : ""}
+    </div>`).join("");
+  results.querySelectorAll(".command-palette-item").forEach((el) => {
+    el.addEventListener("click", () => {
+      cmdPaletteState.activeIndex = parseInt(el.dataset.idx, 10);
+      activateCommandPaletteSelection();
+    });
+    el.addEventListener("mouseenter", () => {
+      cmdPaletteState.activeIndex = parseInt(el.dataset.idx, 10);
+      results.querySelectorAll(".command-palette-item").forEach((it) => it.classList.remove("active"));
+      el.classList.add("active");
+    });
+  });
+  results.querySelector(".command-palette-item.active")?.scrollIntoView({ block: "nearest" });
+}
+
+function moveCommandPaletteSelection(dir) {
+  const len = cmdPaletteState.filtered.length;
+  if (!len) return;
+  cmdPaletteState.activeIndex = (cmdPaletteState.activeIndex + dir + len) % len;
+  renderCommandPaletteResults();
+}
+
+function activateCommandPaletteSelection() {
+  const item = cmdPaletteState.filtered[cmdPaletteState.activeIndex];
+  if (!item) return;
+  closeCommandPalette();
+  item.action();
+}
+
+function initCommandPalette() {
+  document.addEventListener("keydown", (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+      e.preventDefault();
+      if (document.getElementById("command-palette-overlay")) closeCommandPalette();
+      else openCommandPalette();
+    }
+  });
+}
+
+/* ===== Integrated Terminal Panel ===== */
+const termState = { history: [], historyIndex: -1 };
+
+function getAllTerminalFiles() {
+  const files = [];
+  state.projects.forEach((p) => files.push({ filename: `${slugifyTitle(p.title)}.py`, item: p, sectionTab: "projects" }));
+  state.experiences.forEach((p) => files.push({ filename: `${slugifyTitle(p.title)}.md`, item: p, sectionTab: "experiences" }));
+  return files;
+}
+
+function printTermLine(text, cls) {
+  const body = document.getElementById("ide-terminal-body");
+  if (!body) return;
+  const line = document.createElement("div");
+  line.className = `term-line${cls ? ` ${cls}` : ""}`;
+  line.textContent = text;
+  body.appendChild(line);
+  body.scrollTop = body.scrollHeight;
+}
+
+function toggleTerminalPanel() {
+  const panel = document.getElementById("ide-terminal-panel");
+  if (!panel) return;
+  if (panel.style.display === "none") openTerminalPanel();
+  else closeTerminalPanel();
+}
+
+function openTerminalPanel() {
+  const panel = document.getElementById("ide-terminal-panel");
+  if (!panel) return;
+  panel.style.display = "flex";
+  if (!panel.dataset.welcomed) {
+    printTermLine("CtrlAltJay portfolio shell. Type 'help' to see available commands.", "term-line--accent");
+    panel.dataset.welcomed = "1";
+  }
+  document.getElementById("ide-terminal-input")?.focus();
+}
+
+function closeTerminalPanel() {
+  const panel = document.getElementById("ide-terminal-panel");
+  if (panel) panel.style.display = "none";
+}
+
+function runTerminalCommand(raw) {
+  const trimmed = raw.trim();
+  printTermLine(trimmed, "term-line--cmd");
+  if (!trimmed) return;
+  termState.history.push(trimmed);
+  termState.historyIndex = termState.history.length;
+
+  const [cmd, ...rest] = trimmed.split(/\s+/);
+  const arg = rest.join(" ").replace(/\/$/, "");
+
+  switch (cmd.toLowerCase()) {
+    case "help":
+      printTermLine("Available commands:");
+      printTermLine("  help                 show this list");
+      printTermLine("  whoami               about the site owner");
+      printTermLine("  ls [projects|experiences]   list files");
+      printTermLine("  cat <file>           open a file (e.g. cat about.md)");
+      printTermLine("  open <github|linkedin>       open a social profile");
+      printTermLine("  theme <dark|light>   switch theme");
+      printTermLine("  resume | contact     jump to a section");
+      printTermLine("  banner               print an intro banner");
+      printTermLine("  clear                clear the terminal");
+      printTermLine("  exit                 close the terminal");
+      break;
+    case "whoami": {
+      const name = document.querySelector(".profile-flyout-head h1")?.textContent.trim() || "visitor";
+      const headline = document.querySelector(".profile-flyout-head .headline")?.textContent.trim() || "";
+      printTermLine(name, "term-line--accent");
+      if (headline) printTermLine(headline);
+      break;
+    }
+    case "banner": {
+      const name = document.querySelector(".profile-flyout-head h1")?.textContent.trim() || "CtrlAltJay";
+      printTermLine(`> ${name}`, "term-line--accent");
+      printTermLine("> Building practical systems that blend software, cloud, and AI.");
+      printTermLine("> Type 'help' to explore this shell.");
+      break;
+    }
+    case "ls": {
+      if (!arg) {
+        printTermLine("about/  projects/  experiences/  resume.pdf  contact.md");
+      } else if (arg === "projects" || arg === "experiences") {
+        const files = getAllTerminalFiles().filter((f) => f.sectionTab === arg);
+        if (!files.length) printTermLine(`ls: ${arg}/: no entries yet`);
+        else files.forEach((f) => printTermLine(`  ${f.filename}`));
+      } else {
+        printTermLine(`ls: cannot access '${arg}': no such directory`, "term-line--error");
+      }
+      break;
+    }
+    case "cat": {
+      if (!arg) { printTermLine("usage: cat <file>", "term-line--error"); break; }
+      if (arg === "about.md" || arg === "bio.md") { openIdeTabByName("about"); closeTerminalPanel(); break; }
+      const files = getAllTerminalFiles();
+      const match = files.find((f) => f.filename === arg || f.filename === `${arg}.py` || f.filename === `${arg}.md`);
+      if (match) {
+        openItemTab(match.item, match.sectionTab);
+        closeTerminalPanel();
+      } else {
+        printTermLine(`cat: ${arg}: No such file or directory`, "term-line--error");
+      }
+      break;
+    }
+    case "open": {
+      const target = arg.toLowerCase();
+      if (target === "github" || target === "linkedin") {
+        const link = document.querySelector(`a[href*="${target}.com"]`);
+        if (link?.href) { window.open(link.href, "_blank", "noopener"); printTermLine(`Opening ${target}...`); }
+        else printTermLine(`open: ${target} link not found`, "term-line--error");
+      } else {
+        printTermLine(`open: unknown target '${arg}'. Try 'open github' or 'open linkedin'.`, "term-line--error");
+      }
+      break;
+    }
+    case "theme": {
+      const target = arg.toLowerCase();
+      const isLight = document.documentElement.classList.contains("light-theme") || document.documentElement.dataset.theme === "light";
+      if ((target === "dark" && isLight) || (target === "light" && !isLight)) {
+        document.getElementById("theme-toggle")?.click();
+        printTermLine(`Theme switched to ${target}.`);
+      } else if (target === "dark" || target === "light") {
+        printTermLine(`Already in ${target} theme.`);
+      } else {
+        printTermLine("usage: theme <dark|light>", "term-line--error");
+      }
+      break;
+    }
+    case "resume":
+      openIdeTabByName("resume");
+      closeTerminalPanel();
+      break;
+    case "contact":
+      openIdeTabByName("contact");
+      closeTerminalPanel();
+      break;
+    case "clear":
+      document.getElementById("ide-terminal-body").innerHTML = "";
+      break;
+    case "exit":
+      closeTerminalPanel();
+      break;
+    default:
+      printTermLine(`command not found: ${cmd}. Type 'help' for a list of commands.`, "term-line--error");
+  }
+}
+
+function initTerminalPanel() {
+  const closeBtn = document.getElementById("ide-terminal-close");
+  const input = document.getElementById("ide-terminal-input");
+  if (!closeBtn || !input) return;
+
+  closeBtn.addEventListener("click", () => closeTerminalPanel());
+
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const value = input.value;
+      input.value = "";
+      runTerminalCommand(value);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (!termState.history.length) return;
+      termState.historyIndex = Math.max(0, termState.historyIndex - 1);
+      input.value = termState.history[termState.historyIndex] || "";
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (!termState.history.length) return;
+      termState.historyIndex = Math.min(termState.history.length, termState.historyIndex + 1);
+      input.value = termState.history[termState.historyIndex] || "";
+    } else if (e.key === "Escape") {
+      closeTerminalPanel();
+    }
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "`") return;
+    const tag = e.target.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+    e.preventDefault();
+    toggleTerminalPanel();
+  });
 }
 
 /* ===== Admin JSON Import ===== */
