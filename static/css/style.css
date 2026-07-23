@@ -69,7 +69,7 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
 /* Layout grid */
 .layout {
   display: grid;
-  grid-template-columns: 300px 1fr;
+  grid-template-columns: 1fr;
   align-items: start;
 }
 
@@ -148,13 +148,32 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
 }
 .tab-count-badge:empty { display: none; }
 
+.activity-bar-profile-btn { margin-top: auto; }
+.activity-bar-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  object-fit: cover;
+  pointer-events: none;
+  border: 1.5px solid rgba(255,255,255,0.15);
+}
+.activity-bar-profile-btn:hover .activity-bar-avatar,
+.activity-bar-profile-btn.active .activity-bar-avatar { border-color: var(--ide-accent); }
+
+/* Profile flyout (reuses .admin-tools-popup shell) */
+.profile-flyout-content { max-width: 420px; }
+.profile-flyout-close-btn { position: absolute; top: 16px; right: 16px; z-index: 1; }
+.profile-flyout-head { display: flex; align-items: center; gap: 16px; padding-right: 32px; }
+.profile-flyout-head h1 { margin: 0; }
+
 /* File-tree sidebar */
 .ide-sidebar {
-  width: 230px;
+  width: 260px;
   flex-shrink: 0;
   background: var(--ide-sidebar-bg);
   border-right: 1px solid var(--ide-border-soft);
   overflow-y: auto;
+  overflow-x: hidden;
   font-family: 'Plex Mono', monospace;
   padding-bottom: 12px;
 }
@@ -184,7 +203,9 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
   font-size: 0.8rem;
   cursor: pointer;
   white-space: nowrap;
+  overflow: hidden;
 }
+.file-tree-item .ftext { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .file-tree-item:hover { background: var(--ide-border-soft); color: var(--ide-text); }
 .file-tree-item.active { background: var(--ide-selection); color: var(--ide-text-bright); }
 .file-tree-item .fdot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
@@ -465,10 +486,9 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
 
 /* ===== Responsive ===== */
 
-/* Tablet — sidebar stacks */
+/* Tablet — profile flyout adjustments */
 @media (max-width: 1060px) {
-  .layout { grid-template-columns: 1fr; gap: 1rem !important; padding-top: 1.25rem !important; padding-bottom: 1.25rem !important; }
-  .sidebar { position: static !important; padding: 1.5rem !important; }
+  .layout { gap: 1rem !important; padding-top: 1.25rem !important; padding-bottom: 1.25rem !important; }
   .portrait-wrap { width: 100px !important; height: 100px !important; margin-bottom: 0.75rem !important; }
   .contact-cluster { grid-template-columns: 1fr 1fr !important; }
 }
@@ -477,12 +497,11 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
 @media (max-width: 640px) {
   /* Layout */
   .layout { padding: 0.75rem !important; gap: 0.75rem !important; }
-  .sidebar { padding: 1.25rem !important; border-radius: 1rem !important; }
   .content { padding: 1.25rem !important; border-radius: 1rem !important; }
 
-  /* Sidebar */
+  /* Profile flyout */
   .portrait-wrap { width: 80px !important; height: 80px !important; border-radius: 0.875rem !important; margin-bottom: 0.625rem !important; }
-  .sidebar h1 { font-size: 1.375rem !important; }
+  .profile-flyout-content h1 { font-size: 1.375rem !important; }
   .headline { font-size: 0.875rem !important; margin-top: 0.375rem !important; margin-bottom: 0.875rem !important; line-height: 1.5 !important; }
   .contact-cluster { grid-template-columns: 1fr !important; gap: 0.5rem !important; margin-bottom: 0.875rem !important; }
   .contact-cluster .chip { padding: 0.625rem 0.875rem !important; font-size: 0.875rem !important; gap: 0.625rem !important; border-radius: 0.75rem !important; min-height: 44px !important; }
@@ -648,10 +667,9 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
 /* Small phones */
 @media (max-width: 400px) {
   .layout { padding: 0.5rem !important; }
-  .sidebar { padding: 1rem !important; }
   .content { padding: 1rem !important; }
   .portrait-wrap { width: 68px !important; height: 68px !important; }
-  .sidebar h1 { font-size: 1.25rem !important; }
+  .profile-flyout-content h1 { font-size: 1.25rem !important; }
   .headline { font-size: 0.82rem !important; }
   .tab-btn { padding: 0.5rem 0.75rem !important; font-size: 0.8rem !important; }
   .panel-head h2 { font-size: 1.375rem !important; }
@@ -1269,7 +1287,6 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
   --text-muted: #94a3b8;
 }
 .light-theme body { background: var(--bg-surface) !important; color: var(--text-primary) !important; }
-.light-theme .sidebar,
 .light-theme .content { background: var(--bg-card) !important; border-color: var(--border-color) !important; }
 .light-theme .card { background: var(--bg-card) !important; border-color: var(--border-color) !important; }
 .light-theme .card h4 { color: var(--text-primary) !important; }
@@ -1306,7 +1323,7 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
 .light-theme .deleted-item:hover { background: rgba(0,0,0,0.03) !important; }
 .light-theme .toast { background: #fff !important; border-color: var(--border-color) !important; }
 .light-theme .chip { background: var(--bg-input) !important; border-color: var(--border-color) !important; color: var(--text-secondary) !important; }
-.light-theme .sidebar h1 { color: var(--text-primary) !important; }
+.light-theme .profile-flyout-content h1 { color: var(--text-primary) !important; }
 .light-theme .headline { color: var(--text-secondary) !important; }
 .light-theme .subsection-nav { background: rgba(255,255,255,0.95) !important; }
 .light-theme .back-to-top { background: rgba(255,255,255,0.9) !important; }
@@ -1926,7 +1943,7 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
 @media print {
   body { background: #fff !important; color: #222 !important; }
   .layout { display: block !important; }
-  .sidebar, .main-nav, footer, .toast-container, .back-to-top, .scroll-progress,
+  .profile-flyout, .activity-bar, .main-nav, footer, .toast-container, .back-to-top, .scroll-progress,
   .controls-row, .subsection-nav, .panel-head p, .bulk-bar,
   #about, #projects, #experiences, #contact, .admin-only, .modal-shell { display: none !important; }
   #resume { display: block !important; }
