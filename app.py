@@ -317,7 +317,7 @@ def set_security_headers(response):
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
         "font-src 'self' https://fonts.gstatic.com; "
         "img-src 'self' data: blob:; "
-        "connect-src 'self' https://unpkg.com; "
+        "connect-src 'self' https://unpkg.com https://api.github.com; "
         "manifest-src 'self'; "
         "worker-src 'self'; "
         "frame-ancestors 'none'; "
