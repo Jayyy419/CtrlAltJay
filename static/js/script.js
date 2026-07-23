@@ -281,6 +281,51 @@ function initSidebarResize() {
   });
 }
 
+/* ===== Decorative Minimap ===== */
+function renderMinimapLines(container) {
+  const colors = ["var(--ide-text-faint)", "var(--ide-comment)", "var(--ide-keyword)", "var(--ide-string)", "var(--ide-function)", "var(--ide-type)"];
+  let seed = 42;
+  const rand = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+  let html = "";
+  for (let i = 0; i < 160; i++) {
+    if (rand() < 0.08) { html += `<div class="mm-gap"></div>`; continue; }
+    const width = 20 + Math.floor(rand() * 75);
+    const color = colors[Math.floor(rand() * colors.length)];
+    html += `<div class="mm-line" style="width:${width}%;background:${color}"></div>`;
+  }
+  container.innerHTML = html;
+}
+
+function initMinimap() {
+  const minimap = document.getElementById("ide-minimap");
+  const linesEl = document.getElementById("ide-minimap-lines");
+  const viewportEl = document.getElementById("ide-minimap-viewport");
+  const scrollEl = document.getElementById("ide-panel-scroll");
+  if (!minimap || !linesEl || !viewportEl || !scrollEl) return;
+
+  renderMinimapLines(linesEl);
+
+  const updateViewport = () => {
+    const ratio = scrollEl.scrollHeight ? scrollEl.clientHeight / scrollEl.scrollHeight : 1;
+    const topRatio = scrollEl.scrollHeight ? scrollEl.scrollTop / scrollEl.scrollHeight : 0;
+    viewportEl.style.height = `${Math.min(100, ratio * 100)}%`;
+    viewportEl.style.top = `${topRatio * 100}%`;
+  };
+
+  updateViewport();
+  scrollEl.addEventListener("scroll", updateViewport, { passive: true });
+  window.addEventListener("resize", updateViewport);
+  if (typeof ResizeObserver !== "undefined") {
+    new ResizeObserver(updateViewport).observe(scrollEl);
+  }
+
+  minimap.addEventListener("click", (e) => {
+    const rect = minimap.getBoundingClientRect();
+    const clickRatio = (e.clientY - rect.top) / rect.height;
+    scrollEl.scrollTo({ top: clickRatio * scrollEl.scrollHeight - scrollEl.clientHeight / 2, behavior: "smooth" });
+  });
+}
+
 function openItemTab(item, sectionTab) {
   const tabId = `item:${item.id}`;
   const ext = sectionTab === "projects" ? "py" : "md";
@@ -1532,6 +1577,7 @@ async function bootstrap() {
   initProfileFlyout();
   initIdeFileTree();
   initSidebarResize();
+  initMinimap();
   initIdeStatusClock();
   renderIdeTabbar("about");
   setAdminMode(false);

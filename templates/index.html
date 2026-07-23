@@ -220,7 +220,8 @@
 
       <div class="ide-editor-area">
         <div class="ide-tabbar" id="ide-tabbar"></div>
-        <div class="ide-panel-scroll">
+        <div class="ide-panel-scroll-wrap">
+        <div class="ide-panel-scroll" id="ide-panel-scroll">
 
       <!-- About -->
       <article id="about" class="tab-panel active animate-fade-up" role="tabpanel" aria-labelledby="tab-about" tabindex="0">
@@ -514,6 +515,11 @@
         </div>
       </article>
 
+        </div>
+        <div class="ide-minimap" id="ide-minimap" aria-hidden="true" title="Minimap">
+          <div class="ide-minimap-lines" id="ide-minimap-lines"></div>
+          <div class="ide-minimap-viewport" id="ide-minimap-viewport"></div>
+        </div>
         </div>
         <div class="ide-terminal-panel" id="ide-terminal-panel" style="display:none">
           <div class="ide-terminal-header">
