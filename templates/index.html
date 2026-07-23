@@ -579,12 +579,20 @@
         </div>
         </div>
         <div class="ide-terminal-panel" id="ide-terminal-panel" style="display:none">
-          <div class="ide-terminal-header">
-            <span class="ide-terminal-title"><ion-icon aria-hidden="true" name="terminal-outline"></ion-icon> TERMINAL</span>
-            <button type="button" class="ide-terminal-close" id="ide-terminal-close" aria-label="Close terminal">&times;</button>
+          <div class="ide-bottom-panel-header">
+            <div class="ide-bottom-panel-tabs" role="tablist" aria-label="Bottom panel">
+              <button type="button" class="ide-bottom-tab active" id="bottom-tab-problems" data-panel-tab="problems" role="tab" aria-selected="true">
+                PROBLEMS <span class="problems-count-badge" id="problems-count-badge">0</span>
+              </button>
+              <button type="button" class="ide-bottom-tab" id="bottom-tab-terminal" data-panel-tab="terminal" role="tab" aria-selected="false">
+                <ion-icon aria-hidden="true" name="terminal-outline"></ion-icon> TERMINAL
+              </button>
+            </div>
+            <button type="button" class="ide-terminal-close" id="ide-terminal-close" aria-label="Close panel">&times;</button>
           </div>
-          <div class="ide-terminal-body" id="ide-terminal-body"></div>
-          <div class="ide-terminal-input-row">
+          <div class="ide-problems-body" id="ide-problems-body"></div>
+          <div class="ide-terminal-body" id="ide-terminal-body" style="display:none"></div>
+          <div class="ide-terminal-input-row" id="ide-terminal-input-row" style="display:none">
             <span class="ide-terminal-prompt">visitor@ctrlaltjay:~$</span>
             <input type="text" id="ide-terminal-input" class="ide-terminal-input" autocomplete="off" spellcheck="false" autocapitalize="off" aria-label="Terminal input">
           </div>
@@ -593,6 +601,10 @@
           <div class="side">
             <span id="ide-status-section">about</span>
             <span id="ide-status-count"></span>
+            <button type="button" class="status-problems-btn" id="status-problems-btn" title="Show Problems panel">
+              <ion-icon aria-hidden="true" name="close-circle-outline"></ion-icon><span id="status-problems-errors">0</span>
+              <ion-icon aria-hidden="true" name="warning-outline"></ion-icon><span id="status-problems-warnings">0</span>
+            </button>
           </div>
           <div class="side">
             <span><span class="dot-live"></span>Live</span>
