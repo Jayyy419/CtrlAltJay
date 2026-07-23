@@ -219,11 +219,13 @@ def save_additional_images(files):
     return ",".join(filter(None, (save_uploaded_image(f) for f in files)))
 
 
-def scan_all(table):
+def scan_all(table, filter_expression=None):
     """Scan a DynamoDB table across pages — table.scan() alone caps out at
     1MB per call and silently truncates larger tables via LastEvaluatedKey."""
     items = []
     kwargs = {}
+    if filter_expression is not None:
+        kwargs["FilterExpression"] = filter_expression
     while True:
         resp = table.scan(**kwargs)
         items.extend(resp.get("Items", []))
@@ -1096,6 +1098,44 @@ def hit_count():
     item = resp.get("Item", {})
     count = int(item.get("hit_count", 0))
     return jsonify({"count": count})
+
+
+# ─── Live Visitor Presence ───────────────────────────────────────────────────
+# Heartbeat-based (no websockets): each open tab pings this every ~25s with a
+# per-tab session id, we upsert its last-seen time, then count rows seen
+# within PRESENCE_ACTIVE_SECONDS. Stale rows get swept on the same call so the
+# table doesn't grow unbounded without needing DynamoDB TTL configured.
+
+PRESENCE_PREFIX = "__presence_"
+PRESENCE_ACTIVE_SECONDS = 45
+PRESENCE_STALE_SECONDS = 300
+
+
+@app.route("/api/presence", methods=["POST"])
+def presence_heartbeat():
+    session_id = str((request.get_json(silent=True) or {}).get("session_id", "")).strip()[:64]
+    if not session_id:
+        session_id = _client_ip()
+    now = int(time.time())
+
+    active = 1
+    try:
+        table_items.put_item(Item={"id": f"{PRESENCE_PREFIX}{session_id}", "last_seen": Decimal(now)})
+        rows = scan_all(table_items, filter_expression=Attr("id").begins_with(PRESENCE_PREFIX))
+        active = 0
+        for row in rows:
+            last_seen = int(row.get("last_seen", 0))
+            if now - last_seen > PRESENCE_STALE_SECONDS:
+                try:
+                    table_items.delete_item(Key={"id": row["id"]})
+                except Exception:
+                    pass
+            elif now - last_seen <= PRESENCE_ACTIVE_SECONDS:
+                active += 1
+    except Exception:
+        pass
+
+    return jsonify({"count": max(active, 1)})
 
 
 # ─── Auto-Backup to S3 ──────────────────────────────────────────────────────
