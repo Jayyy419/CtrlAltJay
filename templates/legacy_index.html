@@ -47,7 +47,7 @@
       },
     }
   </script>
-  <link rel="stylesheet" href="../static/css/style.css">
+  <link rel="stylesheet" href="../static/legacy/css/style.css">
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#0a0a18">
 </head>
@@ -61,72 +61,62 @@
 
   <!-- Back-to-top button -->
   <button class="back-to-top" id="back-to-top" aria-label="Back to top">
-    <ion-icon aria-hidden="true" name="chevron-up-outline"></ion-icon>
+    <ion-icon name="chevron-up-outline"></ion-icon>
   </button>
 
   <!-- Theme toggle -->
   <button class="theme-toggle-btn" id="theme-toggle" aria-label="Toggle theme">
-    <ion-icon aria-hidden="true" name="sunny-outline"></ion-icon>
+    <ion-icon name="sunny-outline"></ion-icon>
   </button>
 
   <!-- View toggle -->
   <button class="view-toggle-btn" id="view-toggle" aria-label="Toggle grid/list view">
-    <ion-icon aria-hidden="true" name="list-outline"></ion-icon>
+    <ion-icon name="list-outline"></ion-icon>
   </button>
 
     <main id="main-content" class="layout max-w-[1440px] mx-auto w-full px-5 py-10 sm:py-10 gap-8 flex-1" role="main">
-      <!-- Profile Flyout (triggered from activity bar avatar) -->
-      <div id="profile-flyout" class="admin-tools-popup" style="display:none">
-        <div class="admin-tools-popup-backdrop" id="profile-flyout-backdrop"></div>
-        <div class="admin-tools-popup-content profile-flyout-content">
-          <button type="button" id="profile-flyout-close" class="admin-tools-close profile-flyout-close-btn" aria-label="Close profile">&times;</button>
+    <!-- Sidebar -->
+    <aside class="sidebar bg-surface-50/80 backdrop-blur-xl border border-white/[0.06] rounded-2xl p-8 sticky top-10 h-fit shadow-2xl">
+      <div class="portrait-wrap relative mx-auto w-36 h-36 rounded-2xl overflow-hidden ring-2 ring-accent/60 ring-offset-2 ring-offset-surface-400 mb-6">
+        <img src="../static/images/Portrait_ZoomedIn.JPG" alt="{{ profile.name }}" class="w-full h-full object-cover portrait">
+      </div>
+      <h1 class="text-2xl font-bold text-white text-center tracking-tight">{{ profile.name }}</h1>
+      <p class="headline mt-2 mb-6 text-ink-soft text-center text-sm leading-relaxed">{{ profile.headline }}</p>
 
-          <div class="profile-flyout-head">
-            <div class="portrait-wrap relative w-24 h-24 rounded-2xl overflow-hidden ring-2 ring-accent/60 ring-offset-2 ring-offset-surface-400 shrink-0">
-              <img src="../static/images/Portrait_ZoomedIn.JPG" alt="{{ profile.name }}" class="w-full h-full object-cover portrait">
-            </div>
-            <div>
-              <h1 class="text-xl font-bold text-white tracking-tight">{{ profile.name }}</h1>
-              <p class="headline mt-1 text-ink-soft text-sm leading-relaxed">{{ profile.headline }}</p>
-            </div>
-          </div>
+      <div class="contact-cluster grid gap-2.5 mb-6">
+        <a href="mailto:{{ profile.email }}" class="chip group flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-100 border border-white/[0.06] text-ink-soft text-sm no-underline transition-all duration-300 hover:bg-accent hover:text-surface-400 hover:border-accent">
+          <ion-icon name="mail-outline" class="text-lg text-accent group-hover:text-surface-400 transition-colors"></ion-icon>
+          <span>{{ profile.email }}</span>
+        </a>
+        <a href="tel:{{ profile.phone|replace(' ', '') }}" class="chip group flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-100 border border-white/[0.06] text-ink-soft text-sm no-underline transition-all duration-300 hover:bg-accent hover:text-surface-400 hover:border-accent">
+          <ion-icon name="call-outline" class="text-lg text-accent group-hover:text-surface-400 transition-colors"></ion-icon>
+          <span>{{ profile.phone }}</span>
+        </a>
+        <span class="chip group flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-100 border border-white/[0.06] text-ink-soft text-sm">
+          <ion-icon name="location-outline" class="text-lg text-accent"></ion-icon>
+          <span>{{ profile.location }}</span>
+        </span>
+        <a href="{{ profile.credly }}" class="chip group flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-100 border border-white/[0.06] text-ink-soft text-sm no-underline transition-all duration-300 hover:bg-accent hover:text-surface-400 hover:border-accent" target="_blank" rel="noopener noreferrer">
+          <ion-icon name="ribbon-outline" class="text-lg text-accent group-hover:text-surface-400 transition-colors"></ion-icon>
+          <span>Credly</span>
+        </a>
+        <a href="{{ profile.github }}" class="chip group flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-100 border border-white/[0.06] text-ink-soft text-sm no-underline transition-all duration-300 hover:bg-accent hover:text-surface-400 hover:border-accent" target="_blank" rel="noopener noreferrer">
+          <ion-icon name="logo-github" class="text-lg text-accent group-hover:text-surface-400 transition-colors"></ion-icon>
+          <span>GitHub</span>
+        </a>
+        <a href="{{ profile.linkedin }}" class="chip group flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-100 border border-white/[0.06] text-ink-soft text-sm no-underline transition-all duration-300 hover:bg-accent hover:text-surface-400 hover:border-accent" target="_blank" rel="noopener noreferrer">
+          <ion-icon name="logo-linkedin" class="text-lg text-accent group-hover:text-surface-400 transition-colors"></ion-icon>
+          <span>LinkedIn</span>
+        </a>
+      </div>
 
-          <div class="contact-cluster grid gap-2.5 mt-6">
-            <a href="mailto:{{ profile.email }}" class="chip group flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-100 border border-white/[0.06] text-ink-soft text-sm no-underline transition-all duration-300 hover:bg-accent hover:text-surface-400 hover:border-accent">
-              <ion-icon aria-hidden="true" name="mail-outline" class="text-lg text-accent group-hover:text-surface-400 transition-colors"></ion-icon>
-              <span>{{ profile.email }}</span>
-            </a>
-            <a href="tel:{{ profile.phone|replace(' ', '') }}" class="chip group flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-100 border border-white/[0.06] text-ink-soft text-sm no-underline transition-all duration-300 hover:bg-accent hover:text-surface-400 hover:border-accent">
-              <ion-icon aria-hidden="true" name="call-outline" class="text-lg text-accent group-hover:text-surface-400 transition-colors"></ion-icon>
-              <span>{{ profile.phone }}</span>
-            </a>
-            <span class="chip group flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-100 border border-white/[0.06] text-ink-soft text-sm transition-all duration-300">
-              <ion-icon aria-hidden="true" name="location-outline" class="text-lg text-accent"></ion-icon>
-              <span>{{ profile.location }}</span>
-            </span>
-            <a href="{{ profile.credly }}" class="chip group flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-100 border border-white/[0.06] text-ink-soft text-sm no-underline transition-all duration-300 hover:bg-accent hover:text-surface-400 hover:border-accent" target="_blank" rel="noopener noreferrer">
-              <ion-icon aria-hidden="true" name="ribbon-outline" class="text-lg text-accent group-hover:text-surface-400 transition-colors"></ion-icon>
-              <span>Credly</span>
-            </a>
-            <a href="{{ profile.github }}" class="chip group flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-100 border border-white/[0.06] text-ink-soft text-sm no-underline transition-all duration-300 hover:bg-accent hover:text-surface-400 hover:border-accent" target="_blank" rel="noopener noreferrer">
-              <ion-icon aria-hidden="true" name="logo-github" class="text-lg text-accent group-hover:text-surface-400 transition-colors"></ion-icon>
-              <span>GitHub</span>
-            </a>
-            <a href="{{ profile.linkedin }}" class="chip group flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-100 border border-white/[0.06] text-ink-soft text-sm no-underline transition-all duration-300 hover:bg-accent hover:text-surface-400 hover:border-accent" target="_blank" rel="noopener noreferrer">
-              <ion-icon aria-hidden="true" name="logo-linkedin" class="text-lg text-accent group-hover:text-surface-400 transition-colors"></ion-icon>
-              <span>LinkedIn</span>
-            </a>
-          </div>
+      <button type="button" id="admin-logout-btn" class="admin-link admin-logout w-full text-center mt-4 bg-red-500/10 text-red-400 font-semibold rounded-xl px-4 py-3 text-sm border border-red-500/30 transition-all duration-300 hover:bg-red-500/20 hover:border-red-500/60 hover:text-red-300 cursor-pointer" hidden>Exit Admin Mode</button>
 
-          <button type="button" id="admin-logout-btn" class="admin-link admin-logout w-full text-center mt-4 bg-red-500/10 text-red-400 font-semibold rounded-xl px-4 py-3 text-sm border border-red-500/30 transition-all duration-300 hover:bg-red-500/20 hover:border-red-500/60 hover:text-red-300 cursor-pointer" hidden>Exit Admin Mode</button>
-
-          <!-- Admin Tools Popup (Admin) -->
-          <div class="admin-only mt-3" hidden>
-            <button type="button" id="admin-tools-toggle" class="w-full text-center bg-accent/10 text-accent font-semibold rounded-xl px-4 py-3 text-xs border border-accent/30 transition-all duration-300 hover:bg-accent/20 hover:border-accent/60 cursor-pointer">
-              <ion-icon aria-hidden="true" name="settings-outline" class="align-middle mr-1"></ion-icon>Admin Tools
-            </button>
-          </div>
-        </div>
+      <!-- Admin Tools Popup (Admin) -->
+      <div class="admin-only mt-3" hidden>
+        <button type="button" id="admin-tools-toggle" class="w-full text-center bg-accent/10 text-accent font-semibold rounded-xl px-4 py-3 text-xs border border-accent/30 transition-all duration-300 hover:bg-accent/20 hover:border-accent/60 cursor-pointer">
+          <ion-icon name="settings-outline" class="align-middle mr-1"></ion-icon>Admin Tools
+        </button>
       </div>
 
       <!-- Admin Tools Popup Overlay -->
@@ -134,14 +124,14 @@
         <div class="admin-tools-popup-backdrop"></div>
         <div class="admin-tools-popup-content">
           <div class="admin-tools-popup-header">
-            <h3><ion-icon aria-hidden="true" name="settings-outline"></ion-icon> Admin Tools</h3>
+            <h3><ion-icon name="settings-outline"></ion-icon> Admin Tools</h3>
             <button type="button" id="admin-tools-close" class="admin-tools-close">&times;</button>
           </div>
           <div class="admin-tools-grid">
             <!-- Activity Log -->
             <div class="admin-tool-card">
               <button type="button" id="activity-log-toggle" class="admin-tool-btn">
-                <ion-icon aria-hidden="true" name="document-text-outline"></ion-icon>
+                <ion-icon name="document-text-outline"></ion-icon>
                 <span>Activity Log</span>
               </button>
               <div id="activity-log-panel" class="activity-log-panel mt-2" style="display:none">
@@ -152,7 +142,7 @@
             <!-- Stats Dashboard -->
             <div class="admin-tool-card">
               <button type="button" id="admin-stats-toggle" class="admin-tool-btn">
-                <ion-icon aria-hidden="true" name="bar-chart-outline"></ion-icon>
+                <ion-icon name="bar-chart-outline"></ion-icon>
                 <span>Stats Dashboard</span>
               </button>
               <div id="admin-stats-panel" class="activity-log-panel mt-2" style="display:none">
@@ -162,28 +152,28 @@
             <!-- Visitors -->
             <div class="admin-tool-card">
               <div class="admin-tool-btn admin-tool-static">
-                <ion-icon aria-hidden="true" name="eye-outline"></ion-icon>
+                <ion-icon name="eye-outline"></ion-icon>
                 <span>Visitors: <span id="hit-counter-display" class="text-accent font-bold">&mdash;</span></span>
               </div>
             </div>
             <!-- Backup -->
             <div class="admin-tool-card">
               <button type="button" id="admin-backup-btn" class="admin-tool-btn">
-                <ion-icon aria-hidden="true" name="cloud-upload-outline"></ion-icon>
+                <ion-icon name="cloud-upload-outline"></ion-icon>
                 <span>Backup to S3</span>
               </button>
             </div>
             <!-- Import JSON -->
             <div class="admin-tool-card">
               <button type="button" id="admin-import-btn" class="admin-tool-btn">
-                <ion-icon aria-hidden="true" name="cloud-download-outline"></ion-icon>
+                <ion-icon name="cloud-download-outline"></ion-icon>
                 <span>Import JSON</span>
               </button>
             </div>
             <!-- Recently Deleted -->
             <div class="admin-tool-card">
               <button type="button" id="deleted-items-toggle" class="admin-tool-btn">
-                <ion-icon aria-hidden="true" name="trash-outline"></ion-icon>
+                <ion-icon name="trash-outline"></ion-icon>
                 <span>Recently Deleted <span id="deleted-count-badge" class="deleted-badge" style="display:none">0</span></span>
               </button>
               <div id="deleted-items-panel" class="deleted-panel mt-2" style="display:none">
@@ -193,42 +183,20 @@
           </div>
         </div>
       </div>
+    </aside>
 
-      <!-- Content: IDE-style shell -->
-      <section class="ide-shell">
-      <nav class="activity-bar" role="tablist" aria-label="Site sections">
-        <button class="tab-btn active" data-tab="about" role="tab" aria-selected="true" aria-controls="about" id="tab-about" title="About" aria-label="About"><ion-icon aria-hidden="true" name="person-outline"></ion-icon></button>
-        <button class="tab-btn" data-tab="projects" role="tab" aria-selected="false" aria-controls="projects" id="tab-projects" title="Projects" aria-label="Projects"><ion-icon aria-hidden="true" name="folder-outline"></ion-icon><span class="tab-count-badge" id="tab-count-projects" aria-hidden="true"></span></button>
-        <button class="tab-btn" data-tab="experiences" role="tab" aria-selected="false" aria-controls="experiences" id="tab-experiences" title="Experiences" aria-label="Experiences"><ion-icon aria-hidden="true" name="briefcase-outline"></ion-icon><span class="tab-count-badge" id="tab-count-experiences" aria-hidden="true"></span></button>
-        <button class="tab-btn" data-tab="resume" role="tab" aria-selected="false" aria-controls="resume" id="tab-resume" title="Resume" aria-label="Resume"><ion-icon aria-hidden="true" name="document-text-outline"></ion-icon></button>
-        <button class="tab-btn" data-tab="contact" role="tab" aria-selected="false" aria-controls="contact" id="tab-contact" title="Contact" aria-label="Contact"><ion-icon aria-hidden="true" name="mail-outline"></ion-icon></button>
-        <button type="button" class="tab-btn activity-bar-profile-btn" id="profile-flyout-toggle" title="Profile" aria-label="Open profile" aria-haspopup="dialog">
-          <img src="../static/images/Portrait_ZoomedIn.JPG" alt="" class="activity-bar-avatar">
-        </button>
+    <!-- Content -->
+    <section class="content bg-surface-50/80 backdrop-blur-xl border border-white/[0.06] rounded-2xl p-8 shadow-2xl">
+      <nav class="main-nav flex gap-3 mb-8 pb-5 border-b border-white/[0.06] overflow-x-auto -mx-2 px-2 scrollbar-hide">
+        <button class="tab-btn active shrink-0 px-5 py-2.5 bg-surface-100 text-ink-soft border-2 border-white/[0.06] rounded-xl cursor-pointer font-medium text-sm transition-all duration-300 hover:border-accent/60 hover:text-accent" data-tab="about">About</button>
+        <button class="tab-btn shrink-0 px-5 py-2.5 bg-surface-100 text-ink-soft border-2 border-white/[0.06] rounded-xl cursor-pointer font-medium text-sm transition-all duration-300 hover:border-accent/60 hover:text-accent" data-tab="projects">Projects</button>
+        <button class="tab-btn shrink-0 px-5 py-2.5 bg-surface-100 text-ink-soft border-2 border-white/[0.06] rounded-xl cursor-pointer font-medium text-sm transition-all duration-300 hover:border-accent/60 hover:text-accent" data-tab="experiences">Experiences</button>
+        <button class="tab-btn shrink-0 px-5 py-2.5 bg-surface-100 text-ink-soft border-2 border-white/[0.06] rounded-xl cursor-pointer font-medium text-sm transition-all duration-300 hover:border-accent/60 hover:text-accent" data-tab="resume">Resume</button>
+        <button class="tab-btn shrink-0 px-5 py-2.5 bg-surface-100 text-ink-soft border-2 border-white/[0.06] rounded-xl cursor-pointer font-medium text-sm transition-all duration-300 hover:border-accent/60 hover:text-accent" data-tab="contact">Contact</button>
       </nav>
 
-      <div class="ide-sidebar" id="file-tree" aria-hidden="true">
-        <div class="ide-sidebar-head">PORTFOLIO</div>
-        <div class="file-tree-folder" data-tab="about"><span class="chev">▾</span> about</div>
-        <div class="file-tree-item" data-tab="about"><span class="fdot md"></span> bio.md</div>
-
-        <div class="file-tree-folder" data-tab="projects"><span class="chev">▾</span> projects</div>
-        <div class="file-tree-children" id="tree-projects-items"></div>
-
-        <div class="file-tree-folder" data-tab="experiences"><span class="chev">▾</span> experiences</div>
-        <div class="file-tree-children" id="tree-experiences-items"></div>
-
-        <div class="file-tree-folder collapsed" data-tab="resume"><span class="chev">▸</span> resume</div>
-        <div class="file-tree-folder collapsed" data-tab="contact"><span class="chev">▸</span> contact</div>
-      </div>
-      <div class="ide-sidebar-resizer" id="ide-sidebar-resizer" role="separator" aria-orientation="vertical" aria-label="Resize file tree"></div>
-
-      <div class="ide-editor-area">
-        <div class="ide-tabbar" id="ide-tabbar"></div>
-        <div class="ide-panel-scroll">
-
       <!-- About -->
-      <article id="about" class="tab-panel active animate-fade-up" role="tabpanel" aria-labelledby="tab-about" tabindex="0">
+      <article id="about" class="tab-panel active animate-fade-up">
         <header class="panel-head mb-6">
           <h2 class="font-display text-3xl font-bold text-white tracking-tight">About Me</h2>
           <p class="mt-2 text-ink-muted">Building practical systems that blend software, cloud, and AI.</p>
@@ -271,14 +239,14 @@
 
         <section class="mt-8 text-center">
           <button type="button" id="surprise-me-btn" class="surprise-me-btn">
-            <ion-icon aria-hidden="true" name="shuffle-outline"></ion-icon> Surprise Me
+            <ion-icon name="shuffle-outline"></ion-icon> Surprise Me
           </button>
           <p class="text-xs text-ink-muted mt-2">Open a random portfolio item</p>
         </section>
       </article>
 
       <!-- Projects -->
-      <article id="projects" class="tab-panel animate-fade-up" role="tabpanel" aria-labelledby="tab-projects" tabindex="0">
+      <article id="projects" class="tab-panel animate-fade-up">
         <header class="panel-head mb-6">
           <div class="panel-head-top flex items-center justify-between gap-3">
             <h2 class="font-display text-3xl font-bold text-white tracking-tight">Projects</h2>
@@ -317,13 +285,13 @@
         <div id="projects-grid" class="card-grid grid grid-cols-[repeat(auto-fill,minmax(min(280px,100%),1fr))] gap-5 py-2"></div>
         <!-- Recently Viewed Projects -->
         <div id="recently-viewed-projects" class="recently-viewed-section mt-8" style="display:none">
-          <h4 class="text-sm font-semibold text-ink-soft mb-2"><ion-icon aria-hidden="true" name="time-outline" class="align-middle mr-1"></ion-icon>Recently Viewed</h4>
+          <h4 class="text-sm font-semibold text-ink-soft mb-2"><ion-icon name="time-outline" class="align-middle mr-1"></ion-icon>Recently Viewed</h4>
           <div class="recent-strip"></div>
         </div>
       </article>
 
       <!-- Experiences -->
-      <article id="experiences" class="tab-panel animate-fade-up" role="tabpanel" aria-labelledby="tab-experiences" tabindex="0">
+      <article id="experiences" class="tab-panel animate-fade-up">
         <header class="panel-head mb-6">
           <div class="panel-head-top flex items-center justify-between gap-3">
             <h2 class="font-display text-3xl font-bold text-white tracking-tight">Experiences</h2>
@@ -362,22 +330,22 @@
         <div id="experiences-grid" class="card-grid grid grid-cols-[repeat(auto-fill,minmax(min(280px,100%),1fr))] gap-5 py-2"></div>
         <!-- Recently Viewed Experiences -->
         <div id="recently-viewed-experiences" class="recently-viewed-section mt-8" style="display:none">
-          <h4 class="text-sm font-semibold text-ink-soft mb-2"><ion-icon aria-hidden="true" name="time-outline" class="align-middle mr-1"></ion-icon>Recently Viewed</h4>
+          <h4 class="text-sm font-semibold text-ink-soft mb-2"><ion-icon name="time-outline" class="align-middle mr-1"></ion-icon>Recently Viewed</h4>
           <div class="recent-strip"></div>
         </div>
       </article>
 
       <!-- Resume -->
-      <article id="resume" class="tab-panel animate-fade-up" role="tabpanel" aria-labelledby="tab-resume" tabindex="0">
+      <article id="resume" class="tab-panel animate-fade-up">
         <header class="panel-head mb-6">
           <div class="panel-head-top flex items-center justify-between gap-3">
             <h2 class="font-display text-3xl font-bold text-white tracking-tight">Resume</h2>
             <div class="flex items-center gap-2 flex-wrap">
               <button type="button" id="export-json-btn" class="export-btn admin-only" hidden>
-                <ion-icon aria-hidden="true" name="download-outline"></ion-icon> Export JSON
+                <ion-icon name="download-outline"></ion-icon> Export JSON
               </button>
               <button type="button" id="print-resume-btn" class="export-btn">
-                <ion-icon aria-hidden="true" name="print-outline"></ion-icon> Print
+                <ion-icon name="print-outline"></ion-icon> Print
               </button>
             </div>
           </div>
@@ -390,10 +358,10 @@
             <span class="text-sm text-ink-soft font-semibold">Resume Key:</span>
             <code id="resume-key-display" class="resume-key-code">Loading...</code>
             <button type="button" id="resume-key-copy" class="export-btn" title="Copy key">
-              <ion-icon aria-hidden="true" name="copy-outline"></ion-icon> Copy
+              <ion-icon name="copy-outline"></ion-icon> Copy
             </button>
             <button type="button" id="resume-key-rotate" class="export-btn" style="border-color:rgba(239,68,68,0.3);color:#ef4444" title="Generate new key">
-              <ion-icon aria-hidden="true" name="refresh-outline"></ion-icon> Rotate
+              <ion-icon name="refresh-outline"></ion-icon> Rotate
             </button>
           </div>
         </div>
@@ -416,7 +384,7 @@
       </article>
 
       <!-- Contact -->
-      <article id="contact" class="tab-panel animate-fade-up" role="tabpanel" aria-labelledby="tab-contact" tabindex="0">
+      <article id="contact" class="tab-panel animate-fade-up">
         <header class="panel-head mb-6">
           <h2 class="font-display text-3xl font-bold text-white tracking-tight">Contact</h2>
           <p class="mt-2 text-ink-muted">If you are hiring, collaborating, or proposing a challenge, let us talk.</p>
@@ -463,79 +431,11 @@
           <p class="form-note text-xs text-ink-muted mt-3">I'll get back to you within 24-48 hours.</p>
         </form>
       </article>
-
-      <!-- Item Viewer: opened when a project/experience file-tree item is clicked -->
-      <article id="item-viewer" class="tab-panel animate-fade-up" role="tabpanel" tabindex="0">
-        <div id="item-viewer-carousel" class="modal-carousel">
-          <img id="modal-image" alt="Detail image">
-          <button type="button" class="carousel-prev" id="carousel-prev" aria-label="Previous image" style="display:none"><ion-icon aria-hidden="true" name="chevron-back-outline"></ion-icon></button>
-          <button type="button" class="carousel-next" id="carousel-next" aria-label="Next image" style="display:none"><ion-icon aria-hidden="true" name="chevron-forward-outline"></ion-icon></button>
-          <div id="carousel-dots" class="carousel-dots"></div>
-        </div>
-        <div class="modal-title-row flex items-center justify-between gap-3 mt-4">
-          <h2 id="modal-title" class="font-display text-2xl font-bold text-white flex-1 tracking-tight"></h2>
-          <div class="flex items-center gap-2">
-            <button type="button" id="modal-copy-id-btn" class="icon-edit-btn admin-only" aria-label="Copy item ID" hidden style="color:#94a3b8">
-              <ion-icon aria-hidden="true" name="clipboard-outline"></ion-icon>
-            </button>
-            <button type="button" id="modal-export-item-btn" class="icon-edit-btn" aria-label="Export item as JSON" style="color:#22c55e">
-              <ion-icon aria-hidden="true" name="download-outline"></ion-icon>
-            </button>
-            <button type="button" id="modal-clone-btn" class="icon-edit-btn admin-only" aria-label="Clone this card" hidden style="color:#38bdf8">
-              <ion-icon aria-hidden="true" name="copy-outline"></ion-icon>
-            </button>
-            <button type="button" id="modal-delete-btn" class="icon-edit-btn admin-only" aria-label="Delete this card" hidden style="color:#ef4444">
-              <ion-icon aria-hidden="true" name="trash-outline"></ion-icon>
-            </button>
-            <button type="button" id="modal-edit-btn" class="icon-edit-btn admin-only" aria-label="Edit this card" hidden>
-              <ion-icon aria-hidden="true" name="pencil-outline"></ion-icon>
-            </button>
-          </div>
-        </div>
-
-        <div id="modal-tag" class="modal-tag"></div>
-        <div id="modal-read-time" class="modal-read-time" style="display:none"></div>
-        <div id="modal-body" class="modal-body"></div>
-        <a id="modal-link" target="_blank" rel="noopener noreferrer" class="modal-link inline-block mt-4 text-accent font-bold no-underline hover:text-accent-light transition-colors">Open external link</a>
-
-        <!-- Credential Verification -->
-        <a id="modal-credential-link" target="_blank" rel="noopener noreferrer" class="credential-link" style="display:none">
-          <ion-icon aria-hidden="true" name="shield-checkmark-outline"></ion-icon> Verify Credential
-        </a>
-
-        <!-- Social Share -->
-        <div id="modal-share" class="share-buttons mt-4">
-          <span class="text-xs text-ink-muted font-semibold mr-2">Share:</span>
-          <button type="button" class="share-btn" data-platform="linkedin" aria-label="Share on LinkedIn"><ion-icon aria-hidden="true" name="logo-linkedin"></ion-icon></button>
-          <button type="button" class="share-btn" data-platform="twitter" aria-label="Share on X"><ion-icon aria-hidden="true" name="logo-twitter"></ion-icon></button>
-          <button type="button" class="share-btn" data-platform="telegram" aria-label="Share on Telegram"><ion-icon aria-hidden="true" name="paper-plane-outline"></ion-icon></button>
-          <button type="button" class="share-btn" data-platform="copy" aria-label="Copy link"><ion-icon aria-hidden="true" name="link-outline"></ion-icon></button>
-        </div>
-
-        <!-- Related Items -->
-        <div id="related-items" class="related-section mt-6" style="display:none">
-          <h4 class="text-sm font-semibold text-ink-soft mb-3"><ion-icon aria-hidden="true" name="git-branch-outline" class="align-middle mr-1"></ion-icon>Related</h4>
-          <div class="related-strip"></div>
-        </div>
-      </article>
-
-        </div>
-        <div class="ide-statusbar">
-          <div class="side">
-            <span id="ide-status-section">about</span>
-            <span id="ide-status-count"></span>
-          </div>
-          <div class="side">
-            <span><span class="dot-live"></span>Live</span>
-            <span id="ide-status-clock"></span>
-          </div>
-        </div>
-      </div>
     </section>
   </main>
 
   <footer class="max-w-[1440px] w-full mx-auto px-5 py-4 text-ink-muted text-xs flex justify-between items-center border-t border-white/[0.04] flex-col sm:flex-row gap-1 sm:gap-0">
-    <p>&copy; <a href="/old" title="" style="color:inherit;text-decoration:none">{{ 2026 }}</a> CtrlAltJay</p>
+    <p>&copy; {{ 2026 }} CtrlAltJay</p>
     <p id="last-updated-ts" class="text-ink-muted/70"></p>
     <p>Built with Flask, cloud-native thinking, and practical AI workflows.</p>
   </footer>
@@ -545,7 +445,7 @@
     <div class="modal-backdrop" data-close-admin-login></div>
     <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="admin-login-title" style="max-width:400px">
       <button class="modal-close" data-close-admin-login aria-label="Close login">
-        <ion-icon aria-hidden="true" name="close-outline"></ion-icon>
+        <ion-icon name="close-outline"></ion-icon>
       </button>
       <h3 id="admin-login-title" class="text-xl font-bold text-white mb-1">Admin Login</h3>
       <p class="text-ink-muted text-sm mb-5">Enter passcode to manage content.</p>
@@ -563,7 +463,7 @@
     <div class="modal-backdrop" data-close-admin-item></div>
     <section class="modal-card admin-item-card" role="dialog" aria-modal="true" aria-labelledby="admin-item-title">
       <button class="modal-close" data-close-admin-item aria-label="Close item editor">
-        <ion-icon aria-hidden="true" name="close-outline"></ion-icon>
+        <ion-icon name="close-outline"></ion-icon>
       </button>
       <h3 id="admin-item-title" class="text-xl font-bold text-white mb-4">Create Item</h3>
       <form id="admin-item-form" class="admin-item-form grid gap-3">
@@ -675,15 +575,75 @@
   </div>
 
   <!-- Detail Modal -->
+  <div class="modal-shell" id="detail-modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal></div>
+    <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <button class="modal-close" data-close-modal>
+        <ion-icon name="close-outline"></ion-icon>
+      </button>
+      <div id="modal-carousel" class="modal-carousel">
+        <img id="modal-image" alt="Detail image">
+        <button type="button" class="carousel-prev" id="carousel-prev" aria-label="Previous image" style="display:none"><ion-icon name="chevron-back-outline"></ion-icon></button>
+        <button type="button" class="carousel-next" id="carousel-next" aria-label="Next image" style="display:none"><ion-icon name="chevron-forward-outline"></ion-icon></button>
+        <div id="carousel-dots" class="carousel-dots"></div>
+      </div>
+      <div class="modal-title-row flex items-center justify-between gap-3">
+        <h3 id="modal-title" class="text-xl font-bold text-white flex-1"></h3>
+        <div class="flex items-center gap-2">
+          <button type="button" id="modal-copy-id-btn" class="icon-edit-btn admin-only" aria-label="Copy item ID" hidden style="color:#94a3b8">
+            <ion-icon name="clipboard-outline"></ion-icon>
+          </button>
+          <button type="button" id="modal-export-item-btn" class="icon-edit-btn" aria-label="Export item as JSON" style="color:#22c55e">
+            <ion-icon name="download-outline"></ion-icon>
+          </button>
+          <button type="button" id="modal-clone-btn" class="icon-edit-btn admin-only" aria-label="Clone this card" hidden style="color:#38bdf8">
+            <ion-icon name="copy-outline"></ion-icon>
+          </button>
+          <button type="button" id="modal-delete-btn" class="icon-edit-btn admin-only" aria-label="Delete this card" hidden style="color:#ef4444">
+            <ion-icon name="trash-outline"></ion-icon>
+          </button>
+          <button type="button" id="modal-edit-btn" class="icon-edit-btn admin-only" aria-label="Edit this card" hidden>
+            <ion-icon name="pencil-outline"></ion-icon>
+          </button>
+        </div>
+      </div>
+
+      <div id="modal-tag" class="modal-tag"></div>
+      <div id="modal-read-time" class="modal-read-time" style="display:none"></div>
+      <div id="modal-body" class="modal-body"></div>
+      <a id="modal-link" target="_blank" rel="noopener noreferrer" class="modal-link inline-block mt-4 text-accent font-bold no-underline hover:text-accent-light transition-colors">Open external link</a>
+
+      <!-- Credential Verification -->
+      <a id="modal-credential-link" target="_blank" rel="noopener noreferrer" class="credential-link" style="display:none">
+        <ion-icon name="shield-checkmark-outline"></ion-icon> Verify Credential
+      </a>
+
+      <!-- Social Share -->
+      <div id="modal-share" class="share-buttons mt-4">
+        <span class="text-xs text-ink-muted font-semibold mr-2">Share:</span>
+        <button type="button" class="share-btn" data-platform="linkedin" aria-label="Share on LinkedIn"><ion-icon name="logo-linkedin"></ion-icon></button>
+        <button type="button" class="share-btn" data-platform="twitter" aria-label="Share on X"><ion-icon name="logo-twitter"></ion-icon></button>
+        <button type="button" class="share-btn" data-platform="telegram" aria-label="Share on Telegram"><ion-icon name="paper-plane-outline"></ion-icon></button>
+        <button type="button" class="share-btn" data-platform="copy" aria-label="Copy link"><ion-icon name="link-outline"></ion-icon></button>
+      </div>
+
+      <!-- Related Items -->
+      <div id="related-items" class="related-section mt-6" style="display:none">
+        <h4 class="text-sm font-semibold text-ink-soft mb-3"><ion-icon name="git-branch-outline" class="align-middle mr-1"></ion-icon>Related</h4>
+        <div class="related-strip"></div>
+      </div>
+    </section>
+  </div>
+
   <!-- Resume Key Modal -->
   <div class="modal-shell" id="resume-key-modal" aria-hidden="true">
     <div class="modal-backdrop" data-close-resume-key></div>
     <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="resume-key-modal-title" style="max-width:440px">
       <button class="modal-close" data-close-resume-key aria-label="Close">
-        <ion-icon aria-hidden="true" name="close-outline"></ion-icon>
+        <ion-icon name="close-outline"></ion-icon>
       </button>
       <div class="flex items-center gap-3 mb-1">
-        <ion-icon aria-hidden="true" name="lock-closed-outline" class="text-2xl text-accent"></ion-icon>
+        <ion-icon name="lock-closed-outline" class="text-2xl text-accent"></ion-icon>
         <h3 id="resume-key-modal-title" class="text-xl font-bold text-white">Print Resume</h3>
       </div>
       <p class="text-ink-muted text-sm mb-5">Enter the resume key to access the printable version.</p>
@@ -691,7 +651,7 @@
         <input type="password" id="resume-key-input" placeholder="Paste resume key" required autocomplete="off"
           class="w-full px-4 py-3 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm placeholder:text-ink-muted focus:outline-none focus:border-accent transition-colors font-mono">
         <button type="submit" class="btn-primary bg-gradient-to-r from-accent to-accent-dark text-surface-400 font-bold rounded-xl px-6 py-3 text-sm border-none cursor-pointer transition-all duration-300 hover:shadow-[0_0_24px_rgba(245,158,11,0.4)]">
-          <ion-icon aria-hidden="true" name="print-outline" class="mr-1 align-middle"></ion-icon> Unlock &amp; Print
+          <ion-icon name="print-outline" class="mr-1 align-middle"></ion-icon> Unlock &amp; Print
         </button>
       </form>
       <p id="resume-key-feedback" class="text-xs mt-3" style="color:#f87171" aria-live="polite"></p>
@@ -703,7 +663,7 @@
     <div class="modal-backdrop" onclick="closeBatchSkillModal()"></div>
     <section class="modal-card" role="dialog" aria-modal="true" style="max-width:500px">
       <button class="modal-close" onclick="closeBatchSkillModal()" aria-label="Close">
-        <ion-icon aria-hidden="true" name="close-outline"></ion-icon>
+        <ion-icon name="close-outline"></ion-icon>
       </button>
       <h3 class="text-xl font-bold text-white mb-1">Batch Skill Assignment</h3>
       <p class="text-ink-muted text-sm mb-4">Choose skills and mode to apply to selected items.</p>
@@ -723,7 +683,7 @@
     </section>
   </div>
 
-  <script src="../static/js/script.js"></script>
+  <script src="../static/legacy/js/script.js"></script>
   <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js" integrity="sha384-xyQ/Vpt1cq1pdPYlRaT/QkcSj2vrYyWI3WOhxGBzqnP1vgvsS2yrhWXe3/wIoCr5" crossorigin="anonymous"></script>
   <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js" integrity="sha384-KAUcUASKfGZ0sxENVFRiH12jtpvd9SsVpgzvYdvv8ZMLqB99G3gX3DAts418wzIC" crossorigin="anonymous"></script>
 
