@@ -1947,6 +1947,7 @@ function initEscapeKey() {
     if (loginModal?.classList.contains("active")) { closeAdminLoginModal(); return; }
     const resumeKeyModal = document.getElementById("resume-key-modal");
     if (resumeKeyModal?.classList.contains("active")) { closeResumeKeyModal(); return; }
+    if (document.body.classList.contains("zen-mode")) { toggleZenMode(false); return; }
   });
 }
 
@@ -3460,6 +3461,13 @@ function initKeyboardShortcuts() {
           e.preventDefault();
         }
         break;
+      case "z":
+      case "Z":
+        if (!e.ctrlKey && !e.metaKey && !modalActive) {
+          toggleZenMode();
+          e.preventDefault();
+        }
+        break;
       case "/":
         if (modalActive) return;
         e.preventDefault();
@@ -3481,6 +3489,25 @@ function initKeyboardShortcuts() {
         break;
     }
   });
+}
+
+function toggleZenMode(force) {
+  const isZen = document.body.classList.toggle("zen-mode", force);
+  let hint = document.getElementById("zen-mode-hint");
+  if (isZen) {
+    if (!hint) {
+      hint = document.createElement("button");
+      hint.type = "button";
+      hint.id = "zen-mode-hint";
+      hint.className = "zen-mode-hint";
+      hint.innerHTML = `<ion-icon name="contract-outline" aria-hidden="true"></ion-icon> Exit Zen Mode <kbd>Z</kbd>`;
+      hint.addEventListener("click", () => toggleZenMode(false));
+      document.body.appendChild(hint);
+    }
+  } else if (hint) {
+    hint.remove();
+  }
+  announce(isZen ? "Zen mode enabled" : "Zen mode disabled");
 }
 
 function cycleIdeTab(dir) {
@@ -3511,6 +3538,7 @@ function toggleShortcutsOverlay() {
         <div class="shortcut-item"><kbd>Enter</kbd><span>Open focused card</span></div>
         <div class="shortcut-item"><kbd>Esc</kbd><span>Close modal / overlay</span></div>
         <div class="shortcut-item"><kbd>T</kbd><span>Toggle dark / light theme</span></div>
+        <div class="shortcut-item"><kbd>Z</kbd><span>Toggle Zen mode</span></div>
         <div class="shortcut-item"><kbd>1</kbd>\u2013<kbd>7</kbd><span>Switch tabs</span></div>
         <div class="shortcut-item"><kbd>/</kbd><span>Focus search field</span></div>
         <div class="shortcut-item"><kbd>[</kbd> <kbd>]</kbd><span>Previous / next open tab</span></div>
@@ -3552,6 +3580,7 @@ function getCommandPaletteItems() {
     { icon: "ribbon-outline", label: "Credly", hint: "credly.md", action: () => openIdeTabByName("credly") },
     { icon: "logo-linkedin", label: "LinkedIn", hint: "linkedin.md", action: () => openIdeTabByName("linkedin") },
     { icon: "contrast-outline", label: "Toggle Theme", hint: "dark / light", action: () => document.getElementById("theme-toggle")?.click() },
+    { icon: "contract-outline", label: "Toggle Zen Mode", hint: "Z", action: () => toggleZenMode() },
     { icon: "keypad-outline", label: "Keyboard Shortcuts", hint: "?", action: () => toggleShortcutsOverlay() },
   ];
   if (typeof toggleTerminalPanel === "function") {
@@ -3741,6 +3770,7 @@ function runTerminalCommand(raw) {
       printTermLine("  open <github|linkedin>       open a social profile");
       printTermLine("  theme <dark|light>   switch theme");
       printTermLine("  resume | stack | contact | profile    jump to a section");
+      printTermLine("  zen                  toggle distraction-free zen mode");
       printTermLine("  banner               print an intro banner");
       printTermLine("  clear                clear the terminal");
       printTermLine("  exit                 close the terminal");
@@ -3823,6 +3853,10 @@ function runTerminalCommand(raw) {
     case "profile":
       openIdeTabByName("profile");
       closeTerminalPanel();
+      break;
+    case "zen":
+      closeTerminalPanel();
+      toggleZenMode(true);
       break;
     case "clear":
       document.getElementById("ide-terminal-body").innerHTML = "";

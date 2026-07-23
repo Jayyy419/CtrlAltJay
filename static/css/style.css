@@ -583,6 +583,47 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
   .ide-minimap { display: none; }
 }
 
+/* ===== Zen Mode ===== */
+body.zen-mode .activity-bar,
+body.zen-mode .ide-sidebar,
+body.zen-mode .ide-sidebar-resizer,
+body.zen-mode .ide-tabbar-wrap,
+body.zen-mode .ide-minimap,
+body.zen-mode .ide-terminal-panel,
+body.zen-mode .ide-statusbar,
+body.zen-mode .theme-toggle-btn {
+  display: none !important;
+}
+body.zen-mode .ide-panel-scroll { padding: 48px max(32px, calc(50% - 380px)); }
+.zen-mode-hint {
+  position: fixed;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--ide-statusbar-bg);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  font-family: 'Plex Mono', monospace;
+  font-size: 0.75rem;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 0.2s ease;
+  box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
+}
+.zen-mode-hint:hover { opacity: 1; }
+.zen-mode-hint kbd {
+  padding: 1px 6px;
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 4px;
+  font-size: 0.68rem;
+}
+
 .tab-panel { display: none; }
 .tab-panel.active { display: block; }
 
