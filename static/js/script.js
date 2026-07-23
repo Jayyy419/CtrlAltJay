@@ -850,6 +850,10 @@ function openIdeTabByName(name) {
     if (state.compareSelection?.length === 2) openCompareTab(state.compareSelection[0], state.compareSelection[1]);
     return;
   }
+  if (name === "resume-diff") {
+    switchTab("resume-diff-viewer");
+    return;
+  }
   switchTab(name);
   window.history.replaceState(null, "", `#${name}`);
 }
@@ -1091,6 +1095,11 @@ function initCompareViewer() {
     clearCompareSelection();
     const activeTab = document.querySelector(".ide-tab.active")?.dataset.tab || "compare";
     closeIdeTab("compare", activeTab);
+  });
+  document.getElementById("resume-diff-clear-btn")?.addEventListener("click", () => {
+    clearResumeMultiSelect();
+    const activeTab = document.querySelector(".ide-tab.active")?.dataset.tab || "resume-diff";
+    closeIdeTab("resume-diff", activeTab);
   });
 }
 
@@ -1627,6 +1636,7 @@ function renderResumeMultiSelectPanel() {
     <div class="multiselect-header">
       <ion-icon name="albums-outline" aria-hidden="true"></ion-icon>
       ${items.length} cursors active
+      ${items.length === 2 ? `<button type="button" class="multiselect-diff" id="multiselect-diff-btn"><ion-icon name="git-compare-outline" aria-hidden="true"></ion-icon>View Diff</button>` : ""}
       <button type="button" class="multiselect-clear" id="multiselect-clear-btn">Clear</button>
     </div>
     <div class="multiselect-body">
@@ -1634,6 +1644,87 @@ function renderResumeMultiSelectPanel() {
     </div>
   `;
   document.getElementById("multiselect-clear-btn")?.addEventListener("click", clearResumeMultiSelect);
+  document.getElementById("multiselect-diff-btn")?.addEventListener("click", () => openResumeDiffTab(items[0], items[1]));
+}
+
+/* ===== Resume Diff Viewer: real word-level diff between two entries ===== */
+function wordDiffTokens(oldStr, newStr) {
+  const a = (oldStr || "").split(/\s+/).filter(Boolean);
+  const b = (newStr || "").split(/\s+/).filter(Boolean);
+  const m = a.length;
+  const n = b.length;
+  const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+  for (let i = m - 1; i >= 0; i--) {
+    for (let j = n - 1; j >= 0; j--) {
+      dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+    }
+  }
+  const tokens = [];
+  let i = 0;
+  let j = 0;
+  while (i < m && j < n) {
+    if (a[i] === b[j]) { tokens.push({ type: "same", text: a[i] }); i++; j++; }
+    else if (dp[i + 1][j] >= dp[i][j + 1]) { tokens.push({ type: "del", text: a[i] }); i++; }
+    else { tokens.push({ type: "add", text: b[j] }); j++; }
+  }
+  while (i < m) { tokens.push({ type: "del", text: a[i++] }); }
+  while (j < n) { tokens.push({ type: "add", text: b[j++] }); }
+  return tokens;
+}
+
+function renderWordDiffHTML(oldStr, newStr) {
+  if ((oldStr || "") === (newStr || "")) return `<span class="diff-same">${escapeHtml(oldStr || "—")}</span>`;
+  return wordDiffTokens(oldStr, newStr).map((t) => {
+    if (t.type === "same") return `<span class="diff-same">${escapeHtml(t.text)}</span>`;
+    if (t.type === "del") return `<span class="diff-del">${escapeHtml(t.text)}</span>`;
+    return `<span class="diff-add">${escapeHtml(t.text)}</span>`;
+  }).join(" ");
+}
+
+function renderDiffFieldLine(label, oldVal, newVal) {
+  const a = oldVal || "";
+  const b = newVal || "";
+  if (a === b) {
+    return `<div class="diff-line diff-line--context">  <span class="diff-field">${escapeHtml(label)}:</span> ${escapeHtml(a || "—")}</div>`;
+  }
+  const lines = [];
+  if (a) lines.push(`<div class="diff-line diff-line--del">- <span class="diff-field">${escapeHtml(label)}:</span> ${escapeHtml(a)}</div>`);
+  if (b) lines.push(`<div class="diff-line diff-line--add">+ <span class="diff-field">${escapeHtml(label)}:</span> ${escapeHtml(b)}</div>`);
+  return lines.join("");
+}
+
+function renderResumeDiff(a, b) {
+  const body = document.getElementById("resume-diff-body");
+  if (!body) return;
+  const slugA = slugifyTitle(a.subtitle || a.title);
+  const slugB = slugifyTitle(b.subtitle || b.title);
+
+  body.innerHTML = `
+    <div class="diff-hunk-header">@@ resume/${escapeHtml(slugA)}.md &rarr; resume/${escapeHtml(slugB)}.md @@</div>
+    <div class="diff-block">
+      ${renderDiffFieldLine("lane", a.lane, b.lane)}
+      ${renderDiffFieldLine("title", a.title, b.title)}
+      ${renderDiffFieldLine("org", a.subtitle, b.subtitle)}
+      ${renderDiffFieldLine("period", a.period, b.period)}
+    </div>
+    <div class="diff-block diff-block--description">
+      <div class="diff-line diff-line--context diff-field">  description:</div>
+      <div class="diff-description">${renderWordDiffHTML(a.description, b.description)}</div>
+    </div>
+  `;
+}
+
+function openResumeDiffTab(a, b) {
+  state.ideItemMeta = state.ideItemMeta || {};
+  state.ideItemMeta["resume-diff"] = { label: "resume.diff", icon: "diff" };
+  if (!state.ideOpenTabs.includes("resume-diff")) state.ideOpenTabs.push("resume-diff");
+
+  renderResumeDiff(a, b);
+  switchTab("resume-diff-viewer");
+  renderIdeTabbar("resume-diff");
+  const sectionEl = document.getElementById("ide-status-section");
+  if (sectionEl) sectionEl.textContent = "resume.diff";
+  refreshMinimap();
 }
 
 let blameTooltipEl = null;
@@ -2311,6 +2402,7 @@ async function bootstrap() {
   initExplorationProgress();
   initAnimatedCounters();
   initGithubActivity();
+  initReferrerEasterEgg();
   registerServiceWorker();
 
   // Smooth page load transition
@@ -3614,6 +3706,34 @@ function animateCounter(id, target) {
   requestAnimationFrame(step);
 }
 
+/* ===== Referrer-triggered easter egg ===== */
+const REFERRER_GREETINGS = [
+  { hosts: ["linkedin.com"], message: "Coming from LinkedIn? Small world — take a look around, and let's actually connect." },
+  { hosts: ["github.com"], message: "Found this via GitHub — the source for this whole site is one tab away in Source Control." },
+  { hosts: ["indeed.com", "glassdoor.com", "myworkdayjobs.com", "lever.co", "greenhouse.io", "workable.com"], message: "Looks like you might be hiring — my Resume tab has the full story, and Contact is right there when you're ready." },
+  { hosts: ["news.ycombinator.com"], message: "Hey Hacker News — thanks for stopping by. Built solo, top to bottom." },
+  { hosts: ["reddit.com"], message: "Welcome from Reddit! Poke around — everything here is real and self-hosted." },
+  { hosts: ["twitter.com", "x.com"], message: "Thanks for clicking through from X — hope the portfolio lives up to the tweet." },
+];
+
+function initReferrerEasterEgg() {
+  if (sessionStorage.getItem("ctrlaltjay-referrer-greeted")) return;
+  if (!document.referrer) return;
+  let refHost;
+  try {
+    refHost = new URL(document.referrer).hostname.replace(/^www\./, "");
+  } catch (_) {
+    return;
+  }
+  if (refHost === window.location.hostname) return;
+
+  const match = REFERRER_GREETINGS.find((entry) => entry.hosts.some((h) => refHost === h || refHost.endsWith(`.${h}`)));
+  if (!match) return;
+
+  sessionStorage.setItem("ctrlaltjay-referrer-greeted", "1");
+  setTimeout(() => showToast(match.message, "info"), 1200);
+}
+
 /* ===== Live GitHub Activity Strip ===== */
 async function initGithubActivity() {
   const container = document.getElementById("github-activity-strip");
@@ -3633,6 +3753,33 @@ async function initGithubActivity() {
     renderGithubActivity(container, Array.isArray(events) ? events.slice(0, 6) : []);
   } catch (err) {
     container.innerHTML = `<div class="gh-activity-error">// couldn't load GitHub activity right now</div>`;
+  }
+
+  loadGithubVerifiedMetrics(username);
+}
+
+async function loadGithubVerifiedMetrics(username) {
+  const el = document.getElementById("github-verified-metrics");
+  if (!el) return;
+  try {
+    const [userRes, reposRes] = await Promise.all([
+      fetch(`https://api.github.com/users/${encodeURIComponent(username)}`),
+      fetch(`https://api.github.com/users/${encodeURIComponent(username)}/repos?per_page=100`),
+    ]);
+    if (!userRes.ok || !reposRes.ok) throw new Error("GitHub API error");
+    const user = await userRes.json();
+    const repos = await reposRes.json();
+    const totalStars = Array.isArray(repos) ? repos.reduce((sum, r) => sum + (r.stargazers_count || 0), 0) : 0;
+
+    el.hidden = false;
+    el.innerHTML = `
+      <span class="gh-verified-tag"><ion-icon name="shield-checkmark-outline" aria-hidden="true"></ion-icon>Verified via GitHub API</span>
+      <span class="gh-metric"><strong>${user.public_repos ?? "—"}</strong> public repos</span>
+      <span class="gh-metric"><strong>${user.followers ?? "—"}</strong> followers</span>
+      <span class="gh-metric"><strong>${totalStars}</strong> stars earned</span>
+    `;
+  } catch (_) {
+    el.hidden = true;
   }
 }
 
