@@ -2099,10 +2099,10 @@ function initTabTransitions() {
 
 /* ===== Card count badges on tab buttons ===== */
 function updateTabBadges() {
-  const projBtn = document.querySelector('.tab-btn[data-tab="projects"]');
-  const expBtn = document.querySelector('.tab-btn[data-tab="experiences"]');
-  if (projBtn) projBtn.textContent = `Projects (${state.projects.length})`;
-  if (expBtn) expBtn.textContent = `Experiences (${state.experiences.length})`;
+  const projBadge = document.getElementById("tab-count-projects");
+  const expBadge = document.getElementById("tab-count-experiences");
+  if (projBadge) projBadge.textContent = state.projects.length || "";
+  if (expBadge) expBadge.textContent = state.experiences.length || "";
 }
 
 /* ===== Last updated footer timestamp ===== */
