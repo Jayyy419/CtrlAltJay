@@ -72,6 +72,14 @@ body {
 
 [hidden] { display: none !important; }
 
+/* Smooth dark/light theme switch — applies to every element by default so
+   the whole page cross-fades together; elements with their own more specific
+   transition (e.g. a fast hover effect) keep that instead, since a class
+   selector always outranks this universal one. */
+*, *::before, *::after {
+  transition: background-color 0.4s ease, border-color 0.4s ease, color 0.4s ease, fill 0.4s ease, stroke 0.4s ease;
+}
+
 body { font-family: 'Plex Sans', system-ui, sans-serif; }
 .font-display { font-family: 'Plex Mono', ui-monospace, monospace !important; }
 
@@ -529,6 +537,16 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
 .ide-tab .fdot.diff { background: #e2c08d; }
 .ide-tab .close { opacity: 0.55; font-size: 0.9rem; margin-left: 2px; padding: 0 2px; border-radius: 3px; }
 .ide-tab .close:hover { opacity: 1; background: var(--ide-border-soft); }
+.ide-tab--enter { animation: ideTabEnter 0.2s ease; transform-origin: left center; }
+.ide-tab--exit { animation: ideTabExit 0.14s ease forwards; pointer-events: none; }
+@keyframes ideTabEnter {
+  from { opacity: 0; transform: scaleX(0.85); }
+  to { opacity: 1; transform: scaleX(1); }
+}
+@keyframes ideTabExit {
+  from { opacity: 1; transform: scaleX(1); }
+  to { opacity: 0; transform: scaleX(0.85); }
+}
 
 .ide-panel-scroll-wrap { flex: 1; min-height: 0; display: flex; }
 .ide-panel-scroll { flex: 1; overflow-y: auto; padding: 28px 32px 40px; min-width: 0; }
@@ -854,7 +872,11 @@ body.zen-mode .ide-panel-scroll { padding: 48px max(32px, calc(50% - 380px)); }
 }
 
 .tab-panel { display: none; }
-.tab-panel.active { display: block; }
+.tab-panel.active { display: block; animation: tabPanelFadeIn 0.28s ease; }
+@keyframes tabPanelFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
 /* Subsection pills (JS-generated) */
 .subsection-btn {

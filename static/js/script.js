@@ -196,17 +196,22 @@ function showFileTreeSection(sectionTab) {
   if (headEl && sectionTab) headEl.textContent = sectionTab.toUpperCase();
 }
 
+let lastRenderedIdeTabs = [];
+
 function renderIdeTabbar(activeTab) {
   const bar = document.getElementById("ide-tabbar");
   if (!bar) return;
+  const newlyAdded = state.ideOpenTabs.filter((t) => !lastRenderedIdeTabs.includes(t));
   bar.innerHTML = state.ideOpenTabs.map((name) => {
     const meta = IDE_TAB_META[name] || state.ideItemMeta?.[name] || { label: name, icon: "md" };
     const isActive = name === activeTab;
-    return `<div class="ide-tab ${isActive ? "active" : ""}" data-tab="${name}">
+    const isNew = newlyAdded.includes(name);
+    return `<div class="ide-tab ${isActive ? "active" : ""}${isNew ? " ide-tab--enter" : ""}" data-tab="${name}">
       <span class="fdot ${meta.icon}"></span> ${escapeHtml(meta.label)}
       <span class="close" data-close-tab="${name}" title="Close" aria-label="Close ${escapeHtml(meta.label)}">&times;</span>
     </div>`;
   }).join("");
+  lastRenderedIdeTabs = [...state.ideOpenTabs];
 
   bar.querySelectorAll(".ide-tab").forEach((tabEl) => {
     tabEl.addEventListener("click", (e) => {
@@ -850,13 +855,22 @@ function openIdeTabByName(name) {
 }
 
 function closeIdeTab(name, activeTab) {
-  state.ideOpenTabs = state.ideOpenTabs.filter((t) => t !== name);
-  if (state.ideItemMeta?.[name]) delete state.ideItemMeta[name];
-  if (name === activeTab) {
-    const next = state.ideOpenTabs[state.ideOpenTabs.length - 1];
-    openIdeTabByName(next || "about");
+  const finishClose = () => {
+    state.ideOpenTabs = state.ideOpenTabs.filter((t) => t !== name);
+    if (state.ideItemMeta?.[name]) delete state.ideItemMeta[name];
+    if (name === activeTab) {
+      const next = state.ideOpenTabs[state.ideOpenTabs.length - 1];
+      openIdeTabByName(next || "about");
+    } else {
+      renderIdeTabbar(activeTab);
+    }
+  };
+  const tabEl = document.querySelector(`.ide-tab[data-tab="${name}"]`);
+  if (tabEl) {
+    tabEl.classList.add("ide-tab--exit");
+    setTimeout(finishClose, 140);
   } else {
-    renderIdeTabbar(activeTab);
+    finishClose();
   }
 }
 
