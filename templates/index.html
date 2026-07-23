@@ -144,6 +144,7 @@
         <button class="tab-btn" data-tab="resume" role="tab" aria-selected="false" aria-controls="resume" id="tab-resume" title="Resume" aria-label="Resume"><ion-icon aria-hidden="true" name="document-text-outline"></ion-icon></button>
         <button class="tab-btn" data-tab="stack" role="tab" aria-selected="false" aria-controls="stack" id="tab-stack" title="Stack" aria-label="Stack"><ion-icon aria-hidden="true" name="extension-puzzle-outline"></ion-icon></button>
         <button class="tab-btn" data-tab="contact" role="tab" aria-selected="false" aria-controls="contact" id="tab-contact" title="Contact" aria-label="Contact"><ion-icon aria-hidden="true" name="mail-outline"></ion-icon></button>
+        <button class="tab-btn" data-tab="run" role="tab" aria-selected="false" aria-controls="run" id="tab-run" title="Run and Debug" aria-label="Run and Debug"><ion-icon aria-hidden="true" name="play-outline"></ion-icon></button>
         <button type="button" class="tab-btn activity-bar-profile-btn" data-tab="profile" role="tab" aria-selected="false" aria-controls="profile" id="tab-profile" title="Profile" aria-label="Profile">
           <img src="../static/images/Portrait_ZoomedIn.JPG" alt="" class="activity-bar-avatar">
         </button>
@@ -176,6 +177,10 @@
 
         <div class="file-tree-section" data-tree-section="contact">
           <div class="file-tree-item" data-tab="contact"><span class="fdot md"></span> contact.md</div>
+        </div>
+
+        <div class="file-tree-section" data-tree-section="run">
+          <div class="file-tree-item" data-tab="run"><span class="fdot py"></span> app.py</div>
         </div>
 
         <div class="file-tree-section" data-tree-section="profile">
@@ -456,6 +461,24 @@
           <button type="submit" class="contact-submit-btn">Send Message</button>
           <p class="form-note">I'll get back to you within 24-48 hours.</p>
         </form>
+      </article>
+
+      <!-- Run and Debug -->
+      <article id="run" class="tab-panel animate-fade-up" role="tabpanel" aria-labelledby="tab-run" tabindex="0">
+        <header class="panel-head mb-6">
+          <h2 class="font-display text-3xl font-bold text-white tracking-tight">Run and Debug</h2>
+          <p class="mt-2 text-ink-muted">Live from <code>Jayyy419/CtrlAltJay</code> on GitHub — this is the actual Flask backend that renders this page.</p>
+        </header>
+        <div class="debug-toolbar">
+          <button type="button" class="debug-toolbar-btn" disabled title="Continue"><ion-icon aria-hidden="true" name="play-outline"></ion-icon></button>
+          <button type="button" class="debug-toolbar-btn" disabled title="Step Over"><ion-icon aria-hidden="true" name="arrow-redo-outline"></ion-icon></button>
+          <button type="button" class="debug-toolbar-btn" disabled title="Step Into"><ion-icon aria-hidden="true" name="arrow-down-outline"></ion-icon></button>
+          <button type="button" class="debug-toolbar-btn" disabled title="Restart"><ion-icon aria-hidden="true" name="refresh-outline"></ion-icon></button>
+          <span class="debug-toolbar-status"><span class="debug-live-dot"></span>Paused on breakpoint</span>
+        </div>
+        <div id="debug-code-viewer" class="debug-code-viewer">
+          <div class="debug-loading">// loading app.py from GitHub...</div>
+        </div>
       </article>
 
       <!-- Profile -->
