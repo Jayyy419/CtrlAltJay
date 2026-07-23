@@ -196,6 +196,7 @@
         <button class="tab-btn" data-tab="projects" role="tab" aria-selected="false" aria-controls="projects" id="tab-projects" title="Projects" aria-label="Projects"><ion-icon aria-hidden="true" name="folder-outline"></ion-icon><span class="tab-count-badge" id="tab-count-projects" aria-hidden="true"></span></button>
         <button class="tab-btn" data-tab="experiences" role="tab" aria-selected="false" aria-controls="experiences" id="tab-experiences" title="Experiences" aria-label="Experiences"><ion-icon aria-hidden="true" name="briefcase-outline"></ion-icon><span class="tab-count-badge" id="tab-count-experiences" aria-hidden="true"></span></button>
         <button class="tab-btn" data-tab="resume" role="tab" aria-selected="false" aria-controls="resume" id="tab-resume" title="Resume" aria-label="Resume"><ion-icon aria-hidden="true" name="document-text-outline"></ion-icon></button>
+        <button class="tab-btn" data-tab="stack" role="tab" aria-selected="false" aria-controls="stack" id="tab-stack" title="Stack" aria-label="Stack"><ion-icon aria-hidden="true" name="extension-puzzle-outline"></ion-icon></button>
         <button class="tab-btn" data-tab="contact" role="tab" aria-selected="false" aria-controls="contact" id="tab-contact" title="Contact" aria-label="Contact"><ion-icon aria-hidden="true" name="mail-outline"></ion-icon></button>
         <button type="button" class="tab-btn activity-bar-profile-btn" id="profile-flyout-toggle" title="Profile" aria-label="Open profile" aria-haspopup="dialog">
           <img src="../static/images/Portrait_ZoomedIn.JPG" alt="" class="activity-bar-avatar">
@@ -204,17 +205,30 @@
 
       <div class="ide-sidebar" id="file-tree" aria-hidden="true">
         <div class="ide-sidebar-head">PORTFOLIO</div>
-        <div class="file-tree-folder" data-tab="about"><span class="chev">▾</span> about</div>
-        <div class="file-tree-item" data-tab="about"><span class="fdot md"></span> bio.md</div>
 
-        <div class="file-tree-folder" data-tab="projects"><span class="chev">▾</span> projects</div>
-        <div class="file-tree-children" id="tree-projects-items"></div>
+        <div class="file-tree-section active" data-tree-section="about">
+          <div class="file-tree-item" data-tab="about"><span class="fdot md"></span> bio.md</div>
+        </div>
 
-        <div class="file-tree-folder" data-tab="experiences"><span class="chev">▾</span> experiences</div>
-        <div class="file-tree-children" id="tree-experiences-items"></div>
+        <div class="file-tree-section" data-tree-section="projects">
+          <div class="file-tree-children" id="tree-projects-items"></div>
+        </div>
 
-        <div class="file-tree-folder collapsed" data-tab="resume"><span class="chev">▸</span> resume</div>
-        <div class="file-tree-folder collapsed" data-tab="contact"><span class="chev">▸</span> contact</div>
+        <div class="file-tree-section" data-tree-section="experiences">
+          <div class="file-tree-children" id="tree-experiences-items"></div>
+        </div>
+
+        <div class="file-tree-section" data-tree-section="resume">
+          <div class="file-tree-item" data-tab="resume"><span class="fdot pdf"></span> resume.pdf</div>
+        </div>
+
+        <div class="file-tree-section" data-tree-section="stack">
+          <div class="file-tree-item" data-tab="stack"><span class="fdot json"></span> stack.json</div>
+        </div>
+
+        <div class="file-tree-section" data-tree-section="contact">
+          <div class="file-tree-item" data-tab="contact"><span class="fdot md"></span> contact.md</div>
+        </div>
       </div>
       <div class="ide-sidebar-resizer" id="ide-sidebar-resizer" role="separator" aria-orientation="vertical" aria-label="Resize file tree"></div>
 
@@ -412,10 +426,16 @@
           </div>
         </section>
 
-        <section class="mt-10">
-          <h3 class="font-display text-xl font-semibold text-white mb-4">Tech Stack</h3>
-          <div id="skills-grid" class="mt-4"></div>
-        </section>
+      </article>
+
+      <!-- Stack -->
+      <article id="stack" class="tab-panel animate-fade-up" role="tabpanel" aria-labelledby="tab-stack" tabindex="0">
+        <header class="panel-head mb-6">
+          <h2 class="font-display text-3xl font-bold text-white tracking-tight">Stack</h2>
+          <p class="mt-2 text-ink-muted">Tools and technologies I build with, browsable like a marketplace.</p>
+        </header>
+        <input type="text" id="stack-search" class="stack-search-input" placeholder="Search the marketplace..." autocomplete="off" spellcheck="false">
+        <div id="skills-grid" class="mt-4"></div>
       </article>
 
       <!-- Contact -->
