@@ -883,31 +883,65 @@ function renderResume() {
   const education = state.resume.filter((item) => item.lane === "education");
   const work = state.resume.filter((item) => item.lane === "work");
 
-  education.forEach((item) => educationTarget.appendChild(buildTimelineItem(item)));
-  work.forEach((item) => workTarget.appendChild(buildTimelineItem(item)));
+  education.forEach((item) => educationTarget.appendChild(buildCommitNode(item)));
+  work.forEach((item) => workTarget.appendChild(buildCommitNode(item)));
 }
 
-function buildTimelineItem(item) {
+function shortCommitHash(id) {
+  return (id || "0000000").replace(/-/g, "").slice(0, 7).padEnd(7, "0");
+}
+
+function buildCommitNode(item) {
+  const isHead = /present|current/i.test(item.period || "");
+
   const li = document.createElement("li");
+  li.className = `commit-node${isHead ? " commit-node--head" : ""}`;
 
-  const title = document.createElement("h4");
-  title.textContent = item.title;
+  const topRow = document.createElement("div");
+  topRow.className = "commit-top-row";
 
-  const subtitle = document.createElement("small");
-  subtitle.textContent = item.subtitle || item.period;
+  const hash = document.createElement("span");
+  hash.className = "commit-hash";
+  hash.textContent = shortCommitHash(item.id);
+  topRow.appendChild(hash);
 
-  const period = document.createElement("small");
-  period.textContent = item.subtitle ? item.period : "";
+  const msg = document.createElement("span");
+  msg.className = "commit-msg";
+  msg.textContent = item.title;
+  topRow.appendChild(msg);
 
-  const desc = document.createElement("p");
-  desc.textContent = item.description || "";
+  if (isHead) {
+    const badge = document.createElement("span");
+    badge.className = "commit-head-badge";
+    badge.textContent = "HEAD";
+    topRow.appendChild(badge);
+  }
 
-  li.appendChild(title);
-  li.appendChild(subtitle);
-  li.appendChild(period);
-  li.appendChild(desc);
+  li.appendChild(topRow);
+
+  const metaText = [item.subtitle, item.period].filter(Boolean).join(" · ");
+  if (metaText) {
+    const meta = document.createElement("div");
+    meta.className = "commit-meta";
+    meta.textContent = metaText;
+    li.appendChild(meta);
+  }
+
+  if (item.description) {
+    const body = document.createElement("p");
+    body.className = "commit-body";
+    body.textContent = item.description;
+    li.appendChild(body);
+  }
+
   return li;
 }
+
+const EXT_TIER_COLOR = {
+  "Primary Stack": "var(--ide-accent-strong)",
+  "Experienced": "var(--ide-type)",
+  "Familiar": "var(--ide-text-faint)",
+};
 
 function renderSkills() {
   const target = document.getElementById("skills-grid");
@@ -926,28 +960,74 @@ function renderSkills() {
     if (!skills || skills.length === 0) return;
 
     const section = document.createElement("div");
-    section.className = "skill-tier mb-6";
+    section.className = "ext-tier mb-6";
 
     const heading = document.createElement("h4");
-    heading.className = "skill-tier-heading text-sm font-semibold uppercase tracking-wider mb-3";
+    heading.className = "ext-tier-heading";
     heading.textContent = tier;
     section.appendChild(heading);
 
-    const chipWrap = document.createElement("div");
-    chipWrap.className = "flex flex-wrap gap-2";
+    const list = document.createElement("div");
+    list.className = "ext-list";
 
     skills
       .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
-      .forEach((skill) => {
-        const chip = document.createElement("span");
-        chip.className = "skill-chip skill-chip--" + tier.toLowerCase().replace(/\s+/g, "-");
-        chip.textContent = skill.name;
-        chipWrap.appendChild(chip);
-      });
+      .forEach((skill) => list.appendChild(buildExtensionCard(skill, tier)));
 
-    section.appendChild(chipWrap);
+    section.appendChild(list);
     target.appendChild(section);
   });
+}
+
+function buildExtensionCard(skill, tier) {
+  const card = document.createElement("div");
+  card.className = "ext-card";
+
+  const icon = document.createElement("div");
+  icon.className = "ext-icon";
+  icon.style.background = EXT_TIER_COLOR[tier] || "var(--ide-text-faint)";
+  icon.textContent = (skill.name || "?").trim().charAt(0).toUpperCase();
+
+  const info = document.createElement("div");
+  info.className = "ext-info";
+
+  const titleRow = document.createElement("div");
+  titleRow.className = "ext-title-row";
+  const name = document.createElement("span");
+  name.className = "ext-name";
+  name.textContent = skill.name;
+  const badge = document.createElement("span");
+  badge.className = "ext-badge";
+  badge.textContent = "Installed";
+  titleRow.appendChild(name);
+  titleRow.appendChild(badge);
+
+  const publisher = document.createElement("div");
+  publisher.className = "ext-publisher";
+  publisher.textContent = `ctrlaltjay.${slugifyTitle(tier)}`;
+
+  const level = Math.max(0, Math.min(100, Number(skill.level) || 0));
+  const barRow = document.createElement("div");
+  barRow.className = "ext-bar-row";
+  const bar = document.createElement("div");
+  bar.className = "ext-bar";
+  const fill = document.createElement("div");
+  fill.className = "ext-bar-fill";
+  fill.style.width = `${level}%`;
+  bar.appendChild(fill);
+  const pct = document.createElement("span");
+  pct.className = "ext-bar-pct";
+  pct.textContent = `${level}%`;
+  barRow.appendChild(bar);
+  barRow.appendChild(pct);
+
+  info.appendChild(titleRow);
+  info.appendChild(publisher);
+  info.appendChild(barRow);
+
+  card.appendChild(icon);
+  card.appendChild(info);
+  return card;
 }
 
 async function fetchData() {
