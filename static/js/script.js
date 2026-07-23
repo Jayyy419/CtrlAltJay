@@ -13,6 +13,7 @@ const state = {
   currentSection: null,
   dataLoaded: false,
   ideOpenTabs: ["about"],
+  ideItemMeta: {},
 };
 
 const IDE_TAB_META = {
@@ -152,7 +153,7 @@ function renderIdeTabbar(activeTab) {
   const bar = document.getElementById("ide-tabbar");
   if (!bar) return;
   bar.innerHTML = state.ideOpenTabs.map((name) => {
-    const meta = IDE_TAB_META[name] || { label: name, icon: "md" };
+    const meta = IDE_TAB_META[name] || state.ideItemMeta?.[name] || { label: name, icon: "md" };
     const isActive = name === activeTab;
     return `<div class="ide-tab ${isActive ? "active" : ""}" data-tab="${name}">
       <span class="fdot ${meta.icon}"></span> ${escapeHtml(meta.label)}
@@ -160,11 +161,22 @@ function renderIdeTabbar(activeTab) {
     </div>`;
   }).join("");
 
+  const openItemTabByName = (name) => {
+    const meta = state.ideItemMeta?.[name];
+    if (!meta) return;
+    switchTab(meta.sectionTab);
+    const item = findItemById(meta.itemId);
+    if (item) openModal(item);
+    renderIdeTabbar(name);
+  };
+
   bar.querySelectorAll(".ide-tab").forEach((tabEl) => {
     tabEl.addEventListener("click", (e) => {
       if (e.target.dataset.closeTab) return;
-      switchTab(tabEl.dataset.tab);
-      window.history.replaceState(null, "", `#${tabEl.dataset.tab}`);
+      const name = tabEl.dataset.tab;
+      if (name.startsWith("item:")) { openItemTabByName(name); return; }
+      switchTab(name);
+      window.history.replaceState(null, "", `#${name}`);
     });
   });
   bar.querySelectorAll("[data-close-tab]").forEach((btn) => {
@@ -175,8 +187,14 @@ function renderIdeTabbar(activeTab) {
       if (state.ideOpenTabs.length === 0) state.ideOpenTabs = ["about"];
       if (name === activeTab) {
         const next = state.ideOpenTabs[state.ideOpenTabs.length - 1];
-        switchTab(next);
-        window.history.replaceState(null, "", `#${next}`);
+        if (next.startsWith("item:")) {
+          const meta = state.ideItemMeta?.[next];
+          switchTab(meta ? meta.sectionTab : "about");
+          renderIdeTabbar(next);
+        } else {
+          switchTab(next);
+          window.history.replaceState(null, "", `#${next}`);
+        }
       } else {
         renderIdeTabbar(activeTab);
       }
@@ -213,33 +231,56 @@ function initIdeFileTree() {
   });
 }
 
+function slugifyTitle(title) {
+  return (title || "untitled").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+}
+
 function renderIdeFileTreeItems() {
   const projTarget = document.getElementById("tree-projects-items");
   const expTarget = document.getElementById("tree-experiences-items");
-  const slug = (title) => (title || "untitled").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 
   if (projTarget) {
-    projTarget.innerHTML = state.projects.map((item) =>
-      `<div class="file-tree-item" data-id="${escapeHtml(item.id)}"><span class="fdot py"></span> ${escapeHtml(slug(item.title))}.py</div>`
-    ).join("");
+    projTarget.innerHTML = state.projects.map((item) => {
+      const filename = `${slugifyTitle(item.title)}.py`;
+      return `<div class="file-tree-item" data-id="${escapeHtml(item.id)}" title="${escapeHtml(filename)}"><span class="fdot py"></span><span class="ftext">${escapeHtml(filename)}</span></div>`;
+    }).join("");
     projTarget.querySelectorAll(".file-tree-item").forEach((el) => {
       el.addEventListener("click", () => {
         const item = state.projects.find((p) => String(p.id) === el.dataset.id);
-        if (item) { switchTab("projects"); openModal(item); }
+        if (item) openItemTab(item, "projects");
       });
     });
   }
   if (expTarget) {
-    expTarget.innerHTML = state.experiences.map((item) =>
-      `<div class="file-tree-item" data-id="${escapeHtml(item.id)}"><span class="fdot py"></span> ${escapeHtml(slug(item.title))}.py</div>`
-    ).join("");
+    expTarget.innerHTML = state.experiences.map((item) => {
+      const filename = `${slugifyTitle(item.title)}.md`;
+      return `<div class="file-tree-item" data-id="${escapeHtml(item.id)}" title="${escapeHtml(filename)}"><span class="fdot md"></span><span class="ftext">${escapeHtml(filename)}</span></div>`;
+    }).join("");
     expTarget.querySelectorAll(".file-tree-item").forEach((el) => {
       el.addEventListener("click", () => {
         const item = state.experiences.find((p) => String(p.id) === el.dataset.id);
-        if (item) { switchTab("experiences"); openModal(item); }
+        if (item) openItemTab(item, "experiences");
       });
     });
   }
+}
+
+function openItemTab(item, sectionTab) {
+  const tabId = `item:${item.id}`;
+  const ext = sectionTab === "projects" ? "py" : "md";
+  state.ideItemMeta = state.ideItemMeta || {};
+  state.ideItemMeta[tabId] = {
+    label: `${slugifyTitle(item.title)}.${ext}`,
+    icon: ext,
+    sectionTab,
+    itemId: item.id,
+  };
+  if (!state.ideOpenTabs.includes(tabId)) state.ideOpenTabs.push(tabId);
+  switchTab(sectionTab);
+  renderIdeTabbar(tabId);
+  document.querySelectorAll(".file-tree-item.active").forEach((el) => el.classList.remove("active"));
+  document.querySelectorAll(`.file-tree-item[data-id="${item.id}"]`).forEach((el) => el.classList.add("active"));
+  openModal(item);
 }
 
 function compareBySort(a, b, mode) {
@@ -1385,6 +1426,7 @@ async function bootstrap() {
   initMobileSwipe();
   initDeletedItems();
   initAdminToolsPopup();
+  initProfileFlyout();
   initIdeFileTree();
   initIdeStatusClock();
   renderIdeTabbar("about");
@@ -1437,6 +1479,12 @@ function initEscapeKey() {
     if (loginModal?.classList.contains("active")) { closeAdminLoginModal(); return; }
     const resumeKeyModal = document.getElementById("resume-key-modal");
     if (resumeKeyModal?.classList.contains("active")) { closeResumeKeyModal(); return; }
+    const profileFlyout = document.getElementById("profile-flyout");
+    if (profileFlyout && profileFlyout.style.display === "flex") {
+      profileFlyout.style.display = "none";
+      document.getElementById("profile-flyout-toggle")?.classList.remove("active");
+      return;
+    }
   });
 }
 
@@ -1899,6 +1947,19 @@ function initAdminToolsPopup() {
   toggle.addEventListener("click", () => { popup.style.display = "flex"; });
   closeBtn?.addEventListener("click", () => { popup.style.display = "none"; });
   backdrop?.addEventListener("click", () => { popup.style.display = "none"; });
+}
+
+function initProfileFlyout() {
+  const toggle = document.getElementById("profile-flyout-toggle");
+  const popup = document.getElementById("profile-flyout");
+  const closeBtn = document.getElementById("profile-flyout-close");
+  const backdrop = document.getElementById("profile-flyout-backdrop");
+  if (!toggle || !popup) return;
+  const open = () => { popup.style.display = "flex"; toggle.classList.add("active"); toggle.setAttribute("aria-expanded", "true"); };
+  const close = () => { popup.style.display = "none"; toggle.classList.remove("active"); toggle.setAttribute("aria-expanded", "false"); };
+  toggle.addEventListener("click", open);
+  closeBtn?.addEventListener("click", close);
+  backdrop?.addEventListener("click", close);
 }
 
 function initDeletedItems() {
