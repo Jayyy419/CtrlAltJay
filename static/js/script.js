@@ -23,7 +23,7 @@ const IDE_TAB_META = {
   resume: { label: "resume.pdf", icon: "md" },
   stack: { label: "stack.json", icon: "json" },
   contact: { label: "contact.md", icon: "md" },
-  run: { label: "app.py", icon: "py" },
+  scm: { label: "changes.diff", icon: "diff" },
   profile: { label: "profile.md", icon: "md" },
   credly: { label: "credly.md", icon: "md" },
   linkedin: { label: "linkedin.md", icon: "md" },
@@ -159,7 +159,7 @@ function syncIdeChrome(tabName) {
   if (sectionEl) sectionEl.textContent = label.endsWith("/") ? `${tabName}/` : label;
   updateIdeStatusCount(tabName);
   if (tabName === "credly") renderCredlyBody();
-  if (tabName === "run") renderDebugCodeViewer();
+  if (tabName === "scm") renderSourceControlPanel();
   refreshMinimap();
 }
 
@@ -3367,67 +3367,41 @@ function renderGithubActivity(container, events) {
   }).join("");
 }
 
-/* ===== Run and Debug Panel ===== */
-const DEBUG_FILE_REPO = "Jayyy419/CtrlAltJay";
-const DEBUG_FILE_PATH = "app.py";
-const DEBUG_MAX_LINES = 45;
-const DEBUG_BREAKPOINT_LINES = [6, 14, 27];
-const DEBUG_CURRENT_LINE = 15;
-let debugFileLines = null;
+/* ===== Source Control Panel ===== */
+function renderSourceControlPanel() {
+  const listEl = document.getElementById("scm-changes-list");
+  const countEl = document.getElementById("scm-changes-count");
+  if (!listEl || !countEl) return;
 
-const PY_TOKEN_RE = /(#.*$)|("(?:[^"\\]|\\.)*")|('(?:[^'\\]|\\.)*')|\b(def|class|return|import|from|if|elif|else|for|while|try|except|finally|with|as|pass|break|continue|in|is|not|and|or|None|True|False|lambda|yield|raise|global|nonlocal|assert|async|await)\b|(@\w[\w.]*)/g;
+  const items = [...state.projects, ...state.experiences]
+    .filter((it) => it.created_at)
+    .sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at));
 
-function highlightPythonLine(rawLine) {
-  let result = "";
-  let lastIndex = 0;
-  let match;
-  PY_TOKEN_RE.lastIndex = 0;
-  while ((match = PY_TOKEN_RE.exec(rawLine)) !== null) {
-    result += escapeHtml(rawLine.slice(lastIndex, match.index));
-    const [full, comment, dq, sq, keyword, decorator] = match;
-    if (comment) result += `<span class="tok-comment">${escapeHtml(comment)}</span>`;
-    else if (dq || sq) result += `<span class="tok-string">${escapeHtml(dq || sq)}</span>`;
-    else if (keyword) result += `<span class="tok-keyword">${escapeHtml(keyword)}</span>`;
-    else if (decorator) result += `<span class="tok-decorator">${escapeHtml(decorator)}</span>`;
-    lastIndex = match.index + full.length;
+  countEl.textContent = String(items.length);
+  if (!items.length) {
+    listEl.innerHTML = `<div class="scm-empty">No tracked changes yet.</div>`;
+    return;
   }
-  result += escapeHtml(rawLine.slice(lastIndex));
-  return result || "&nbsp;";
-}
 
-function paintDebugCode(container, lines) {
-  container.innerHTML = lines.map((line, idx) => {
-    const num = idx + 1;
-    const isBp = DEBUG_BREAKPOINT_LINES.includes(num);
-    const isCurrent = num === DEBUG_CURRENT_LINE;
-    return `<div class="debug-line${isCurrent ? " debug-line--current" : ""}">
-      <span class="debug-gutter">${isBp ? `<span class="debug-breakpoint" title="Breakpoint"></span>` : ""}${isCurrent ? `<ion-icon name="caret-forward" class="debug-arrow" aria-hidden="true"></ion-icon>` : ""}</span>
-      <span class="debug-lineno">${num}</span>
-      <span class="debug-code">${highlightPythonLine(line)}</span>
-    </div>`;
-  }).join("");
-}
-
-function decodeBase64Utf8(base64) {
-  const binary = atob(base64.replace(/\n/g, ""));
-  const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
-  return new TextDecoder("utf-8").decode(bytes);
-}
-
-async function renderDebugCodeViewer() {
-  const container = document.getElementById("debug-code-viewer");
-  if (!container) return;
-  if (debugFileLines) { paintDebugCode(container, debugFileLines); return; }
-  try {
-    const res = await fetch(`https://api.github.com/repos/${DEBUG_FILE_REPO}/contents/${DEBUG_FILE_PATH}`);
-    if (!res.ok) throw new Error(`GitHub API ${res.status}`);
-    const data = await res.json();
-    const text = decodeBase64Utf8(data.content || "");
-    debugFileLines = text.split("\n").slice(0, DEBUG_MAX_LINES);
-    paintDebugCode(container, debugFileLines);
-  } catch (err) {
-    container.innerHTML = `<div class="debug-loading">// couldn't load ${escapeHtml(DEBUG_FILE_PATH)} from GitHub right now</div>`;
-  }
+  listEl.innerHTML = "";
+  items.forEach((item) => {
+    const sectionTab = item.section === "experience" ? "experiences" : "projects";
+    const isModified = item.updated_at && item.updated_at !== item.created_at;
+    const status = isModified ? "M" : "A";
+    const ext = sectionTab === "projects" ? "py" : "md";
+    const row = document.createElement("div");
+    row.className = "scm-row";
+    row.tabIndex = 0;
+    row.innerHTML = `
+      <span class="scm-status scm-status--${status}" title="${status === "M" ? "Modified" : "Added"}">${status}</span>
+      <span class="scm-filename">${escapeHtml(slugifyTitle(item.title))}.${ext}</span>
+      <span class="scm-path">${escapeHtml(sectionTab)}/</span>
+      <span class="scm-time">${escapeHtml(timeAgo(item.updated_at || item.created_at))}</span>
+    `;
+    row.addEventListener("click", () => openItemTab(item, sectionTab));
+    row.addEventListener("keydown", (e) => { if (e.key === "Enter") openItemTab(item, sectionTab); });
+    listEl.appendChild(row);
+  });
 }
 
 /* ===== Live Visitor Presence ===== */
@@ -3642,7 +3616,7 @@ function initKeyboardShortcuts() {
         break;
       case "1": case "2": case "3": case "4": case "5": case "6": case "7": case "8": {
         if (modalActive) return;
-        const tabNames = ["about", "projects", "experiences", "resume", "stack", "contact", "run", "profile"];
+        const tabNames = ["about", "projects", "experiences", "resume", "stack", "contact", "scm", "profile"];
         const idx = parseInt(e.key) - 1;
         if (tabNames[idx]) { switchTab(tabNames[idx]); e.preventDefault(); }
         break;
@@ -3776,7 +3750,7 @@ function getCommandPaletteItems() {
     { icon: "document-text-outline", label: "Resume", hint: "resume.pdf", action: () => openIdeTabByName("resume") },
     { icon: "extension-puzzle-outline", label: "Stack", hint: "stack.json", action: () => openIdeTabByName("stack") },
     { icon: "mail-outline", label: "Contact", hint: "contact.md", action: () => openIdeTabByName("contact") },
-    { icon: "play-outline", label: "Run and Debug", hint: "app.py", action: () => openIdeTabByName("run") },
+    { icon: "git-compare-outline", label: "Source Control", hint: "changes.diff", action: () => openIdeTabByName("scm") },
     { icon: "person-circle-outline", label: "Profile", hint: "profile.md", action: () => openIdeTabByName("profile") },
     { icon: "ribbon-outline", label: "Credly", hint: "credly.md", action: () => openIdeTabByName("credly") },
     { icon: "logo-linkedin", label: "LinkedIn", hint: "linkedin.md", action: () => openIdeTabByName("linkedin") },
@@ -4037,7 +4011,7 @@ function runTerminalCommand(raw) {
       printTermLine("  cat <file>           open a file (e.g. cat about.md)");
       printTermLine("  open <github|linkedin>       open a social profile");
       printTermLine("  theme <dark|light>   switch theme");
-      printTermLine("  resume | stack | contact | run | profile    jump to a section");
+      printTermLine("  resume | stack | contact | scm | profile    jump to a section");
       printTermLine("  zen                  toggle distraction-free zen mode");
       printTermLine("  banner               print an intro banner");
       printTermLine("  clear                clear the terminal");
@@ -4059,7 +4033,7 @@ function runTerminalCommand(raw) {
     }
     case "ls": {
       if (!arg) {
-        printTermLine("about/  projects/  experiences/  resume.pdf  stack.json  contact.md  app.py  profile.md");
+        printTermLine("about/  projects/  experiences/  resume.pdf  stack.json  contact.md  changes.diff  profile.md");
       } else if (arg === "projects" || arg === "experiences") {
         const files = getAllTerminalFiles().filter((f) => f.sectionTab === arg);
         if (!files.length) printTermLine(`ls: ${arg}/: no entries yet`);
@@ -4118,8 +4092,8 @@ function runTerminalCommand(raw) {
       openIdeTabByName("contact");
       closeTerminalPanel();
       break;
-    case "run":
-      openIdeTabByName("run");
+    case "scm":
+      openIdeTabByName("scm");
       closeTerminalPanel();
       break;
     case "profile":
@@ -4238,7 +4212,7 @@ function initMobileSwipe() {
   let touchStartY = 0;
   const content = document.querySelector(".content");
   if (!content) return;
-  const tabOrder = ["about", "projects", "experiences", "resume", "stack", "contact", "run", "profile"];
+  const tabOrder = ["about", "projects", "experiences", "resume", "stack", "contact", "scm", "profile"];
   content.addEventListener("touchstart", (e) => {
     touchStartX = e.changedTouches[0].screenX;
     touchStartY = e.changedTouches[0].screenY;
