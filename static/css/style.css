@@ -269,6 +269,16 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
 .credly-cert-row:hover { border-color: var(--ide-accent); color: var(--ide-text-bright); }
 .credly-cert-row::before { content: "▸ "; color: var(--ide-type); }
 
+.now-cadence-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--ide-text-faint);
+  margin: 6px 0 14px;
+}
+.now-cadence-note ion-icon { font-size: 0.95rem; }
+
 /* Now sub-tab: reuses the same real "current focus" data as About */
 .now-card {
   padding: 12px 14px;
@@ -296,6 +306,29 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
 }
 .uses-label { color: var(--ide-text-dim); }
 .uses-value { color: var(--ide-text-bright); font-weight: 600; }
+
+/* Availability badge — shown next to the profile headline */
+.availability-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-family: 'Plex Mono', monospace;
+  font-size: 0.74rem;
+  font-weight: 600;
+  border: 1px solid var(--ide-border-soft);
+  background: var(--ide-editor-bg-soft);
+  color: var(--ide-text-dim);
+}
+.availability-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ide-text-faint); flex-shrink: 0; }
+.availability-badge--open { color: var(--ide-git-added); border-color: rgba(129,184,139,0.35); }
+.availability-badge--open .availability-dot { background: var(--ide-git-added); box-shadow: 0 0 6px rgba(129,184,139,0.6); }
+.availability-badge--limited { color: #e2b93b; border-color: rgba(226,185,59,0.35); }
+.availability-badge--limited .availability-dot { background: #e2b93b; }
+.availability-badge--closed { color: #ef4444; border-color: rgba(239,68,68,0.3); }
+.availability-badge--closed .availability-dot { background: #ef4444; }
 
 /* Timeline sub-tab: merged resume + experience milestones */
 .timeline-list { display: flex; flex-direction: column; }
@@ -371,6 +404,31 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
   color: var(--ide-text-faint) !important;
 }
 .counter-label::before { content: "// "; opacity: 0.6; }
+
+/* ===== GitHub Verified Metrics ===== */
+.gh-verified-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  padding: 10px 14px;
+  margin-bottom: 10px;
+  border: 1px solid var(--ide-border-soft);
+  border-radius: 6px;
+  background: var(--ide-editor-bg-soft);
+  font-size: 0.8rem;
+  color: var(--ide-text-dim);
+}
+.gh-verified-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ide-git-added);
+  font-weight: 600;
+  font-family: 'Plex Mono', monospace;
+  font-size: 0.74rem;
+}
+.gh-metric strong { color: var(--ide-text-bright); font-family: 'Plex Mono', monospace; }
 
 /* ===== GitHub Activity Strip ===== */
 .gh-activity-strip { display: flex; flex-direction: column; gap: 8px; }
@@ -981,6 +1039,44 @@ body.zen-mode .ide-panel-scroll { padding: 48px max(32px, calc(50% - 380px)); }
   .compare-split { grid-template-columns: 1fr; }
   .compare-divider { display: none; }
 }
+
+/* ===== Resume Diff Viewer ===== */
+.resume-diff-body {
+  background: var(--ide-editor-bg-soft);
+  border: 1px solid var(--ide-border-soft);
+  border-radius: 8px;
+  padding: 18px 20px;
+  font-family: 'Plex Mono', monospace;
+  font-size: 0.85rem;
+  line-height: 1.9;
+}
+.diff-hunk-header { color: var(--ide-function); margin-bottom: 12px; }
+.diff-block { margin-bottom: 16px; }
+.diff-block--description { margin-bottom: 0; }
+.diff-line { white-space: pre-wrap; padding: 1px 8px; border-radius: 3px; }
+.diff-line--context { color: var(--ide-text-dim); }
+.diff-line--del { background: rgba(239,68,68,0.1); color: #f48771; }
+.diff-line--add { background: rgba(129,184,139,0.12); color: var(--ide-git-added); }
+.diff-field { color: var(--ide-text-faint); }
+.diff-description { margin-top: 6px; color: var(--ide-text); }
+.diff-same { color: var(--ide-text); }
+.diff-del { color: #f48771; background: rgba(239,68,68,0.12); text-decoration: line-through; text-decoration-color: rgba(239,68,68,0.5); }
+.diff-add { color: var(--ide-git-added); background: rgba(129,184,139,0.15); }
+
+.multiselect-diff {
+  background: none;
+  border: 1px solid var(--ide-accent);
+  color: var(--ide-accent);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-family: 'Plex Mono', monospace;
+  font-size: 0.75rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.multiselect-diff:hover { background: var(--ide-accent); color: var(--ide-editor-bg); }
 .card img { width: 100%; height: 200px; object-fit: cover; background: var(--ide-editor-bg-soft); flex-shrink: 0; }
 .card-content { padding: 16px; }
 .card h4 { margin: 0 0 8px; font-size: 0.95rem; color: var(--ide-text-bright); font-weight: 600; font-family: 'Plex Sans', sans-serif; }
