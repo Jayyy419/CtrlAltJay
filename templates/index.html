@@ -457,20 +457,16 @@
           {% endif %}
         {% endwith %}
 
-        <form action="/send_message" method="POST" class="contact-form mt-4 space-y-4" id="contact-form">
-          <div class="field-grid grid grid-cols-2 gap-3 max-sm:grid-cols-1">
-            <input type="text" name="fullname" placeholder="Full name" required minlength="2" maxlength="100" pattern="[a-zA-Z\s'-]+" title="Name should contain only letters, spaces, hyphens, and apostrophes"
-              class="w-full px-4 py-3 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm placeholder:text-ink-muted focus:outline-none focus:border-accent transition-colors">
-            <input type="email" name="email" placeholder="Email address" required title="Please enter a valid email address"
-              class="w-full px-4 py-3 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm placeholder:text-ink-muted focus:outline-none focus:border-accent transition-colors">
+        <form action="/send_message" method="POST" class="contact-form mt-4" id="contact-form">
+          <div class="field-grid">
+            <input type="text" name="fullname" placeholder="Full name" required minlength="2" maxlength="100" pattern="[a-zA-Z\s'-]+" title="Name should contain only letters, spaces, hyphens, and apostrophes" class="ide-control">
+            <input type="email" name="email" placeholder="Email address" required title="Please enter a valid email address" class="ide-control">
           </div>
-          <div class="field-grid grid grid-cols-2 gap-3 max-sm:grid-cols-1">
-            <input type="text" name="company" placeholder="Company (optional)" maxlength="100"
-              class="w-full px-4 py-3 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm placeholder:text-ink-muted focus:outline-none focus:border-accent transition-colors">
-            <input type="text" name="subject" placeholder="Subject" required minlength="5" maxlength="100" title="Subject should be between 5 and 100 characters"
-              class="w-full px-4 py-3 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm placeholder:text-ink-muted focus:outline-none focus:border-accent transition-colors">
+          <div class="field-grid">
+            <input type="text" name="company" placeholder="Company (optional)" maxlength="100" class="ide-control">
+            <input type="text" name="subject" placeholder="Subject" required minlength="5" maxlength="100" title="Subject should be between 5 and 100 characters" class="ide-control">
           </div>
-          <select name="reason" class="w-full px-4 py-3 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent transition-colors">
+          <select name="reason" class="ide-control">
             <option value="">Reason for reaching out (optional)</option>
             <option value="hiring">Hiring / Job Opportunity</option>
             <option value="collaboration">Collaboration / Partnership</option>
@@ -479,13 +475,12 @@
             <option value="question">General Question</option>
             <option value="other">Other</option>
           </select>
-          <textarea name="message" placeholder="Tell me what you are building or hiring for" required minlength="10" maxlength="5000" title="Message should be between 10 and 5000 characters" rows="6"
-            class="w-full px-4 py-3 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm placeholder:text-ink-muted focus:outline-none focus:border-accent transition-colors resize-y min-h-[160px]"></textarea>
+          <textarea name="message" placeholder="Tell me what you are building or hiring for" required minlength="10" maxlength="5000" title="Message should be between 10 and 5000 characters" rows="6" class="ide-control contact-textarea"></textarea>
           <div class="hp-field" aria-hidden="true" tabindex="-1">
             <input type="text" name="website" tabindex="-1" autocomplete="off">
           </div>
-          <button type="submit" class="btn-primary bg-gradient-to-r from-accent to-accent-dark text-surface-400 font-bold rounded-xl px-6 py-3 text-sm border-none cursor-pointer transition-all duration-300 hover:shadow-[0_0_24px_rgba(245,158,11,0.4)] active:scale-[0.98]">Send Message</button>
-          <p class="form-note text-xs text-ink-muted mt-3">I'll get back to you within 24-48 hours.</p>
+          <button type="submit" class="contact-submit-btn">Send Message</button>
+          <p class="form-note">I'll get back to you within 24-48 hours.</p>
         </form>
       </article>
 
