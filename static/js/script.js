@@ -290,6 +290,171 @@ function renderIdeFileTreeItems() {
   renderCategoryGroupedTree(state.experiences, "tree-experiences-items", "experiences", "md");
 }
 
+function renderResumeFileTree() {
+  const target = document.getElementById("tree-resume-items");
+  if (!target) return;
+
+  const groups = { education: [], work: [] };
+  state.resume.forEach((entry) => {
+    const lane = entry.lane === "education" ? "education" : "work";
+    groups[lane].push(entry);
+  });
+
+  target.innerHTML = ["education", "work"].map((lane) => {
+    const entries = groups[lane];
+    if (!entries.length) return "";
+    const itemsHtml = entries
+      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+      .map((entry) => {
+        const filename = `${slugifyTitle(entry.subtitle || entry.title)}.md`;
+        return `<div class="file-tree-item" data-resume-id="${escapeHtml(entry.id)}" title="${escapeHtml(filename)}"><span class="fdot md"></span><span class="ftext">${escapeHtml(filename)}</span></div>`;
+      }).join("");
+    return `<div class="file-tree-subfolder" data-cat="${lane}"><span class="chev">▾</span> ${lane}<span class="fcount">${entries.length}</span></div>
+      <div class="file-tree-subchildren" data-cat="${lane}">${itemsHtml}</div>`;
+  }).join("");
+
+  target.querySelectorAll(".file-tree-subfolder").forEach((folder) => {
+    folder.addEventListener("click", () => {
+      folder.classList.toggle("collapsed");
+      target.querySelector(`.file-tree-subchildren[data-cat="${CSS.escape(folder.dataset.cat)}"]`)?.classList.toggle("collapsed");
+    });
+  });
+  target.querySelectorAll(".file-tree-item[data-resume-id]").forEach((el) => {
+    el.addEventListener("click", () => {
+      const entry = state.resume.find((r) => String(r.id) === el.dataset.resumeId);
+      if (entry) openResumeItemTab(entry);
+    });
+  });
+}
+
+function openResumeItemTab(entry) {
+  const tabId = `resume-item:${entry.id}`;
+  const filename = `${slugifyTitle(entry.subtitle || entry.title)}.md`;
+  state.ideItemMeta = state.ideItemMeta || {};
+  state.ideItemMeta[tabId] = { label: filename, icon: "md", sectionTab: "resume", resumeItemId: entry.id };
+  if (!state.ideOpenTabs.includes(tabId)) state.ideOpenTabs.push(tabId);
+
+  renderResumeItemViewer(entry);
+  switchTab("resume-item-viewer");
+  renderIdeTabbar(tabId);
+
+  showFileTreeSection("resume");
+  document.querySelectorAll(".file-tree-item.active").forEach((el) => el.classList.remove("active"));
+  document.querySelectorAll(`.file-tree-item[data-resume-id="${entry.id}"]`).forEach((el) => el.classList.add("active"));
+  const sectionEl = document.getElementById("ide-status-section");
+  if (sectionEl) sectionEl.textContent = `resume/${filename}`;
+  const countEl = document.getElementById("ide-status-count");
+  if (countEl) countEl.textContent = entry.lane === "education" ? "education" : "work";
+  refreshMinimap();
+}
+
+function renderResumeItemViewer(entry) {
+  document.getElementById("resume-item-title").textContent = entry.title;
+  const tag = document.getElementById("resume-item-tag");
+  tag.textContent = entry.lane === "education" ? "Education" : "Work";
+  const body = document.getElementById("resume-item-body");
+  body.innerHTML = [
+    rowToHTML("Organisation", entry.subtitle),
+    rowToHTML("Period", entry.period),
+    rowToHTML("Description", entry.description),
+  ].join("");
+}
+
+function renderStackFileTree() {
+  const target = document.getElementById("tree-stack-items");
+  if (!target) return;
+
+  const groups = {};
+  state.skills.forEach((skill) => {
+    let tier = skill.focus || "Other";
+    if (tier === "Familiar") tier = "Experienced";
+    if (!groups[tier]) groups[tier] = [];
+    groups[tier].push(skill);
+  });
+
+  target.innerHTML = ["Primary Stack", "Experienced"].map((tier) => {
+    const skills = groups[tier];
+    if (!skills || !skills.length) return "";
+    const itemsHtml = skills
+      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+      .map((skill) => {
+        const filename = `${slugifyTitle(skill.name)}.json`;
+        return `<div class="file-tree-item" data-skill-id="${escapeHtml(skill.id)}" title="${escapeHtml(filename)}"><span class="fdot json"></span><span class="ftext">${escapeHtml(filename)}</span></div>`;
+      }).join("");
+    const catId = slugifyTitle(tier);
+    return `<div class="file-tree-subfolder" data-cat="${catId}"><span class="chev">▾</span> ${escapeHtml(tier)}<span class="fcount">${skills.length}</span></div>
+      <div class="file-tree-subchildren" data-cat="${catId}">${itemsHtml}</div>`;
+  }).join("");
+
+  target.querySelectorAll(".file-tree-subfolder").forEach((folder) => {
+    folder.addEventListener("click", () => {
+      folder.classList.toggle("collapsed");
+      target.querySelector(`.file-tree-subchildren[data-cat="${CSS.escape(folder.dataset.cat)}"]`)?.classList.toggle("collapsed");
+    });
+  });
+  target.querySelectorAll(".file-tree-item[data-skill-id]").forEach((el) => {
+    el.addEventListener("click", () => {
+      const skill = state.skills.find((s) => String(s.id) === el.dataset.skillId);
+      if (skill) openSkillItemTab(skill);
+    });
+  });
+}
+
+function openSkillItemTab(skill) {
+  const tabId = `skill-item:${skill.id}`;
+  const filename = `${slugifyTitle(skill.name)}.json`;
+  state.ideItemMeta = state.ideItemMeta || {};
+  state.ideItemMeta[tabId] = { label: filename, icon: "json", sectionTab: "stack", skillItemId: skill.id };
+  if (!state.ideOpenTabs.includes(tabId)) state.ideOpenTabs.push(tabId);
+
+  renderSkillItemViewer(skill);
+  switchTab("skill-item-viewer");
+  renderIdeTabbar(tabId);
+
+  showFileTreeSection("stack");
+  document.querySelectorAll(".file-tree-item.active").forEach((el) => el.classList.remove("active"));
+  document.querySelectorAll(`.file-tree-item[data-skill-id="${skill.id}"]`).forEach((el) => el.classList.add("active"));
+  const sectionEl = document.getElementById("ide-status-section");
+  if (sectionEl) sectionEl.textContent = `stack/${filename}`;
+  const countEl = document.getElementById("ide-status-count");
+  if (countEl) countEl.textContent = skill.focus || "";
+  refreshMinimap();
+}
+
+function renderSkillItemViewer(skill) {
+  document.getElementById("skill-item-title").textContent = skill.name;
+  const tier = skill.focus === "Familiar" ? "Experienced" : (skill.focus || "Stack");
+  document.getElementById("skill-item-tag").textContent = tier;
+  const level = Math.max(0, Math.min(100, Number(skill.level) || 0));
+  const body = document.getElementById("skill-item-body");
+  body.innerHTML = [
+    rowToHTML("Proficiency", `${level}%`),
+    rowToHTML("Publisher", `ctrlaltjay.${slugifyTitle(tier)}`),
+  ].join("");
+
+  const container = document.getElementById("skill-related-items");
+  const strip = document.getElementById("skill-related-strip");
+  const related = [...state.projects, ...state.experiences].filter((it) =>
+    parseSkills(it.skills).some((s) => s.toLowerCase() === skill.name.toLowerCase())
+  );
+  if (!related.length) {
+    container.style.display = "none";
+    return;
+  }
+  container.style.display = "";
+  strip.innerHTML = "";
+  related.forEach((item) => {
+    const card = document.createElement("div");
+    card.className = "related-card";
+    card.tabIndex = 0;
+    const imgHtml = item.image_path ? `<img src="${item.image_path}" alt="${escapeHtml(item.title)}" loading="lazy">` : "";
+    card.innerHTML = `${imgHtml}<span>${escapeHtml(item.title)}</span>`;
+    card.addEventListener("click", () => openItemTab(item, item.section === "experience" ? "experiences" : "projects"));
+    strip.appendChild(card);
+  });
+  initHScrollFade(strip);
+}
+
 const SIDEBAR_WIDTH_KEY = "ctrlaltjay-filetree-width";
 
 function initSidebarResize() {
@@ -438,6 +603,20 @@ function openIdeTabByName(name) {
     if (!meta) return;
     const item = findItemById(meta.itemId);
     if (item) openItemTab(item, meta.sectionTab);
+    return;
+  }
+  if (name.startsWith("resume-item:")) {
+    const meta = state.ideItemMeta?.[name];
+    if (!meta) return;
+    const entry = state.resume.find((r) => r.id === meta.resumeItemId);
+    if (entry) openResumeItemTab(entry);
+    return;
+  }
+  if (name.startsWith("skill-item:")) {
+    const meta = state.ideItemMeta?.[name];
+    if (!meta) return;
+    const skill = state.skills.find((s) => s.id === meta.skillItemId);
+    if (skill) openSkillItemTab(skill);
     return;
   }
   switchTab(name);
@@ -1700,6 +1879,8 @@ async function bootstrap() {
   renderResume();
   renderSkills();
   renderIdeFileTreeItems();
+  renderResumeFileTree();
+  renderStackFileTree();
   updateIdeStatusCount(state.currentSection || "about");
   updateTabBadges();
   updateFooterTimestamp();
@@ -1732,7 +1913,7 @@ function initEscapeKey() {
     if (confirm) { confirm.remove(); return; }
     const adminItem = document.getElementById("admin-item-modal");
     if (adminItem?.classList.contains("active")) { closeAdminItemModal(); return; }
-    const activeItemTab = document.querySelector('.ide-tab.active[data-tab^="item:"]');
+    const activeItemTab = document.querySelector('.ide-tab.active[data-tab*=":"]');
     if (activeItemTab) { activeItemTab.querySelector("[data-close-tab]")?.click(); return; }
     const loginModal = document.getElementById("admin-login-modal");
     if (loginModal?.classList.contains("active")) { closeAdminLoginModal(); return; }
