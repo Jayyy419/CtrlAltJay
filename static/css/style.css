@@ -943,11 +943,12 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
   .confirm-input { font-size: 0.9rem; padding: 10px 14px; min-height: 44px; }
 
   /* Contact form */
+  .field-grid { grid-template-columns: 1fr !important; }
   .contact-form input,
   .contact-form select,
   .contact-form textarea { font-size: 16px !important; min-height: 48px !important; padding: 0.75rem 1rem !important; }
   .contact-form textarea { min-height: 140px !important; }
-  .btn-primary { font-size: 0.9rem !important; padding: 0.75rem 1.5rem !important; min-height: 48px !important; }
+  .contact-submit-btn { font-size: 0.9rem !important; padding: 0.75rem 1.5rem !important; min-height: 48px !important; }
 
   /* Footer */
   footer { font-size: 0.78rem !important; padding: 0.875rem 1rem !important; gap: 0.375rem; }
@@ -1639,6 +1640,28 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
 .ide-control::placeholder { color: var(--ide-text-faint); }
 .search-field-group .ide-control:first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; border-right: none; }
 .search-field-group .ide-control:last-child { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+
+/* ===== Contact form ===== */
+.contact-form { display: flex; flex-direction: column; gap: 16px; }
+.contact-form .ide-control { width: 100%; }
+.field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.contact-textarea { resize: vertical; min-height: 160px; }
+.contact-submit-btn {
+  align-self: flex-start;
+  background: var(--ide-accent);
+  color: #fff;
+  font-family: 'Plex Mono', monospace;
+  font-weight: 600;
+  font-size: 0.85rem;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 22px;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.1s ease;
+}
+.contact-submit-btn:hover { background: var(--ide-accent-strong); }
+.contact-submit-btn:active { transform: scale(0.98); }
+.form-note { font-size: 0.78rem; color: var(--ide-text-faint); margin-top: 4px; }
 
 /* ===== Light Theme ===== */
 .light-theme {
