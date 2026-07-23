@@ -770,6 +770,11 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
 .status-problems-btn:hover { opacity: 0.8; }
 .status-problems-btn ion-icon { font-size: 0.9rem; }
 
+.explore-progress { display: flex; align-items: center; gap: 6px; color: #ffffff; font-family: 'Plex Sans', sans-serif; font-size: 0.72rem; }
+.explore-progress-track { width: 46px; height: 4px; background: rgba(255,255,255,0.25); border-radius: 2px; overflow: hidden; }
+.explore-progress-fill { display: block; height: 100%; width: 0%; background: #ffffff; transition: width 0.3s ease; }
+.explore-progress-fill--complete { background: var(--ide-git-added); }
+
 .ide-statusbar {
   height: 24px;
   flex-shrink: 0;
