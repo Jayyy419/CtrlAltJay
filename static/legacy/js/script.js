@@ -12,32 +12,10 @@ const state = {
   rerenderExperiences: null,
   currentSection: null,
   dataLoaded: false,
-  ideOpenTabs: ["about"],
-  ideItemMeta: {},
-};
-
-const IDE_TAB_META = {
-  about: { label: "bio.md", icon: "md" },
-  projects: { label: "projects/", icon: "md" },
-  experiences: { label: "experiences/", icon: "md" },
-  resume: { label: "resume.pdf", icon: "md" },
-  contact: { label: "contact.md", icon: "md" },
 };
 
 const tabs = document.querySelectorAll(".tab-btn");
 const panels = document.querySelectorAll(".tab-panel");
-
-/* Escape untrusted strings (admin-authored content, search input) before
-   interpolating into innerHTML template strings. */
-function escapeHtml(value) {
-  if (value === null || value === undefined) return "";
-  return String(value)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
 
 /* ===== Toast notifications ===== */
 function showToast(message, type = "info") {
@@ -104,19 +82,12 @@ function showSkeletons(gridId, count = 6) {
 }
 
 function switchTab(tabName) {
-  tabs.forEach((it) => {
-    it.classList.remove("active");
-    it.setAttribute("aria-selected", "false");
-  });
+  tabs.forEach((it) => it.classList.remove("active"));
   panels.forEach((panel) => panel.classList.remove("active"));
   const btn = document.querySelector(`.tab-btn[data-tab="${tabName}"]`);
   const panel = document.getElementById(tabName);
-  if (btn) {
-    btn.classList.add("active");
-    btn.setAttribute("aria-selected", "true");
-  }
+  if (btn) btn.classList.add("active");
   if (panel) panel.classList.add("active");
-  syncIdeChrome(tabName);
 }
 
 function initTabs() {
@@ -133,202 +104,6 @@ function initTabs() {
   if (hash && !hash.startsWith("item/") && document.getElementById(hash)) {
     switchTab(hash);
   }
-}
-
-/* ===== IDE chrome: tab bar, file tree, status bar ===== */
-
-function syncIdeChrome(tabName) {
-  if (!IDE_TAB_META[tabName]) return;
-  if (!state.ideOpenTabs.includes(tabName)) state.ideOpenTabs.push(tabName);
-  renderIdeTabbar(tabName);
-  document.querySelectorAll(".file-tree-folder").forEach((el) => {
-    el.classList.toggle("active", el.dataset.tab === tabName);
-  });
-  const sectionEl = document.getElementById("ide-status-section");
-  if (sectionEl) sectionEl.textContent = tabName + (IDE_TAB_META[tabName].label.endsWith("/") ? "" : ".md").replace(".md.md", ".md");
-  updateIdeStatusCount(tabName);
-}
-
-function renderIdeTabbar(activeTab) {
-  const bar = document.getElementById("ide-tabbar");
-  if (!bar) return;
-  bar.innerHTML = state.ideOpenTabs.map((name) => {
-    const meta = IDE_TAB_META[name] || state.ideItemMeta?.[name] || { label: name, icon: "md" };
-    const isActive = name === activeTab;
-    return `<div class="ide-tab ${isActive ? "active" : ""}" data-tab="${name}">
-      <span class="fdot ${meta.icon}"></span> ${escapeHtml(meta.label)}
-      <span class="close" data-close-tab="${name}" title="Close" aria-label="Close ${escapeHtml(meta.label)}">&times;</span>
-    </div>`;
-  }).join("");
-
-  bar.querySelectorAll(".ide-tab").forEach((tabEl) => {
-    tabEl.addEventListener("click", (e) => {
-      if (e.target.dataset.closeTab) return;
-      openIdeTabByName(tabEl.dataset.tab);
-    });
-  });
-  bar.querySelectorAll("[data-close-tab]").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      closeIdeTab(btn.dataset.closeTab, activeTab);
-    });
-  });
-}
-
-function updateIdeStatusCount(tabName) {
-  const el = document.getElementById("ide-status-count");
-  if (!el) return;
-  if (tabName === "projects") el.textContent = `${state.projects.length} file${state.projects.length !== 1 ? "s" : ""}`;
-  else if (tabName === "experiences") el.textContent = `${state.experiences.length} file${state.experiences.length !== 1 ? "s" : ""}`;
-  else if (tabName === "resume") el.textContent = `${state.resume.length} entries`;
-  else el.textContent = "";
-}
-
-function initIdeStatusClock() {
-  const el = document.getElementById("ide-status-clock");
-  if (!el) return;
-  const tick = () => {
-    el.textContent = new Date().toLocaleTimeString("en-SG", { hour: "2-digit", minute: "2-digit" });
-  };
-  tick();
-  setInterval(tick, 30000);
-}
-
-function initIdeFileTree() {
-  document.querySelectorAll(".file-tree-folder").forEach((folder) => {
-    folder.addEventListener("click", () => {
-      const name = folder.dataset.tab;
-      switchTab(name);
-      window.history.replaceState(null, "", `#${name}`);
-    });
-  });
-}
-
-function slugifyTitle(title) {
-  return (title || "untitled").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-}
-
-function renderCategoryGroupedTree(items, containerId, sectionTab, ext) {
-  const target = document.getElementById(containerId);
-  if (!target) return;
-
-  const groups = {};
-  items.forEach((item) => {
-    const cat = item.category || "Uncategorised";
-    if (!groups[cat]) groups[cat] = [];
-    groups[cat].push(item);
-  });
-  const categories = Object.keys(groups).sort();
-
-  target.innerHTML = categories.map((cat) => {
-    const groupItems = groups[cat];
-    const itemsHtml = groupItems.map((item) => {
-      const filename = `${slugifyTitle(item.title)}.${ext}`;
-      return `<div class="file-tree-item" data-id="${escapeHtml(item.id)}" title="${escapeHtml(filename)}"><span class="fdot ${ext}"></span><span class="ftext">${escapeHtml(filename)}</span></div>`;
-    }).join("");
-    const catId = slugifyTitle(cat);
-    return `<div class="file-tree-subfolder" data-cat="${escapeHtml(catId)}"><span class="chev">▾</span> ${escapeHtml(cat)}<span class="fcount">${groupItems.length}</span></div>
-      <div class="file-tree-subchildren" data-cat="${escapeHtml(catId)}">${itemsHtml}</div>`;
-  }).join("");
-
-  target.querySelectorAll(".file-tree-subfolder").forEach((folder) => {
-    folder.addEventListener("click", () => {
-      folder.classList.toggle("collapsed");
-      target.querySelector(`.file-tree-subchildren[data-cat="${CSS.escape(folder.dataset.cat)}"]`)?.classList.toggle("collapsed");
-    });
-  });
-  target.querySelectorAll(".file-tree-item").forEach((el) => {
-    el.addEventListener("click", () => {
-      const item = items.find((p) => String(p.id) === el.dataset.id);
-      if (item) openItemTab(item, sectionTab);
-    });
-  });
-}
-
-function renderIdeFileTreeItems() {
-  renderCategoryGroupedTree(state.projects, "tree-projects-items", "projects", "py");
-  renderCategoryGroupedTree(state.experiences, "tree-experiences-items", "experiences", "md");
-}
-
-const SIDEBAR_WIDTH_KEY = "ctrlaltjay-filetree-width";
-
-function initSidebarResize() {
-  const sidebar = document.getElementById("file-tree");
-  const resizer = document.getElementById("ide-sidebar-resizer");
-  if (!sidebar || !resizer) return;
-
-  const saved = parseInt(localStorage.getItem(SIDEBAR_WIDTH_KEY), 10);
-  if (saved) sidebar.style.width = `${Math.min(500, Math.max(200, saved))}px`;
-
-  let dragging = false;
-  resizer.addEventListener("mousedown", (e) => {
-    dragging = true;
-    resizer.classList.add("dragging");
-    document.body.style.userSelect = "none";
-    e.preventDefault();
-  });
-  document.addEventListener("mousemove", (e) => {
-    if (!dragging) return;
-    const newWidth = Math.min(500, Math.max(200, e.clientX - sidebar.getBoundingClientRect().left));
-    sidebar.style.width = `${newWidth}px`;
-  });
-  document.addEventListener("mouseup", () => {
-    if (!dragging) return;
-    dragging = false;
-    resizer.classList.remove("dragging");
-    document.body.style.userSelect = "";
-    localStorage.setItem(SIDEBAR_WIDTH_KEY, parseInt(sidebar.style.width, 10));
-  });
-}
-
-function openItemTab(item, sectionTab) {
-  const tabId = `item:${item.id}`;
-  const ext = sectionTab === "projects" ? "py" : "md";
-  const filename = `${slugifyTitle(item.title)}.${ext}`;
-  state.ideItemMeta = state.ideItemMeta || {};
-  state.ideItemMeta[tabId] = { label: filename, icon: ext, sectionTab, itemId: item.id };
-  if (!state.ideOpenTabs.includes(tabId)) state.ideOpenTabs.push(tabId);
-
-  renderItemViewer(item);
-  switchTab("item-viewer");
-  renderIdeTabbar(tabId);
-
-  document.querySelectorAll(".file-tree-folder").forEach((el) => el.classList.toggle("active", el.dataset.tab === sectionTab));
-  document.querySelectorAll(".file-tree-item.active").forEach((el) => el.classList.remove("active"));
-  document.querySelectorAll(`.file-tree-item[data-id="${item.id}"]`).forEach((el) => el.classList.add("active"));
-  const sectionEl = document.getElementById("ide-status-section");
-  if (sectionEl) sectionEl.textContent = `${sectionTab}/${filename}`;
-  updateIdeStatusCount(sectionTab);
-}
-
-function openIdeTabByName(name) {
-  if (name.startsWith("item:")) {
-    const meta = state.ideItemMeta?.[name];
-    if (!meta) return;
-    const item = findItemById(meta.itemId);
-    if (item) openItemTab(item, meta.sectionTab);
-    return;
-  }
-  switchTab(name);
-  window.history.replaceState(null, "", `#${name}`);
-}
-
-function closeIdeTab(name, activeTab) {
-  state.ideOpenTabs = state.ideOpenTabs.filter((t) => t !== name);
-  if (state.ideItemMeta?.[name]) delete state.ideItemMeta[name];
-  if (state.ideOpenTabs.length === 0) state.ideOpenTabs = ["about"];
-  if (name === activeTab) {
-    openIdeTabByName(state.ideOpenTabs[state.ideOpenTabs.length - 1]);
-  } else {
-    renderIdeTabbar(activeTab);
-  }
-}
-
-function closeItemTabIfOpen(itemId) {
-  const tabId = `item:${itemId}`;
-  if (!state.ideOpenTabs.includes(tabId)) return;
-  const activeTab = document.querySelector(".ide-tab.active")?.dataset.tab || tabId;
-  closeIdeTab(tabId, activeTab);
 }
 
 function compareBySort(a, b, mode) {
@@ -367,10 +142,9 @@ function uniqueSubsections(items) {
 }
 
 function highlightText(text, query) {
-  const safeText = escapeHtml(text);
-  if (!query || !text) return safeText;
-  const escapedQuery = escapeHtml(query).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return safeText.replace(new RegExp(`(${escapedQuery})`, "gi"), '<mark class="search-highlight">$1</mark>');
+  if (!query || !text) return text;
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return text.replace(new RegExp(`(${escaped})`, "gi"), '<mark class="search-highlight">$1</mark>');
 }
 
 function buildCard(item, highlightQuery = "") {
@@ -450,7 +224,7 @@ function buildCard(item, highlightQuery = "") {
   if (img) card.appendChild(img);
   card.appendChild(content);
 
-  card.addEventListener("click", () => openItemTab(item, item.section === "experience" ? "experiences" : "projects"));
+  card.addEventListener("click", () => openModal(item));
 
   return card;
 }
@@ -633,7 +407,7 @@ function renderSection(items, categoryId, sortId, targetGridId, subsectionFilter
 
   target.innerHTML = "";
   if (filtered.length === 0) {
-    target.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><ion-icon name="search-outline"></ion-icon><p>${searchQuery ? "No results for \u201c" + escapeHtml(searchQuery) + "\u201d" : "No items in this category yet."}</p></div>`;
+    target.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><ion-icon name="search-outline"></ion-icon><p>${searchQuery ? "No results for \u201c" + searchQuery + "\u201d" : "No items in this category yet."}</p></div>`;
     shownCounts[targetGridId] = 0;
     return;
   }
@@ -703,12 +477,12 @@ function rowToHTML(label, value) {
   if (!value) {
     return "";
   }
-  return `<div class="modal-row"><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value)}</div>`;
+  return `<div class="modal-row"><strong>${label}:</strong> ${value}</div>`;
 }
 
-function renderItemViewer(item) {
+function openModal(item) {
   state.modalItem = item;
-  const shell = document.getElementById("item-viewer");
+  const shell = document.getElementById("detail-modal");
   const image = document.getElementById("modal-image");
   const title = document.getElementById("modal-title");
   const tag = document.getElementById("modal-tag");
@@ -789,6 +563,7 @@ function renderItemViewer(item) {
       chip.title = `Filter by \"${s}\"`;
       chip.addEventListener("click", (e) => {
         e.stopPropagation();
+        closeDetailModal();
         const tab = item.section === "experience" ? "experiences" : "projects";
         switchTab(tab);
         const filterContainer = document.getElementById(`${tab}-skills-filter`);
@@ -839,6 +614,9 @@ function renderItemViewer(item) {
   // Update share buttons
   updateShareLinks(item);
 
+  shell.classList.add("active");
+  shell.setAttribute("aria-hidden", "false");
+
   // Deep link: update URL hash
   if (item.id) {
     window.history.replaceState(null, "", `#item/${item.id}`);
@@ -871,6 +649,25 @@ function renderItemViewer(item) {
       showToast("Item exported.", "success");
     };
   }
+}
+
+function initModal() {
+  const shell = document.getElementById("detail-modal");
+  shell.querySelectorAll("[data-close-modal]").forEach((element) => {
+    element.addEventListener("click", () => {
+      closeDetailModal();
+    });
+  });
+}
+
+function closeDetailModal() {
+  const shell = document.getElementById("detail-modal");
+  state.modalItem = null;
+  shell.classList.remove("active");
+  shell.setAttribute("aria-hidden", "true");
+  // Clear deep link hash
+  const section = document.querySelector(".tab-panel.active")?.id;
+  window.history.replaceState(null, "", section ? `#${section}` : window.location.pathname);
 }
 
 function renderResume() {
@@ -951,22 +748,12 @@ function renderSkills() {
 }
 
 async function fetchData() {
-  try {
-    const response = await fetch("/api/public-data");
-    if (!response.ok) throw new Error(`public-data request failed: ${response.status}`);
-    const payload = await response.json();
-    state.projects = payload.projects || [];
-    state.experiences = payload.experiences || [];
-    state.resume = payload.resume || [];
-    state.skills = payload.skills || [];
-  } catch (err) {
-    console.error("Failed to load portfolio data", err);
-    state.projects = [];
-    state.experiences = [];
-    state.resume = [];
-    state.skills = [];
-    state.dataLoadFailed = true;
-  }
+  const response = await fetch("/api/public-data");
+  const payload = await response.json();
+  state.projects = payload.projects || [];
+  state.experiences = payload.experiences || [];
+  state.resume = payload.resume || [];
+  state.skills = payload.skills || [];
 }
 
 function setAdminMode(enabled) {
@@ -1178,6 +965,11 @@ function initInlineAdminEditor() {
     if (!state.isAdmin || !state.modalItem) {
       return;
     }
+    const detailModal = document.getElementById("detail-modal");
+    if (detailModal) {
+      detailModal.classList.remove("active");
+      detailModal.setAttribute("aria-hidden", "true");
+    }
     openAdminItemModal(state.modalItem, state.modalItem.section || "project");
   });
 
@@ -1191,7 +983,7 @@ function initInlineAdminEditor() {
       try {
         const res = await fetch(`/api/admin/items/${item.id}`, { method: "DELETE" });
         if (!res.ok) throw new Error("Delete failed");
-        closeItemTabIfOpen(item.id);
+        closeDetailModal();
         await fetchData();
         wireProjectControls();
         logActivity("Delete", item.title);
@@ -1211,6 +1003,7 @@ function initInlineAdminEditor() {
       const item = { ...state.modalItem };
       const section = item.section || "project";
       item.title = item.title + " (Copy)";
+      closeDetailModal();
       openAdminItemModal(item, section);
       document.getElementById("admin-item-id").value = "";
       const titleEl = document.getElementById("admin-item-title");
@@ -1270,14 +1063,7 @@ function initInlineAdminEditor() {
       if (state.modalItem?.id && itemId) {
         const refreshedItem = findItemById(itemId);
         if (refreshedItem) {
-          renderItemViewer(refreshedItem);
-          const tabId = `item:${refreshedItem.id}`;
-          if (state.ideItemMeta[tabId]) {
-            const sectionTab = state.ideItemMeta[tabId].sectionTab;
-            const ext = sectionTab === "projects" ? "py" : "md";
-            state.ideItemMeta[tabId].label = `${slugifyTitle(refreshedItem.title)}.${ext}`;
-            renderIdeTabbar(document.querySelector(".ide-tab.active")?.dataset.tab || tabId);
-          }
+          openModal(refreshedItem);
         }
       }
     } catch (error) {
@@ -1424,6 +1210,7 @@ function wireProjectControls() {
 async function bootstrap() {
   initTabs();
   initTabTransitions();
+  initModal();
   initContactForm();
   initAdminAuth();
   initInlineAdminEditor();
@@ -1451,11 +1238,6 @@ async function bootstrap() {
   initMobileSwipe();
   initDeletedItems();
   initAdminToolsPopup();
-  initProfileFlyout();
-  initIdeFileTree();
-  initSidebarResize();
-  initIdeStatusClock();
-  renderIdeTabbar("about");
   setAdminMode(false);
 
   // Show skeletons while data loads
@@ -1468,8 +1250,6 @@ async function bootstrap() {
   updateDraftIndicator();
   renderResume();
   renderSkills();
-  renderIdeFileTreeItems();
-  updateIdeStatusCount(state.currentSection || "about");
   updateTabBadges();
   updateFooterTimestamp();
   renderRecentlyViewed();
@@ -1496,18 +1276,15 @@ function initEscapeKey() {
     if (confirm) { confirm.remove(); return; }
     const adminItem = document.getElementById("admin-item-modal");
     if (adminItem?.classList.contains("active")) { closeAdminItemModal(); return; }
-    const activeItemTab = document.querySelector('.ide-tab.active[data-tab^="item:"]');
-    if (activeItemTab) { activeItemTab.querySelector("[data-close-tab]")?.click(); return; }
+    const detail = document.getElementById("detail-modal");
+    if (detail?.classList.contains("active")) {
+      closeDetailModal();
+      return;
+    }
     const loginModal = document.getElementById("admin-login-modal");
     if (loginModal?.classList.contains("active")) { closeAdminLoginModal(); return; }
     const resumeKeyModal = document.getElementById("resume-key-modal");
     if (resumeKeyModal?.classList.contains("active")) { closeResumeKeyModal(); return; }
-    const profileFlyout = document.getElementById("profile-flyout");
-    if (profileFlyout && profileFlyout.style.display === "flex") {
-      profileFlyout.style.display = "none";
-      document.getElementById("profile-flyout-toggle")?.classList.remove("active");
-      return;
-    }
   });
 }
 
@@ -1775,7 +1552,7 @@ function initLightbox() {
     if (!img || !img.src) return;
     const overlay = document.createElement("div");
     overlay.className = "lightbox-overlay";
-    overlay.innerHTML = `<img src="${img.src}" alt="${escapeHtml(img.alt || "")}">`;
+    overlay.innerHTML = `<img src="${img.src}" alt="${img.alt || ""}">`;
     overlay.addEventListener("click", () => overlay.remove());
     document.body.appendChild(overlay);
   });
@@ -1916,14 +1693,14 @@ async function renderDeletedItems() {
   }
   list.innerHTML = items.map((item) => {
     const deletedDate = item.deleted_at ? new Date(item.deleted_at).toLocaleDateString() : "";
-    return `<div class="deleted-item" data-id="${escapeHtml(item.id)}">
+    return `<div class="deleted-item" data-id="${item.id}">
       <div class="deleted-item-info">
-        <span class="deleted-item-title">${escapeHtml(item.title)}</span>
-        <span class="deleted-item-meta">${escapeHtml(item.section || "")} · ${escapeHtml(item.category || "")} · Deleted ${escapeHtml(deletedDate)}</span>
+        <span class="deleted-item-title">${item.title}</span>
+        <span class="deleted-item-meta">${item.section || ""} · ${item.category || ""} · Deleted ${deletedDate}</span>
       </div>
       <div class="deleted-item-actions">
-        <button class="deleted-restore-btn" data-id="${escapeHtml(item.id)}" title="Restore"><ion-icon name="arrow-undo-outline"></ion-icon></button>
-        <button class="deleted-perm-btn" data-id="${escapeHtml(item.id)}" data-title="${escapeHtml(item.title)}" title="Permanently delete"><ion-icon name="trash-outline"></ion-icon></button>
+        <button class="deleted-restore-btn" data-id="${item.id}" title="Restore"><ion-icon name="arrow-undo-outline"></ion-icon></button>
+        <button class="deleted-perm-btn" data-id="${item.id}" data-title="${item.title.replace(/"/g, '&quot;')}" title="Permanently delete"><ion-icon name="trash-outline"></ion-icon></button>
       </div>
     </div>`;
   }).join("");
@@ -1970,19 +1747,6 @@ function initAdminToolsPopup() {
   toggle.addEventListener("click", () => { popup.style.display = "flex"; });
   closeBtn?.addEventListener("click", () => { popup.style.display = "none"; });
   backdrop?.addEventListener("click", () => { popup.style.display = "none"; });
-}
-
-function initProfileFlyout() {
-  const toggle = document.getElementById("profile-flyout-toggle");
-  const popup = document.getElementById("profile-flyout");
-  const closeBtn = document.getElementById("profile-flyout-close");
-  const backdrop = document.getElementById("profile-flyout-backdrop");
-  if (!toggle || !popup) return;
-  const open = () => { popup.style.display = "flex"; toggle.classList.add("active"); toggle.setAttribute("aria-expanded", "true"); };
-  const close = () => { popup.style.display = "none"; toggle.classList.remove("active"); toggle.setAttribute("aria-expanded", "false"); };
-  toggle.addEventListener("click", open);
-  closeBtn?.addEventListener("click", close);
-  backdrop?.addEventListener("click", close);
 }
 
 function initDeletedItems() {
@@ -2183,10 +1947,10 @@ function initTabTransitions() {
 
 /* ===== Card count badges on tab buttons ===== */
 function updateTabBadges() {
-  const projBadge = document.getElementById("tab-count-projects");
-  const expBadge = document.getElementById("tab-count-experiences");
-  if (projBadge) projBadge.textContent = state.projects.length || "";
-  if (expBadge) expBadge.textContent = state.experiences.length || "";
+  const projBtn = document.querySelector('.tab-btn[data-tab="projects"]');
+  const expBtn = document.querySelector('.tab-btn[data-tab="experiences"]');
+  if (projBtn) projBtn.textContent = `Projects (${state.projects.length})`;
+  if (expBtn) expBtn.textContent = `Experiences (${state.experiences.length})`;
 }
 
 /* ===== Last updated footer timestamp ===== */
@@ -2237,8 +2001,10 @@ function handleDeepLink() {
   const itemId = hash.replace("item/", "");
   const item = findItemById(itemId);
   if (item) {
+    // Switch to the correct tab
     const tab = item.section === "experience" ? "experiences" : "projects";
-    openItemTab(item, tab);
+    switchTab(tab);
+    openModal(item);
   }
 }
 
@@ -2311,9 +2077,9 @@ function renderRecentStrip(containerId, items) {
     const card = document.createElement("div");
     card.className = "recent-card";
     card.tabIndex = 0;
-    const imgHtml = item.image_path ? `<img src="${item.image_path}" alt="${escapeHtml(item.title)}" loading="lazy">` : "";
-    card.innerHTML = `${imgHtml}<span>${escapeHtml(item.title)}</span>`;
-    card.addEventListener("click", () => openItemTab(item, item.section === "experience" ? "experiences" : "projects"));
+    const imgHtml = item.image_path ? `<img src="${item.image_path}" alt="${item.title}" loading="lazy">` : "";
+    card.innerHTML = `${imgHtml}<span>${item.title}</span>`;
+    card.addEventListener("click", () => openModal(item));
     strip.appendChild(card);
   });
 }
@@ -2348,9 +2114,9 @@ function renderRelatedItems(item) {
     const card = document.createElement("div");
     card.className = "related-card";
     card.tabIndex = 0;
-    const imgHtml = rel.image_path ? `<img src="${rel.image_path}" alt="${escapeHtml(rel.title)}" loading="lazy">` : "";
-    card.innerHTML = `${imgHtml}<span>${escapeHtml(rel.title)}</span>`;
-    card.addEventListener("click", () => openItemTab(rel, rel.section === "experience" ? "experiences" : "projects"));
+    const imgHtml = rel.image_path ? `<img src="${rel.image_path}" alt="${rel.title}" loading="lazy">` : "";
+    card.innerHTML = `${imgHtml}<span>${rel.title}</span>`;
+    card.addEventListener("click", () => openModal(rel));
     strip.appendChild(card);
   });
 }
@@ -2378,7 +2144,7 @@ function renderActivityLog() {
   container.innerHTML = log.map((entry) => {
     const d = new Date(entry.timestamp);
     const time = d.toLocaleDateString("en-SG", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-    return `<div class="activity-entry"><span class="activity-action">${escapeHtml(entry.action)}</span><span class="activity-detail">${escapeHtml(entry.detail)}</span><span class="activity-time">${escapeHtml(time)}</span></div>`;
+    return `<div class="activity-entry"><span class="activity-action">${entry.action}</span><span class="activity-detail">${entry.detail}</span><span class="activity-time">${time}</span></div>`;
   }).join("");
 }
 
@@ -3054,7 +2820,8 @@ function initSurpriseMe() {
     if (allItems.length === 0) { showToast("No items loaded yet.", "info"); return; }
     const random = allItems[Math.floor(Math.random() * allItems.length)];
     const tab = random.section === "experience" ? "experiences" : "projects";
-    openItemTab(random, tab);
+    switchTab(tab);
+    openModal(random);
   });
 }
 
