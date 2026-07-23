@@ -25,12 +25,23 @@ const IDE_TAB_META = {
   contact: { label: "contact.md", icon: "md" },
   scm: { label: "changes.diff", icon: "diff" },
   profile: { label: "profile.md", icon: "md" },
+  now: { label: "now.md", icon: "md" },
+  uses: { label: "uses.json", icon: "json" },
+  testimonials: { label: "testimonials.md", icon: "md" },
+  timeline: { label: "timeline.md", icon: "md" },
   credly: { label: "credly.md", icon: "md" },
   linkedin: { label: "linkedin.md", icon: "md" },
 };
 
 /* Sidebar section a tab belongs to, for tabs that aren't their own section (e.g. profile sub-pages) */
-const TAB_SECTION_OVERRIDE = { credly: "profile", linkedin: "profile" };
+const TAB_SECTION_OVERRIDE = {
+  credly: "profile",
+  linkedin: "profile",
+  now: "profile",
+  uses: "profile",
+  testimonials: "profile",
+  timeline: "profile",
+};
 
 const tabs = document.querySelectorAll(".tab-btn");
 const panels = document.querySelectorAll(".tab-panel");
@@ -160,6 +171,7 @@ function syncIdeChrome(tabName) {
   updateIdeStatusCount(tabName);
   if (tabName === "credly") renderCredlyBody();
   if (tabName === "scm") renderSourceControlPanel();
+  if (tabName === "timeline") renderTimelinePanel();
   refreshMinimap();
 }
 
@@ -486,6 +498,53 @@ function renderCredlyBody() {
     list.appendChild(row);
   });
   body.appendChild(list);
+}
+
+function parseApproxDate(str) {
+  if (!str) return 0;
+  const monthYear = str.match(/([A-Za-z]{3,9})\s+(\d{4})/);
+  if (monthYear) {
+    const d = new Date(`${monthYear[1]} 1, ${monthYear[2]}`);
+    if (!isNaN(d.getTime())) return d.getTime();
+  }
+  const yearOnly = str.match(/\d{4}/);
+  if (yearOnly) return new Date(`${yearOnly[0]}-01-01`).getTime();
+  return 0;
+}
+
+function renderTimelinePanel() {
+  const listEl = document.getElementById("timeline-list");
+  if (!listEl) return;
+
+  const resumeEntries = state.resume.map((r) => ({
+    title: r.title,
+    meta: [r.subtitle, r.period].filter(Boolean).join(" · "),
+    sortKey: parseApproxDate(r.period),
+    kind: "resume",
+  }));
+  const milestoneEntries = state.experiences
+    .filter((e) => e.date_value)
+    .map((e) => ({
+      title: e.title,
+      meta: [e.category, new Date(e.date_value).toLocaleDateString("en-SG", { month: "short", year: "numeric" })].filter(Boolean).join(" · "),
+      sortKey: new Date(e.date_value).getTime(),
+      kind: "milestone",
+    }));
+
+  const merged = [...resumeEntries, ...milestoneEntries].sort((a, b) => b.sortKey - a.sortKey);
+
+  if (!merged.length) {
+    listEl.innerHTML = `<div class="modal-row">No milestones yet.</div>`;
+    return;
+  }
+
+  listEl.innerHTML = merged.map((m) => `
+    <div class="timeline-item">
+      <div class="timeline-dot timeline-dot--${m.kind}"></div>
+      <div class="timeline-title">${escapeHtml(m.title)}</div>
+      <div class="timeline-meta">${escapeHtml(m.meta)}</div>
+    </div>
+  `).join("");
 }
 
 const SIDEBAR_WIDTH_KEY = "ctrlaltjay-filetree-width";
@@ -3752,6 +3811,10 @@ function getCommandPaletteItems() {
     { icon: "mail-outline", label: "Contact", hint: "contact.md", action: () => openIdeTabByName("contact") },
     { icon: "git-compare-outline", label: "Source Control", hint: "changes.diff", action: () => openIdeTabByName("scm") },
     { icon: "person-circle-outline", label: "Profile", hint: "profile.md", action: () => openIdeTabByName("profile") },
+    { icon: "flash-outline", label: "Now", hint: "now.md", action: () => openIdeTabByName("now") },
+    { icon: "construct-outline", label: "Uses", hint: "uses.json", action: () => openIdeTabByName("uses") },
+    { icon: "chatbox-ellipses-outline", label: "Testimonials", hint: "testimonials.md", action: () => openIdeTabByName("testimonials") },
+    { icon: "time-outline", label: "Timeline", hint: "timeline.md", action: () => openIdeTabByName("timeline") },
     { icon: "ribbon-outline", label: "Credly", hint: "credly.md", action: () => openIdeTabByName("credly") },
     { icon: "logo-linkedin", label: "LinkedIn", hint: "linkedin.md", action: () => openIdeTabByName("linkedin") },
     { icon: "contrast-outline", label: "Toggle Theme", hint: "dark / light", action: () => document.getElementById("theme-toggle")?.click() },
