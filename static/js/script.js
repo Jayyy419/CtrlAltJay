@@ -173,6 +173,7 @@ function syncIdeChrome(tabName) {
   if (tabName === "credly") renderCredlyBody();
   if (tabName === "scm") renderSourceControlPanel();
   if (tabName === "timeline") renderTimelinePanel();
+  markTabExplored(tabName);
   refreshMinimap();
 }
 
@@ -2201,6 +2202,7 @@ async function bootstrap() {
   handleDeepLink();
   initHitCounter();
   initLivePresence();
+  initExplorationProgress();
   initAnimatedCounters();
   initGithubActivity();
   registerServiceWorker();
@@ -3611,6 +3613,46 @@ function renderSourceControlPanel() {
     row.addEventListener("keydown", (e) => { if (e.key === "Enter") openItemTab(item, sectionTab); });
     listEl.appendChild(row);
   });
+}
+
+/* ===== Achievements: exploration progress ===== */
+const EXPLORE_TABS = ["about", "projects", "experiences", "resume", "stack", "contact", "scm", "profile"];
+const EXPLORE_STORAGE_KEY = "ctrlaltjay_explored_tabs";
+
+function getExploredTabs() {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(EXPLORE_STORAGE_KEY) || "[]"));
+  } catch (err) {
+    return new Set();
+  }
+}
+
+function renderExplorationProgress(explored) {
+  const fillEl = document.getElementById("explore-progress-fill");
+  const textEl = document.getElementById("explore-progress-text");
+  if (!fillEl || !textEl) return;
+  const pct = Math.round((explored.size / EXPLORE_TABS.length) * 100);
+  fillEl.style.width = `${pct}%`;
+  fillEl.classList.toggle("explore-progress-fill--complete", explored.size === EXPLORE_TABS.length);
+  textEl.textContent = `${explored.size}/${EXPLORE_TABS.length} explored`;
+}
+
+function markTabExplored(tabName) {
+  if (!EXPLORE_TABS.includes(tabName)) return;
+  const explored = getExploredTabs();
+  if (explored.has(tabName)) return;
+  const wasComplete = explored.size === EXPLORE_TABS.length;
+  explored.add(tabName);
+  localStorage.setItem(EXPLORE_STORAGE_KEY, JSON.stringify([...explored]));
+  renderExplorationProgress(explored);
+  if (!wasComplete && explored.size === EXPLORE_TABS.length) {
+    showToast("You've explored every section of this portfolio!", "success");
+  }
+}
+
+function initExplorationProgress() {
+  markTabExplored("about");
+  renderExplorationProgress(getExploredTabs());
 }
 
 /* ===== Live Visitor Presence ===== */
