@@ -832,6 +832,10 @@ function openIdeTabByName(name) {
     if (skill) openSkillItemTab(skill);
     return;
   }
+  if (name === "compare") {
+    if (state.compareSelection?.length === 2) openCompareTab(state.compareSelection[0], state.compareSelection[1]);
+    return;
+  }
   switchTab(name);
   window.history.replaceState(null, "", `#${name}`);
 }
@@ -906,6 +910,7 @@ function buildCard(item, highlightQuery = "") {
   const card = document.createElement("article");
   card.className = "card";
   card.tabIndex = 0;
+  card.dataset.itemId = item.id;
 
   // Git-blame-style hover preview (same pattern as Resume commit nodes)
   const blameInfo = {
@@ -986,9 +991,84 @@ function buildCard(item, highlightQuery = "") {
   if (img) card.appendChild(img);
   card.appendChild(content);
 
-  card.addEventListener("click", () => openItemTab(item, item.section === "experience" ? "experiences" : "projects"));
+  card.addEventListener("click", (e) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      toggleCompareSelection(card, item);
+      return;
+    }
+    openItemTab(item, item.section === "experience" ? "experiences" : "projects");
+  });
 
   return card;
+}
+
+/* ===== Split-pane compare: Ctrl/Cmd+click two cards to compare ===== */
+function toggleCompareSelection(card, item) {
+  if (!state.compareSelection) state.compareSelection = [];
+  const idx = state.compareSelection.findIndex((it) => it.id === item.id);
+  if (idx !== -1) {
+    state.compareSelection.splice(idx, 1);
+    card.classList.remove("card--compare-selected");
+    return;
+  }
+  if (state.compareSelection.length >= 2) {
+    const removed = state.compareSelection.shift();
+    document.querySelectorAll(`.card[data-item-id="${removed.id}"]`).forEach((el) => el.classList.remove("card--compare-selected"));
+  }
+  state.compareSelection.push(item);
+  card.classList.add("card--compare-selected");
+  if (state.compareSelection.length === 2) {
+    openCompareTab(state.compareSelection[0], state.compareSelection[1]);
+  }
+}
+
+function renderComparePane(container, item) {
+  const skills = parseSkills(item.skills);
+  const sectionTab = item.section === "experience" ? "experiences" : "projects";
+  container.innerHTML = `
+    <h3 class="compare-pane-title">${escapeHtml(item.title)}</h3>
+    <div class="modal-tag">${escapeHtml(item.tag || item.category || "")}</div>
+    <div class="modal-body">
+      ${rowToHTML("Summary", item.summary)}
+      ${rowToHTML("Description", item.description)}
+      ${skills.length ? rowToHTML("Skills", skills.join(", ")) : ""}
+      ${rowToHTML("Updated", timeAgo(item.updated_at || item.created_at))}
+    </div>
+    <button type="button" class="compare-view-full-btn" data-compare-view="${escapeHtml(item.id)}">View full details</button>
+  `;
+  container.querySelector("[data-compare-view]")?.addEventListener("click", () => openItemTab(item, sectionTab));
+}
+
+function renderCompareViewer(a, b) {
+  renderComparePane(document.getElementById("compare-pane-a"), a);
+  renderComparePane(document.getElementById("compare-pane-b"), b);
+}
+
+function openCompareTab(a, b) {
+  state.ideItemMeta = state.ideItemMeta || {};
+  state.ideItemMeta.compare = { label: "compare.diff", icon: "diff" };
+  if (!state.ideOpenTabs.includes("compare")) state.ideOpenTabs.push("compare");
+
+  renderCompareViewer(a, b);
+  switchTab("compare-viewer");
+  renderIdeTabbar("compare");
+  const sectionEl = document.getElementById("ide-status-section");
+  if (sectionEl) sectionEl.textContent = "compare.diff";
+  refreshMinimap();
+}
+
+function clearCompareSelection() {
+  state.compareSelection = [];
+  document.querySelectorAll(".card--compare-selected").forEach((el) => el.classList.remove("card--compare-selected"));
+}
+
+function initCompareViewer() {
+  document.getElementById("compare-clear-btn")?.addEventListener("click", () => {
+    clearCompareSelection();
+    const activeTab = document.querySelector(".ide-tab.active")?.dataset.tab || "compare";
+    closeIdeTab("compare", activeTab);
+  });
 }
 
 /* ===== Skills helpers ===== */
@@ -2163,6 +2243,7 @@ async function bootstrap() {
   initBatchSkills();
   initActivityLog();
   initImageCarousel();
+  initCompareViewer();
   initAdminStats();
   initAdminBackup();
   initFocusTrap();
@@ -4043,6 +4124,7 @@ function toggleShortcutsOverlay() {
         <div class="shortcut-item"><kbd>Shift</kbd>+<kbd>W</kbd><span>Close all tabs</span></div>
         <div class="shortcut-item"><kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>,</kbd><span>Open Settings</span></div>
         <div class="shortcut-item"><kbd>Alt</kbd>+Click<span>Multi-select Resume entries to compare</span></div>
+        <div class="shortcut-item"><kbd>⌘</kbd>/<kbd>Ctrl</kbd>+Click<span>Select 2 Project/Experience cards to compare</span></div>
         <div class="shortcut-item"><kbd>Dbl-click</kbd><span>Edit card (admin)</span></div>
       </div>
     </div>`;
