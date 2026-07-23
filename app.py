@@ -36,6 +36,12 @@ try:
 except ImportError:
     HAS_PILLOW = False
 
+try:
+    import anthropic
+    HAS_ANTHROPIC = True
+except ImportError:
+    HAS_ANTHROPIC = False
+
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -342,9 +348,8 @@ def set_security_headers(response):
     return response
 
 
-@app.route("/")
-def index():
-    profile = {
+def build_profile():
+    return {
         "name": "Rone Peh",
         "headline": "NTU CS Undergraduate | Founder @ Sentrix",
         "location": "Singapore",
@@ -385,7 +390,11 @@ def index():
             "label": "Open to new opportunities",
         },
     }
-    return render_template("index.html", profile=profile)
+
+
+@app.route("/")
+def index():
+    return render_template("index.html", profile=build_profile())
 
 
 @app.route("/old")
@@ -1234,6 +1243,121 @@ def admin_note_item(note_id):
         ExpressionAttributeValues={":s": status, ":u": now_iso()},
     )
     return jsonify({"message": f"Note {status}."})
+
+
+# ─── AI Chat Assistant ───────────────────────────────────────────────────────
+# Answers questions using the site's own real content as context (profile,
+# projects, experiences, resume, skills) rather than a vector DB — the whole
+# dataset is small enough to fit directly in the prompt. Rate-limited since
+# every request costs real Anthropic API usage on a publicly reachable route.
+
+CHAT_MODEL = "claude-sonnet-5"
+CHAT_MAX_TOKENS = 500
+CHAT_MAX_HISTORY_TURNS = 6
+CHAT_MAX_MESSAGE_CHARS = 600
+MAX_CHAT_ATTEMPTS = 8
+CHAT_RATE_WINDOW_SECONDS = 600
+
+CHAT_SYSTEM_PROMPT_TEMPLATE = """You are a helpful assistant embedded in {name}'s personal portfolio website. \
+Visitors ask you questions about {name}'s background, projects, experience, and skills.
+
+Rules:
+- Only answer using the CONTEXT below. Never invent facts that aren't in it.
+- If something isn't covered by the context, say you don't have that information and \
+suggest the visitor use the Contact tab to ask {name} directly.
+- Keep answers concise and conversational — 2-4 sentences unless more detail is clearly needed.
+- If a visitor seems interested in hiring, collaborating, or reaching out, mention the Contact tab.
+
+CONTEXT:
+{context}
+"""
+
+
+def build_chat_context():
+    profile = build_profile()
+    all_items = [dynamo_to_dict(i) for i in scan_all(table_items) if not i.get("id", "").startswith("__") and not i.get("deleted_at")]
+    projects = [i for i in all_items if i.get("section") == "project"]
+    experiences = [i for i in all_items if i.get("section") == "experience"]
+    resume_items = sorted(
+        [dynamo_to_dict(i) for i in scan_all(table_resume)],
+        key=lambda x: (x.get("lane", ""), x.get("sort_order", 0)),
+    )
+    skills = sorted([dynamo_to_dict(i) for i in scan_all(table_skills)], key=lambda x: x.get("sort_order", 0))
+
+    lines = [
+        f"Name: {profile['name']}",
+        f"Headline: {profile['headline']}",
+        f"Location: {profile['location']}",
+        f"Availability: {profile['availability']['label']}",
+        f"Bio: {profile['bio']}",
+        "",
+        "Currently building:",
+    ]
+    lines += [f"- {item['title']}: {item['description']}" for item in profile["now_building"]]
+
+    lines += ["", "Projects:"]
+    lines += [f"- {p.get('title', '')} ({p.get('category', '')}): {(p.get('summary') or p.get('description', ''))[:300]}" for p in projects[:20]]
+
+    lines += ["", "Experiences:"]
+    lines += [f"- {e.get('title', '')} ({e.get('category', '')}): {(e.get('summary') or e.get('description', ''))[:300]}" for e in experiences[:20]]
+
+    lines += ["", "Resume:"]
+    lines += [f"- [{r.get('lane', '')}] {r.get('title', '')} at {r.get('subtitle', '')} ({r.get('period', '')})" for r in resume_items[:20]]
+
+    lines += ["", "Skills:"]
+    lines += [f"- {s.get('name', '')} ({s.get('focus', '')})" for s in skills[:30]]
+
+    return "\n".join(lines)
+
+
+@app.route("/api/chat", methods=["POST"])
+def api_chat():
+    ip = _client_ip()
+    remaining_lock = _rate_limit_locked_seconds("chat", ip)
+    if remaining_lock > 0:
+        return jsonify({"error": "You've hit the chat limit for now — please wait a bit before trying again.", "retry_in": remaining_lock}), 429
+
+    api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
+    if not HAS_ANTHROPIC or not api_key:
+        return jsonify({"error": "The AI assistant isn't configured yet."}), 503
+
+    payload = request.get_json(silent=True) or {}
+    message = (payload.get("message") or "").strip()[:CHAT_MAX_MESSAGE_CHARS]
+    if not message:
+        return jsonify({"error": "Message is required."}), 400
+
+    history = payload.get("history")
+    clean_history = []
+    if isinstance(history, list):
+        for turn in history[-CHAT_MAX_HISTORY_TURNS:]:
+            if not isinstance(turn, dict):
+                continue
+            role = turn.get("role")
+            content = str(turn.get("content", ""))[:CHAT_MAX_MESSAGE_CHARS]
+            if role in {"user", "assistant"} and content:
+                clean_history.append({"role": role, "content": content})
+
+    _record_rate_limit_failure("chat", ip, MAX_CHAT_ATTEMPTS, CHAT_RATE_WINDOW_SECONDS)
+
+    profile = build_profile()
+    system_prompt = CHAT_SYSTEM_PROMPT_TEMPLATE.format(name=profile["name"], context=build_chat_context())
+
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+        response = client.messages.create(
+            model=CHAT_MODEL,
+            max_tokens=CHAT_MAX_TOKENS,
+            system=system_prompt,
+            messages=clean_history + [{"role": "user", "content": message}],
+        )
+        reply = "".join(block.text for block in response.content if getattr(block, "type", "") == "text").strip()
+        if not reply:
+            reply = "Sorry, I couldn't come up with a good answer to that — try rephrasing, or use the Contact tab."
+    except Exception as e:
+        print(f"WARNING: chat completion failed: {e}", flush=True)
+        return jsonify({"error": "The assistant is temporarily unavailable. Please try again shortly."}), 502
+
+    return jsonify({"reply": reply})
 
 
 # ─── Auto-Backup to S3 ──────────────────────────────────────────────────────
