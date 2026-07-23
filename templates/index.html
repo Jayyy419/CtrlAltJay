@@ -186,6 +186,10 @@
         <div class="file-tree-section" data-tree-section="profile">
           <div class="file-tree-item" data-tab="profile"><span class="fdot md"></span> profile.md</div>
           <div class="file-tree-children">
+            <div class="file-tree-item" data-tab="now"><span class="fdot md"></span> now.md</div>
+            <div class="file-tree-item" data-tab="uses"><span class="fdot json"></span> uses.json</div>
+            <div class="file-tree-item" data-tab="testimonials"><span class="fdot md"></span> testimonials.md</div>
+            <div class="file-tree-item" data-tab="timeline"><span class="fdot md"></span> timeline.md</div>
             <div class="file-tree-item" data-tab="credly"><span class="fdot md"></span> credly.md</div>
             <div class="file-tree-item" data-tab="linkedin"><span class="fdot md"></span> linkedin.md</div>
           </div>
@@ -524,6 +528,51 @@
             <ion-icon aria-hidden="true" name="settings-outline" class="align-middle mr-1"></ion-icon>Admin Tools
           </button>
         </div>
+      </article>
+
+      <!-- Now -->
+      <article id="now" class="tab-panel animate-fade-up" role="tabpanel" tabindex="0">
+        <h2 class="font-display text-2xl font-bold text-white tracking-tight">Now</h2>
+        <div class="modal-tag">Current Focus</div>
+        <div class="modal-body">
+          {% for item in profile.now_building %}
+          <div class="now-card">
+            <h4 class="now-card-title">{{ item.title }}</h4>
+            <p class="now-card-desc">{{ item.description }}</p>
+          </div>
+          {% endfor %}
+        </div>
+      </article>
+
+      <!-- Uses -->
+      <article id="uses" class="tab-panel animate-fade-up" role="tabpanel" tabindex="0">
+        <h2 class="font-display text-2xl font-bold text-white tracking-tight">Uses</h2>
+        <div class="modal-tag">The Stack Behind This Site</div>
+        <div class="modal-body">
+          <div class="uses-row"><span class="uses-label">Backend</span><span class="uses-value">Python 3 + Flask</span></div>
+          <div class="uses-row"><span class="uses-label">Frontend</span><span class="uses-value">Vanilla JavaScript + Tailwind CSS</span></div>
+          <div class="uses-row"><span class="uses-label">Database</span><span class="uses-value">AWS DynamoDB</span></div>
+          <div class="uses-row"><span class="uses-label">Hosting</span><span class="uses-value">AWS Elastic Beanstalk</span></div>
+          <div class="uses-row"><span class="uses-label">CI/CD</span><span class="uses-value">GitHub Actions</span></div>
+          <div class="uses-row"><span class="uses-label">Editor</span><span class="uses-value">VS Code</span></div>
+        </div>
+      </article>
+
+      <!-- Testimonials -->
+      <article id="testimonials" class="tab-panel animate-fade-up" role="tabpanel" tabindex="0">
+        <h2 class="font-display text-2xl font-bold text-white tracking-tight">Testimonials</h2>
+        <div class="modal-tag">Recommendations</div>
+        <div class="modal-body">
+          <div class="modal-row">No testimonials added yet — check back soon.</div>
+        </div>
+        <a href="{{ profile.linkedin }}" target="_blank" rel="noopener noreferrer" class="modal-link inline-block mt-4 text-accent font-bold no-underline hover:text-accent-light transition-colors">View recommendations on LinkedIn</a>
+      </article>
+
+      <!-- Timeline -->
+      <article id="timeline" class="tab-panel animate-fade-up" role="tabpanel" tabindex="0">
+        <h2 class="font-display text-2xl font-bold text-white tracking-tight">Timeline</h2>
+        <div class="modal-tag">Milestones</div>
+        <div id="timeline-list" class="timeline-list"></div>
       </article>
 
       <!-- Credly -->
