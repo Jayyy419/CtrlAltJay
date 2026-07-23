@@ -1559,6 +1559,82 @@ body.zen-mode .ide-panel-scroll { padding: 48px max(32px, calc(50% - 380px)); }
 @keyframes toastIn { from { opacity: 0; transform: translateY(12px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @keyframes toastOut { from { opacity: 1; } to { opacity: 0; transform: translateY(-8px); } }
 
+/* ===== Exploration Completion Celebration ===== */
+.celebration-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  animation: celebrationFadeIn 0.3s ease;
+}
+@keyframes celebrationFadeIn { from { opacity: 0; } to { opacity: 1; } }
+.celebration-confetti { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.confetti-piece {
+  position: absolute;
+  top: -20px;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  opacity: 0.9;
+  animation-name: confettiFall;
+  animation-timing-function: ease-in;
+  animation-iteration-count: infinite;
+}
+@keyframes confettiFall {
+  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(110vh) rotate(360deg); opacity: 0.4; }
+}
+.celebration-card {
+  position: relative;
+  z-index: 1;
+  width: min(90vw, 460px);
+  background: var(--ide-editor-bg);
+  border: 1px solid var(--ide-accent-strong);
+  border-radius: 14px;
+  padding: 36px 32px 30px;
+  text-align: center;
+  box-shadow: 0 0 0 1px rgba(245,158,11,0.15), 0 30px 80px -20px rgba(0,0,0,0.7), 0 0 60px -10px rgba(245,158,11,0.35);
+  animation: celebrationPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes celebrationPop {
+  from { opacity: 0; transform: scale(0.85) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.celebration-close {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  background: none;
+  border: none;
+  color: var(--ide-text-dim);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.celebration-close:hover { color: var(--ide-text-bright); }
+.celebration-icon { font-size: 2.6rem; color: var(--ide-accent-strong); margin-bottom: 12px; }
+.celebration-title { font-family: 'Plex Mono', monospace; font-size: 1.5rem; font-weight: 700; color: var(--ide-text-bright); margin: 0 0 12px; }
+.celebration-message { font-size: 0.92rem; line-height: 1.65; color: var(--ide-text); margin: 0 0 24px; }
+.celebration-actions { display: flex; flex-direction: column; gap: 10px; }
+.celebration-cta {
+  background: var(--ide-accent-strong);
+  color: var(--ide-editor-bg);
+  border: none;
+  border-radius: 8px;
+  padding: 12px 20px;
+  font-family: 'Plex Mono', monospace;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.celebration-cta:hover { transform: translateY(-1px); box-shadow: 0 8px 24px -8px rgba(245,158,11,0.6); }
+.celebration-dismiss { background: none; border: none; color: var(--ide-text-dim); font-size: 0.82rem; cursor: pointer; padding: 4px; }
+.celebration-dismiss:hover { color: var(--ide-text-bright); }
+
 /* Skeleton loading cards */
 .skeleton-card {
   border: 1.5px solid rgba(255,255,255,0.06);
