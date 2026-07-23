@@ -1,4 +1,4 @@
-boto3==1.43.53
+boto3==1.43.54
 gunicorn==26.0.0
 packaging==26.2
 Pillow==12.3.0
