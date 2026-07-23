@@ -444,22 +444,101 @@ function openSkillItemTab(skill) {
   refreshMinimap();
 }
 
+const SKILL_INFO = {
+  python: {
+    docs: "https://docs.python.org/3/",
+    snippet: "def main():\n    print(\"Hello from Python\")\n\nif __name__ == \"__main__\":\n    main()",
+  },
+  aws: {
+    docs: "https://aws.amazon.com/getting-started/",
+    snippet: "import boto3\n\ndynamodb = boto3.resource(\"dynamodb\")\ntable = dynamodb.Table(\"ctrlaltjay-portfolio-items\")",
+  },
+  react: {
+    docs: "https://react.dev/",
+    snippet: "function Counter() {\n  const [count, setCount] = useState(0);\n  return <button onClick={() => setCount(count + 1)}>{count}</button>;\n}",
+  },
+  docker: {
+    docs: "https://docs.docker.com/",
+    snippet: "FROM python:3.11-slim\nWORKDIR /app\nCOPY . .\nRUN pip install -r requirements.txt\nCMD [\"python\", \"app.py\"]",
+  },
+  javascript: {
+    docs: "https://developer.mozilla.org/en-US/docs/Web/JavaScript",
+    snippet: "const greet = (name) => `Hello, ${name}!`;\nconsole.log(greet(\"world\"));",
+  },
+  flask: {
+    docs: "https://flask.palletsprojects.com/",
+    snippet: "from flask import Flask\n\napp = Flask(__name__)\n\n@app.route(\"/\")\ndef index():\n    return \"Hello, Flask!\"",
+  },
+  dynamodb: {
+    docs: "https://docs.aws.amazon.com/dynamodb/",
+    snippet: "table.put_item(Item={\"id\": \"123\", \"name\": \"example\"})",
+  },
+};
+
+function computeSkillExperience(related) {
+  const dated = related
+    .filter((it) => it.created_at)
+    .map((it) => new Date(it.created_at).getTime())
+    .filter((t) => !isNaN(t));
+  if (!dated.length) return null;
+  const earliest = Math.min(...dated);
+  const years = (Date.now() - earliest) / (1000 * 60 * 60 * 24 * 365.25);
+  const label = new Date(earliest).toLocaleDateString("en-SG", { month: "short", year: "numeric" });
+  const yearsText = years < 1 ? "< 1 year" : `${years.toFixed(1)} years`;
+  return `Since ${label} · ${yearsText} of hands-on use`;
+}
+
 function renderSkillItemViewer(skill) {
   document.getElementById("skill-item-title").textContent = skill.name;
   const tier = skill.focus === "Familiar" ? "Experienced" : (skill.focus || "Stack");
   document.getElementById("skill-item-tag").textContent = tier;
   const level = Math.max(0, Math.min(100, Number(skill.level) || 0));
+
+  const related = [...state.projects, ...state.experiences].filter((it) =>
+    parseSkills(it.skills).some((s) => s.toLowerCase() === skill.name.toLowerCase())
+  );
+  const certs = state.experiences.filter((it) =>
+    (it.category || "").toLowerCase() === "certifications" &&
+    (it.title || "").toLowerCase().includes(skill.name.toLowerCase())
+  );
+
   const body = document.getElementById("skill-item-body");
   body.innerHTML = [
     rowToHTML("Proficiency", `${level}%`),
     rowToHTML("Publisher", `ctrlaltjay.${slugifyTitle(tier)}`),
+    rowToHTML("Experience", computeSkillExperience(related)),
   ].join("");
+
+  if (certs.length) {
+    const certWrap = document.createElement("div");
+    certWrap.className = "modal-row";
+    certWrap.innerHTML = `<strong>Certifications</strong>`;
+    const list = document.createElement("div");
+    list.className = "credly-cert-list";
+    certs.forEach((cert) => {
+      const row = document.createElement("div");
+      row.className = "credly-cert-row";
+      row.tabIndex = 0;
+      row.textContent = cert.title;
+      row.addEventListener("click", () => openItemTab(cert, "experiences"));
+      list.appendChild(row);
+    });
+    certWrap.appendChild(list);
+    body.appendChild(certWrap);
+  }
+
+  const info = SKILL_INFO[skill.name.toLowerCase()];
+  const snippetSection = document.getElementById("skill-snippet-section");
+  if (info) {
+    snippetSection.style.display = "";
+    document.getElementById("skill-snippet-code").textContent = info.snippet;
+    document.getElementById("skill-docs-link").href = info.docs;
+  } else {
+    snippetSection.style.display = "none";
+  }
 
   const container = document.getElementById("skill-related-items");
   const strip = document.getElementById("skill-related-strip");
-  const related = [...state.projects, ...state.experiences].filter((it) =>
-    parseSkills(it.skills).some((s) => s.toLowerCase() === skill.name.toLowerCase())
-  );
   if (!related.length) {
     container.style.display = "none";
     return;
