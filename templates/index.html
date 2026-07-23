@@ -148,6 +148,7 @@
         <button type="button" class="tab-btn activity-bar-profile-btn" data-tab="profile" role="tab" aria-selected="false" aria-controls="profile" id="tab-profile" title="Profile" aria-label="Profile">
           <img src="../static/images/Portrait_ZoomedIn.JPG" alt="" class="activity-bar-avatar">
         </button>
+        <button type="button" class="tab-btn activity-bar-settings-btn" data-tab="settings" role="tab" aria-selected="false" aria-controls="settings" id="tab-settings" title="Settings" aria-label="Settings"><ion-icon aria-hidden="true" name="settings-outline"></ion-icon></button>
       </nav>
 
       <div class="ide-sidebar" id="file-tree" aria-hidden="true">
@@ -193,6 +194,10 @@
             <div class="file-tree-item" data-tab="credly"><span class="fdot md"></span> credly.md</div>
             <div class="file-tree-item" data-tab="linkedin"><span class="fdot md"></span> linkedin.md</div>
           </div>
+        </div>
+
+        <div class="file-tree-section" data-tree-section="settings">
+          <div class="file-tree-item" data-tab="settings"><span class="fdot json"></span> settings.json</div>
         </div>
       </div>
       <div class="ide-sidebar-resizer" id="ide-sidebar-resizer" role="separator" aria-orientation="vertical" aria-label="Resize file tree"></div>
@@ -596,6 +601,15 @@
           <div class="modal-row"><strong>About:</strong> Connect for updates on projects, career milestones, and new opportunities.</div>
         </div>
         <a href="{{ profile.linkedin }}" target="_blank" rel="noopener noreferrer" class="modal-link inline-block mt-4 text-accent font-bold no-underline hover:text-accent-light transition-colors">Open external link</a>
+      </article>
+
+      <!-- Settings -->
+      <article id="settings" class="tab-panel animate-fade-up" role="tabpanel" aria-labelledby="tab-settings" tabindex="0">
+        <header class="panel-head mb-6">
+          <h2 class="font-display text-3xl font-bold text-white tracking-tight">Settings</h2>
+          <p class="mt-2 text-ink-muted">A read-only snapshot of this site's real configuration.</p>
+        </header>
+        <pre id="settings-json" class="settings-json-viewer"></pre>
       </article>
 
       <!-- Item Viewer: opened when a project/experience file-tree item is clicked -->

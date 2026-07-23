@@ -31,6 +31,7 @@ const IDE_TAB_META = {
   timeline: { label: "timeline.md", icon: "md" },
   credly: { label: "credly.md", icon: "md" },
   linkedin: { label: "linkedin.md", icon: "md" },
+  settings: { label: "settings.json", icon: "json" },
 };
 
 /* Sidebar section a tab belongs to, for tabs that aren't their own section (e.g. profile sub-pages) */
@@ -173,6 +174,7 @@ function syncIdeChrome(tabName) {
   if (tabName === "credly") renderCredlyBody();
   if (tabName === "scm") renderSourceControlPanel();
   if (tabName === "timeline") renderTimelinePanel();
+  if (tabName === "settings") renderSettingsPanel();
   markTabExplored(tabName);
   refreshMinimap();
 }
@@ -3578,6 +3580,77 @@ function renderGithubActivity(container, events) {
   }).join("");
 }
 
+/* ===== Settings Panel ===== */
+const JSON_TOKEN_RE = /("(?:\\.|[^"\\])*"(\s*:)?)|(\btrue\b|\bfalse\b)|(\bnull\b)|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/g;
+
+function highlightJSON(obj) {
+  const raw = JSON.stringify(obj, null, 2);
+  let result = "";
+  let lastIndex = 0;
+  let match;
+  JSON_TOKEN_RE.lastIndex = 0;
+  while ((match = JSON_TOKEN_RE.exec(raw)) !== null) {
+    result += escapeHtml(raw.slice(lastIndex, match.index));
+    const [full, str, colon, bool, nul, num] = match;
+    if (str) {
+      result += `<span class="${colon ? "json-key" : "json-string"}">${escapeHtml(full)}</span>`;
+    } else if (bool) {
+      result += `<span class="json-boolean">${escapeHtml(full)}</span>`;
+    } else if (nul) {
+      result += `<span class="json-null">${escapeHtml(full)}</span>`;
+    } else if (num) {
+      result += `<span class="json-number">${escapeHtml(full)}</span>`;
+    }
+    lastIndex = match.index + full.length;
+  }
+  result += escapeHtml(raw.slice(lastIndex));
+  return result;
+}
+
+function buildSettingsSnapshot() {
+  const isLight = document.documentElement.classList.contains("light-theme") || document.documentElement.dataset.theme === "light";
+  return {
+    theme: isLight ? "light" : "dark",
+    admin_mode: !!state.isAdmin,
+    content: {
+      projects: state.projects.length,
+      experiences: state.experiences.length,
+      resume_entries: state.resume.length,
+      skills: state.skills.length,
+    },
+    features: {
+      zen_mode: true,
+      command_palette: true,
+      live_visitor_presence: true,
+      source_control_panel: true,
+      exploration_progress: true,
+    },
+    keyboard_shortcuts: {
+      command_palette: "Cmd/Ctrl+K",
+      settings: "Cmd/Ctrl+,",
+      terminal: "`",
+      zen_mode: "Z",
+      close_tab: "W",
+      close_all_tabs: "Shift+W",
+      switch_tabs: "1-8",
+      theme_toggle: "T",
+      shortcuts_overlay: "?",
+    },
+    build: {
+      framework: "Flask + Jinja2",
+      frontend: "Vanilla JavaScript + Tailwind CSS",
+      hosting: "AWS Elastic Beanstalk",
+      ci_cd: "GitHub Actions",
+    },
+  };
+}
+
+function renderSettingsPanel() {
+  const el = document.getElementById("settings-json");
+  if (!el) return;
+  el.innerHTML = highlightJSON(buildSettingsSnapshot());
+}
+
 /* ===== Source Control Panel ===== */
 function renderSourceControlPanel() {
   const listEl = document.getElementById("scm-changes-list");
@@ -3968,6 +4041,7 @@ function toggleShortcutsOverlay() {
         <div class="shortcut-item"><kbd>[</kbd> <kbd>]</kbd><span>Previous / next open tab</span></div>
         <div class="shortcut-item"><kbd>W</kbd><span>Close current tab</span></div>
         <div class="shortcut-item"><kbd>Shift</kbd>+<kbd>W</kbd><span>Close all tabs</span></div>
+        <div class="shortcut-item"><kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>,</kbd><span>Open Settings</span></div>
         <div class="shortcut-item"><kbd>Alt</kbd>+Click<span>Multi-select Resume entries to compare</span></div>
         <div class="shortcut-item"><kbd>Dbl-click</kbd><span>Edit card (admin)</span></div>
       </div>
@@ -4013,6 +4087,7 @@ function getCommandPaletteItems() {
     { icon: "contrast-outline", label: "Toggle Theme", hint: "dark / light", action: () => document.getElementById("theme-toggle")?.click() },
     { icon: "contract-outline", label: "Toggle Zen Mode", hint: "Z", action: () => toggleZenMode() },
     { icon: "close-outline", label: "Close All Tabs", hint: "Shift+W", action: () => closeAllIdeTabs() },
+    { icon: "settings-outline", label: "Settings", hint: "Cmd/Ctrl+,", action: () => openIdeTabByName("settings") },
     { icon: "keypad-outline", label: "Keyboard Shortcuts", hint: "?", action: () => toggleShortcutsOverlay() },
   ];
   if (typeof toggleTerminalPanel === "function") {
@@ -4142,6 +4217,10 @@ function initCommandPalette() {
       e.preventDefault();
       if (document.getElementById("command-palette-overlay")) closeCommandPalette();
       else openCommandPalette();
+    }
+    if ((e.metaKey || e.ctrlKey) && e.key === ",") {
+      e.preventDefault();
+      openIdeTabByName("settings");
     }
   });
 }
