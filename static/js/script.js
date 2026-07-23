@@ -124,6 +124,7 @@ function showSkeletons(gridId, count = 6) {
 
 function switchTab(tabName) {
   if (typeof hideBlameTooltip === "function") hideBlameTooltip();
+  if (tabName !== "resume" && typeof clearResumeMultiSelect === "function") clearResumeMultiSelect();
   tabs.forEach((it) => {
     it.classList.remove("active");
     it.setAttribute("aria-selected", "false");
@@ -1472,8 +1473,61 @@ function buildCommitNode(item) {
   li.addEventListener("mouseleave", hideBlameTooltip);
   li.addEventListener("focus", () => showBlameTooltip(li, blameInfo));
   li.addEventListener("blur", hideBlameTooltip);
+  li.addEventListener("click", (e) => {
+    if (!e.altKey) return;
+    e.preventDefault();
+    toggleResumeMultiSelect(li, item);
+  });
 
   return li;
+}
+
+/* ===== Multi-cursor easter egg: Alt+click commit nodes to compare ===== */
+let resumeMultiSelect = null;
+
+function toggleResumeMultiSelect(li, item) {
+  if (!resumeMultiSelect) resumeMultiSelect = new Map();
+  if (resumeMultiSelect.has(item.id)) {
+    resumeMultiSelect.delete(item.id);
+    li.classList.remove("commit-node--selected");
+  } else {
+    resumeMultiSelect.set(item.id, item);
+    li.classList.add("commit-node--selected");
+  }
+  renderResumeMultiSelectPanel();
+}
+
+function clearResumeMultiSelect() {
+  if (!resumeMultiSelect || !resumeMultiSelect.size) return;
+  resumeMultiSelect.clear();
+  document.querySelectorAll(".commit-node--selected").forEach((el) => el.classList.remove("commit-node--selected"));
+  renderResumeMultiSelectPanel();
+}
+
+function renderResumeMultiSelectPanel() {
+  let panel = document.getElementById("resume-multiselect-panel");
+  if (!resumeMultiSelect || resumeMultiSelect.size < 2) {
+    panel?.remove();
+    return;
+  }
+  if (!panel) {
+    panel = document.createElement("div");
+    panel.id = "resume-multiselect-panel";
+    panel.className = "multiselect-panel";
+    document.getElementById("resume")?.appendChild(panel);
+  }
+  const items = Array.from(resumeMultiSelect.values());
+  panel.innerHTML = `
+    <div class="multiselect-header">
+      <ion-icon name="albums-outline" aria-hidden="true"></ion-icon>
+      ${items.length} cursors active
+      <button type="button" class="multiselect-clear" id="multiselect-clear-btn">Clear</button>
+    </div>
+    <div class="multiselect-body">
+      ${items.map((it) => `<div class="multiselect-row"><strong>${escapeHtml(it.title)}</strong>${it.description ? ` — ${escapeHtml(it.description)}` : ""}</div>`).join("")}
+    </div>
+  `;
+  document.getElementById("multiselect-clear-btn")?.addEventListener("click", clearResumeMultiSelect);
 }
 
 let blameTooltipEl = null;
@@ -3872,6 +3926,7 @@ function toggleShortcutsOverlay() {
         <div class="shortcut-item"><kbd>[</kbd> <kbd>]</kbd><span>Previous / next open tab</span></div>
         <div class="shortcut-item"><kbd>W</kbd><span>Close current tab</span></div>
         <div class="shortcut-item"><kbd>Shift</kbd>+<kbd>W</kbd><span>Close all tabs</span></div>
+        <div class="shortcut-item"><kbd>Alt</kbd>+Click<span>Multi-select Resume entries to compare</span></div>
         <div class="shortcut-item"><kbd>Dbl-click</kbd><span>Edit card (admin)</span></div>
       </div>
     </div>`;
