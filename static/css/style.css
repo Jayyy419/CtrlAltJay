@@ -493,6 +493,7 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
 .file-tree-item .fdot.json { background: #cbcb41; }
 .file-tree-item .fdot.pdf { background: #e06c75; }
 .file-tree-item .fdot.diff { background: #e2c08d; }
+.file-tree-item .fdot.ts { background: #3178c6; }
 
 .ide-sidebar-resizer {
   width: 5px;
@@ -619,6 +620,7 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
 .ide-tab .fdot.json { background: #cbcb41; }
 .ide-tab .fdot.pdf { background: #e06c75; }
 .ide-tab .fdot.diff { background: #e2c08d; }
+.ide-tab .fdot.ts { background: #3178c6; }
 .ide-tab .close { opacity: 0.55; font-size: 0.9rem; margin-left: 2px; padding: 0 2px; border-radius: 3px; }
 .ide-tab .close:hover { opacity: 1; background: var(--ide-border-soft); }
 .ide-tab--enter { animation: ideTabEnter 0.2s ease; transform-origin: left center; }
@@ -2324,6 +2326,40 @@ body.zen-mode .ide-panel-scroll { padding: 48px max(32px, calc(50% - 380px)); }
 .contact-submit-btn:hover { background: var(--ide-accent-strong); }
 .contact-submit-btn:active { transform: scale(0.98); }
 .form-note { font-size: 0.78rem; color: var(--ide-text-faint); margin-top: 4px; }
+
+/* ===== Ask AI chat assistant ===== */
+.chat-window { display: flex; flex-direction: column; max-width: 760px; }
+.chat-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 240px;
+  max-height: 480px;
+  overflow-y: auto;
+  padding: 16px;
+  margin-bottom: 12px;
+  background: var(--ide-editor-bg-soft);
+  border: 1px solid var(--ide-border-soft);
+  border-radius: 8px;
+}
+.chat-message { display: flex; }
+.chat-message--user { justify-content: flex-end; }
+.chat-message--assistant { justify-content: flex-start; }
+.chat-bubble {
+  max-width: 80%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+.chat-message--assistant .chat-bubble { background: var(--ide-editor-bg); border: 1px solid var(--ide-border-soft); color: var(--ide-text); }
+.chat-message--user .chat-bubble { background: var(--ide-accent); color: #fff; }
+.chat-bubble--typing { color: var(--ide-text-faint); font-style: italic; }
+.chat-bubble--error { border-color: rgba(239,68,68,0.4); color: #ef4444; }
+.chat-input-row { display: flex; gap: 10px; }
+.chat-input-row .ide-control { flex: 1; }
+.chat-input-row .contact-submit-btn { align-self: stretch; }
 
 /* ===== Guestbook: "Leave a Note" ===== */
 .guestbook-form { display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px; }
