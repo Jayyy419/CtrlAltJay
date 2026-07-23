@@ -258,6 +258,7 @@
 
         <section class="mt-10" id="github-activity-section">
           <h3 class="font-display text-xl font-semibold text-white mb-4"><ion-icon aria-hidden="true" name="logo-github" class="align-middle mr-2"></ion-icon>Recent Activity</h3>
+          <div id="github-verified-metrics" class="gh-verified-metrics" hidden></div>
           <div id="github-activity-strip" class="gh-activity-strip">
             <div class="gh-activity-loading">// loading recent GitHub activity...</div>
           </div>
@@ -508,6 +509,11 @@
           <div>
             <h1 class="font-display text-2xl font-bold text-white tracking-tight">{{ profile.name }}</h1>
             <p class="headline">{{ profile.headline }}</p>
+            {% if profile.availability %}
+            <span class="availability-badge availability-badge--{{ profile.availability.status }}">
+              <span class="availability-dot"></span>{{ profile.availability.label }}
+            </span>
+            {% endif %}
           </div>
         </div>
 
@@ -544,6 +550,12 @@
       <article id="now" class="tab-panel animate-fade-up" role="tabpanel" tabindex="0">
         <h2 class="font-display text-2xl font-bold text-white tracking-tight">Now</h2>
         <div class="modal-tag">Current Focus</div>
+        {% if profile.now_updated %}
+        <p class="now-cadence-note">
+          <ion-icon aria-hidden="true" name="refresh-outline"></ion-icon>
+          Last updated {{ profile.now_updated }}{% if profile.now_cadence %} · {{ profile.now_cadence }}{% endif %}
+        </p>
+        {% endif %}
         <div class="modal-body">
           {% for item in profile.now_building %}
           <div class="now-card">
@@ -678,6 +690,15 @@
           <div class="compare-divider"></div>
           <div class="compare-pane" id="compare-pane-b"></div>
         </div>
+      </article>
+
+      <!-- Resume Diff: opened when two resume entries are Alt+click selected -->
+      <article id="resume-diff-viewer" class="tab-panel animate-fade-up" role="tabpanel" tabindex="0">
+        <div class="compare-header">
+          <h2 class="font-display text-2xl font-bold text-white tracking-tight">Resume Diff</h2>
+          <button type="button" id="resume-diff-clear-btn" class="compare-clear-btn">Clear selection</button>
+        </div>
+        <div class="resume-diff-body" id="resume-diff-body"></div>
       </article>
 
         </div>
