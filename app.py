@@ -92,6 +92,8 @@ app.config["MAIL_PASSWORD"] = _resolve_secret("MAIL_PASSWORD", "MAIL_PASSWORD_SE
 app.config["MAIL_USE_TLS"] = os.getenv("MAIL_USE_TLS", "true").lower() in ["true", "1", "t"]
 app.config["MAIL_USE_SSL"] = os.getenv("MAIL_USE_SSL", "false").lower() in ["true", "1", "t"]
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB upload limit
+app.config["MAX_FORM_MEMORY_SIZE"] = 1 * 1024 * 1024  # cap non-file form field memory
+app.config["MAX_FORM_PARTS"] = 200  # cap multipart field count
 
 # Session cookie hardening — explicit rather than relying on framework/browser defaults.
 app.config["SESSION_COOKIE_HTTPONLY"] = True
