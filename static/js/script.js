@@ -1311,8 +1311,6 @@ function wireProjectControls() {
     addBulkCheckboxes(document.getElementById("projects-grid"));
     addFavoriteButtons();
     enableCardDragging(document.getElementById("projects-grid"));
-    // Restore list view if active
-    if (localStorage.getItem(VIEW_KEY) === "list") document.getElementById("projects-grid")?.classList.add("list-view");
   };
   
   state.rerenderExperiences = () => {
@@ -1322,7 +1320,6 @@ function wireProjectControls() {
     addBulkCheckboxes(document.getElementById("experiences-grid"));
     addFavoriteButtons();
     enableCardDragging(document.getElementById("experiences-grid"));
-    if (localStorage.getItem(VIEW_KEY) === "list") document.getElementById("experiences-grid")?.classList.add("list-view");
   };
 
   if (!state.controlsBound) {
@@ -1437,7 +1434,6 @@ async function bootstrap() {
   initResumeKey();
   initDblClickEdit();
   initThemeToggle();
-  initViewToggle();
   initDragAndDrop();
   initBatchSkills();
   initActivityLog();
@@ -2422,35 +2418,6 @@ function renderMarkdown(text) {
   // Line breaks
   s = s.replace(/\n/g, "<br>");
   return s;
-}
-
-/* ===== Card View Toggle (Grid/List) ===== */
-const VIEW_KEY = "ctrlaltjay-view-mode";
-
-function initViewToggle() {
-  const btn = document.getElementById("view-toggle");
-  if (!btn) return;
-  const saved = localStorage.getItem(VIEW_KEY);
-  if (saved === "list") {
-    document.querySelectorAll(".card-grid").forEach((g) => g.classList.add("list-view"));
-  }
-  updateViewIcon(btn);
-
-  btn.addEventListener("click", () => {
-    const grids = document.querySelectorAll(".card-grid");
-    const isList = grids[0]?.classList.contains("list-view");
-    grids.forEach((g) => g.classList.toggle("list-view", !isList));
-    localStorage.setItem(VIEW_KEY, isList ? "grid" : "list");
-    updateViewIcon(btn);
-  });
-}
-
-function updateViewIcon(btn) {
-  const isList = document.querySelector(".card-grid")?.classList.contains("list-view");
-  btn.innerHTML = isList
-    ? '<ion-icon name="grid-outline"></ion-icon>'
-    : '<ion-icon name="list-outline"></ion-icon>';
-  btn.title = isList ? "Switch to grid view" : "Switch to list view";
 }
 
 /* ===== Favorites / Bookmarks ===== */
