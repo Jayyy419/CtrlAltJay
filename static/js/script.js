@@ -12,9 +12,14 @@ const state = {
   rerenderExperiences: null,
   currentSection: null,
   dataLoaded: false,
-  ideOpenTabs: ["about"],
+  ideOpenTabs: [],
   ideItemMeta: {},
 };
+
+/* Top-level activity-bar sections: switching to these just changes the active
+   panel, they never get a tab in the tab bar — tabs are reserved for actual
+   listing items (project/experience cards, resume entries, skills, etc.) */
+const ROOT_SECTION_TABS = ["about", "projects", "experiences", "resume", "stack", "contact", "scm", "profile", "settings"];
 
 const IDE_TAB_META = {
   about: { label: "bio.md", icon: "md" },
@@ -161,7 +166,11 @@ function initTabs() {
 
 function syncIdeChrome(tabName) {
   if (!IDE_TAB_META[tabName]) return;
-  if (!state.ideOpenTabs.includes(tabName)) state.ideOpenTabs.push(tabName);
+  if (ROOT_SECTION_TABS.includes(tabName)) {
+    state.ideOpenTabs = state.ideOpenTabs.filter((t) => t !== tabName);
+  } else if (!state.ideOpenTabs.includes(tabName)) {
+    state.ideOpenTabs.push(tabName);
+  }
   renderIdeTabbar(tabName);
   showFileTreeSection(TAB_SECTION_OVERRIDE[tabName] || tabName);
   document.querySelectorAll(".file-tree-item[data-tab]").forEach((el) => {
@@ -843,16 +852,16 @@ function openIdeTabByName(name) {
 function closeIdeTab(name, activeTab) {
   state.ideOpenTabs = state.ideOpenTabs.filter((t) => t !== name);
   if (state.ideItemMeta?.[name]) delete state.ideItemMeta[name];
-  if (state.ideOpenTabs.length === 0) state.ideOpenTabs = ["about"];
   if (name === activeTab) {
-    openIdeTabByName(state.ideOpenTabs[state.ideOpenTabs.length - 1]);
+    const next = state.ideOpenTabs[state.ideOpenTabs.length - 1];
+    openIdeTabByName(next || "about");
   } else {
     renderIdeTabbar(activeTab);
   }
 }
 
 function closeAllIdeTabs() {
-  state.ideOpenTabs = ["about"];
+  state.ideOpenTabs = [];
   state.ideItemMeta = {};
   openIdeTabByName("about");
 }
@@ -4021,7 +4030,7 @@ function initKeyboardShortcuts() {
         break;
       case "1": case "2": case "3": case "4": case "5": case "6": case "7": case "8": {
         if (modalActive) return;
-        const tabNames = ["about", "projects", "experiences", "resume", "stack", "contact", "scm", "profile"];
+        const tabNames = ["about", "contact", "experiences", "projects", "resume", "scm", "stack", "profile"];
         const idx = parseInt(e.key) - 1;
         if (tabNames[idx]) { switchTab(tabNames[idx]); e.preventDefault(); }
         break;
@@ -4428,7 +4437,7 @@ function runTerminalCommand(raw) {
       printTermLine("  cat <file>           open a file (e.g. cat about.md)");
       printTermLine("  open <github|linkedin>       open a social profile");
       printTermLine("  theme <dark|light>   switch theme");
-      printTermLine("  resume | stack | contact | scm | profile    jump to a section");
+      printTermLine("  contact | resume | scm | stack | profile    jump to a section");
       printTermLine("  zen                  toggle distraction-free zen mode");
       printTermLine("  banner               print an intro banner");
       printTermLine("  clear                clear the terminal");
@@ -4450,7 +4459,7 @@ function runTerminalCommand(raw) {
     }
     case "ls": {
       if (!arg) {
-        printTermLine("about/  projects/  experiences/  resume.pdf  stack.json  contact.md  changes.diff  profile.md");
+        printTermLine("about/  contact.md  experiences/  projects/  resume.pdf  changes.diff  stack.json  profile.md");
       } else if (arg === "projects" || arg === "experiences") {
         const files = getAllTerminalFiles().filter((f) => f.sectionTab === arg);
         if (!files.length) printTermLine(`ls: ${arg}/: no entries yet`);
@@ -4629,7 +4638,7 @@ function initMobileSwipe() {
   let touchStartY = 0;
   const content = document.querySelector(".content");
   if (!content) return;
-  const tabOrder = ["about", "projects", "experiences", "resume", "stack", "contact", "scm", "profile"];
+  const tabOrder = ["about", "contact", "experiences", "projects", "resume", "scm", "stack", "profile"];
   content.addEventListener("touchstart", (e) => {
     touchStartX = e.changedTouches[0].screenX;
     touchStartY = e.changedTouches[0].screenY;
