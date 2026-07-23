@@ -157,6 +157,8 @@ function showFileTreeSection(sectionTab) {
   document.querySelectorAll(".file-tree-section").forEach((el) => {
     el.classList.toggle("active", el.dataset.treeSection === sectionTab);
   });
+  const headEl = document.getElementById("ide-sidebar-head");
+  if (headEl && sectionTab) headEl.textContent = sectionTab.toUpperCase();
 }
 
 function renderIdeTabbar(activeTab) {
@@ -366,11 +368,11 @@ function renderMinimapNoise(container) {
 
 function renderMinimapLines(container, root) {
   const specs = computeMinimapLineSpecs(root);
-  if (!specs.length) {
+  if (specs.length) {
+    container.innerHTML = specs.map((s) => `<div class="mm-line" style="width:${s.width}%;background:${s.color}"></div>`).join("");
+  } else {
     renderMinimapNoise(container);
-    return;
   }
-  container.innerHTML = specs.map((s) => `<div class="mm-line" style="width:${s.width}%;background:${s.color}"></div>`).join("");
 }
 
 function refreshMinimap() {
@@ -2517,6 +2519,26 @@ function trackRecentlyViewed(itemId) {
   renderRecentlyViewed();
 }
 
+function updateHScrollFade(strip) {
+  const wrap = strip.closest(".h-scroll-wrap");
+  if (!wrap) return;
+  wrap.classList.toggle("has-overflow-left", strip.scrollLeft > 2);
+  wrap.classList.toggle("has-overflow-right", strip.scrollLeft + strip.clientWidth < strip.scrollWidth - 2);
+}
+
+function initHScrollFade(strip) {
+  if (!strip) return;
+  if (!strip.dataset.hscrollInit) {
+    strip.dataset.hscrollInit = "1";
+    strip.addEventListener("scroll", () => updateHScrollFade(strip), { passive: true });
+    window.addEventListener("resize", () => updateHScrollFade(strip));
+    if (typeof ResizeObserver !== "undefined") {
+      new ResizeObserver(() => updateHScrollFade(strip)).observe(strip);
+    }
+  }
+  updateHScrollFade(strip);
+}
+
 function renderRecentlyViewed() {
   const recentIds = JSON.parse(localStorage.getItem(RECENT_KEY) || "[]");
   const allItems = [...state.projects, ...state.experiences];
@@ -2550,6 +2572,7 @@ function renderRecentStrip(containerId, items) {
     card.addEventListener("click", () => openItemTab(item, item.section === "experience" ? "experiences" : "projects"));
     strip.appendChild(card);
   });
+  initHScrollFade(strip);
 }
 
 /* ===== Related Items in Detail Modal ===== */
@@ -2587,6 +2610,7 @@ function renderRelatedItems(item) {
     card.addEventListener("click", () => openItemTab(rel, rel.section === "experience" ? "experiences" : "projects"));
     strip.appendChild(card);
   });
+  initHScrollFade(strip);
 }
 
 /* ===== Activity Log (Admin) ===== */
