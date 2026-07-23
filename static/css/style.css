@@ -489,67 +489,116 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
   font-weight: 600;
 }
 
-/* Timeline */
-.timeline { list-style: none; margin: 20px 0 0; padding: 0; position: relative; }
-.timeline::before { content: ''; position: absolute; left: 15px; top: 0; bottom: 0; width: 2px; background: rgba(255,255,255,0.06); }
-.timeline li {
-  margin: 0 0 20px 60px;
-  padding: 18px;
-  border: 1.5px solid rgba(255,255,255,0.06);
-  border-radius: 14px;
-  background: rgba(26,26,46,0.6);
-  backdrop-filter: blur(8px);
-  position: relative;
-  transition: border-color 0.3s ease;
+/* Resume: git commit graph */
+.commit-branch-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Plex Mono', monospace;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ide-type);
+  background: var(--ide-editor-bg-soft);
+  border: 1px solid var(--ide-border-soft);
+  border-radius: 4px;
+  padding: 4px 10px;
+  margin-bottom: 18px;
 }
-.timeline li:hover { border-color: rgba(245,158,11,0.4); }
-.timeline li::before {
+.commit-graph { list-style: none; margin: 0; padding: 0; position: relative; }
+.commit-graph::before {
   content: '';
   position: absolute;
-  left: -36px;
-  top: 22px;
+  left: 5px;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  background: var(--ide-border);
+}
+.commit-node { position: relative; padding: 0 0 26px 28px; }
+.commit-node:last-child { padding-bottom: 0; }
+.commit-node::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 4px;
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: #f59e0b;
-  box-shadow: 0 0 12px rgba(245,158,11,0.4);
+  background: var(--ide-editor-bg);
+  border: 2px solid var(--ide-accent);
+  z-index: 1;
 }
-.timeline h4 { margin: 0 0 4px; color: #fff; font-size: 0.95rem; font-family: 'Space Grotesk', system-ui, sans-serif; }
-.timeline small { display: block; margin-top: 5px; color: #f59e0b; font-weight: 600; font-size: 0.82rem; }
-.timeline p { margin: 8px 0 0; line-height: 1.6; color: #94a3b8; font-size: 0.88rem; }
+.commit-node.commit-node--head::before { border-color: var(--ide-git-added); background: var(--ide-git-added); }
+.commit-top-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.commit-hash { font-family: 'Plex Mono', monospace; font-size: 0.78rem; color: var(--ide-string); flex-shrink: 0; }
+.commit-msg { font-family: 'Plex Mono', monospace; font-size: 0.9rem; font-weight: 600; color: var(--ide-text-bright); }
+.commit-head-badge {
+  font-family: 'Plex Mono', monospace;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #0a0a18;
+  background: var(--ide-git-added);
+  border-radius: 3px;
+  padding: 1px 6px;
+  letter-spacing: 0.03em;
+}
+.commit-meta { font-family: 'Plex Mono', monospace; font-size: 0.78rem; color: var(--ide-text-dim); margin-top: 4px; }
+.commit-body { font-size: 0.85rem; color: var(--ide-text); line-height: 1.6; margin-top: 6px; }
 
-/* Skill tiers & chips (JS-generated) */
-.skill-tier-heading {
-  color: #94a3b8;
+/* Skills: Extensions marketplace panel (JS-generated) */
+.ext-tier-heading {
+  font-family: 'Plex Mono', monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
   letter-spacing: 0.08em;
+  color: var(--ide-text-faint);
+  margin-bottom: 10px;
 }
-.skill-chip {
-  display: inline-block;
-  padding: 6px 16px;
-  border-radius: 999px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  border: 1.5px solid rgba(255,255,255,0.08);
-  background: rgba(26,26,46,0.6);
-  backdrop-filter: blur(8px);
-  transition: border-color 0.3s ease, background 0.3s ease;
+.ext-list { display: flex; flex-direction: column; gap: 8px; }
+.ext-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--ide-border-soft);
+  border-radius: 6px;
+  background: var(--ide-editor-bg-soft);
+  transition: border-color 0.2s ease;
 }
-.skill-chip:hover { border-color: rgba(245,158,11,0.5); }
-.skill-chip--primary-stack {
-  color: #f59e0b;
-  border-color: rgba(245,158,11,0.3);
-  background: rgba(245,158,11,0.08);
+.ext-card:hover { border-color: var(--ide-accent); }
+.ext-icon {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Plex Mono', monospace;
+  font-weight: 700;
+  font-size: 1rem;
+  color: #fff;
 }
-.skill-chip--experienced {
-  color: #38bdf8;
-  border-color: rgba(56,189,248,0.3);
-  background: rgba(56,189,248,0.08);
+.ext-info { flex: 1; min-width: 0; }
+.ext-title-row { display: flex; align-items: center; gap: 8px; }
+.ext-name { font-family: 'Plex Sans', sans-serif; font-weight: 600; font-size: 0.9rem; color: var(--ide-text-bright); }
+.ext-badge {
+  font-family: 'Plex Mono', monospace;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--ide-git-added);
+  background: rgba(129,184,139,0.12);
+  border: 1px solid rgba(129,184,139,0.3);
+  border-radius: 3px;
+  padding: 1px 6px;
+  flex-shrink: 0;
 }
-.skill-chip--familiar {
-  color: #a78bfa;
-  border-color: rgba(167,139,250,0.3);
-  background: rgba(167,139,250,0.08);
-}
+.ext-publisher { font-family: 'Plex Mono', monospace; font-size: 0.72rem; color: var(--ide-text-faint); margin-top: 2px; }
+.ext-bar-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.ext-bar { flex: 1; height: 4px; border-radius: 2px; background: var(--ide-border); overflow: hidden; }
+.ext-bar-fill { height: 100%; background: var(--ide-accent); border-radius: 2px; }
+.ext-bar-pct { font-family: 'Plex Mono', monospace; font-size: 0.68rem; color: var(--ide-text-faint); flex-shrink: 0; }
 
 /* Flash messages */
 .flash-item.error { color: #ef4444; border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.08); }
@@ -711,19 +760,16 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
   .card-skill-chip { font-size: 0.72rem !important; padding: 3px 9px !important; }
   .status-badge { font-size: 0.72rem !important; }
 
-  /* Timeline */
-  .timeline-wrap { gap: 2rem !important; grid-template-columns: 1fr !important; }
-  .timeline li { margin-left: 44px; padding: 14px !important; border-radius: 12px !important; }
-  .timeline li::before { left: -28px; width: 10px; height: 10px; }
-  .timeline::before { left: 12px; }
-  .timeline h4 { font-size: 0.95rem !important; }
-  .timeline p { font-size: 0.875rem !important; line-height: 1.65 !important; }
-  .timeline small { font-size: 0.8rem !important; }
+  /* Resume commit graph */
+  .commit-graph-wrap { gap: 2rem !important; grid-template-columns: 1fr !important; }
+  .commit-msg { font-size: 0.85rem !important; }
+  .commit-body { font-size: 0.82rem !important; line-height: 1.6 !important; }
+  .commit-meta { font-size: 0.72rem !important; }
 
   /* Skills */
-  .skill-tier { margin-bottom: 1.25rem !important; }
-  .skill-tier-heading { font-size: 0.78rem !important; margin-bottom: 0.5rem !important; }
-  .skill-chip { font-size: 0.8rem !important; padding: 6px 14px !important; }
+  .ext-tier { margin-bottom: 1.25rem !important; }
+  .ext-tier-heading { font-size: 0.7rem !important; margin-bottom: 0.5rem !important; }
+  .ext-name { font-size: 0.85rem !important; }
 
   /* Focus cards (About tab) */
   .focus-grid { gap: 0.75rem !important; }
@@ -1463,11 +1509,6 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
 .light-theme .modal-card { background: rgba(255,255,255,0.97) !important; border-color: var(--border-color) !important; }
 .light-theme .modal-card h3 { color: var(--text-primary) !important; }
 .light-theme .modal-close { background: var(--bg-input) !important; border-color: var(--border-color) !important; }
-.light-theme .timeline li { background: var(--bg-card) !important; border-color: var(--border-color) !important; }
-.light-theme .timeline h4 { color: var(--text-primary) !important; }
-.light-theme .timeline p { color: var(--text-secondary) !important; }
-.light-theme .timeline::before { background: var(--border-color) !important; }
-.light-theme .skill-chip { background: var(--bg-input) !important; border-color: var(--border-color) !important; }
 .light-theme .panel-head h2 { color: var(--text-primary) !important; }
 .light-theme .panel-head p { color: var(--text-secondary) !important; }
 .light-theme #about h3 { color: var(--text-primary) !important; }
@@ -2149,15 +2190,22 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
   .content { background: none !important; border: none !important; box-shadow: none !important; backdrop-filter: none !important; padding: 0 !important; }
   .tab-panel { page-break-inside: avoid; }
   .panel-head h2 { color: #222 !important; }
-  .timeline li { border-color: #ccc !important; background: #fafafa !important; }
-  .timeline li::before { background: #222 !important; box-shadow: none !important; }
-  .timeline::before { background: #ccc !important; }
-  .timeline h4 { color: #222 !important; }
-  .timeline small { color: #555 !important; }
-  .timeline p { color: #444 !important; }
-  .timeline-wrap { grid-template-columns: 1fr 1fr !important; }
-  .skill-chip { background: #f0f0f0 !important; border-color: #ccc !important; color: #333 !important; }
-  .skill-tier-heading { color: #555 !important; }
+  .commit-node::before { border-color: #222 !important; background: #fff !important; }
+  .commit-node.commit-node--head::before { background: #222 !important; }
+  .commit-graph::before { background: #ccc !important; }
+  .commit-branch-label { color: #222 !important; background: none !important; border-color: #ccc !important; }
+  .commit-hash { color: #666 !important; }
+  .commit-msg { color: #222 !important; }
+  .commit-head-badge { background: #222 !important; color: #fff !important; }
+  .commit-meta { color: #555 !important; }
+  .commit-body { color: #444 !important; }
+  .commit-graph-wrap { grid-template-columns: 1fr 1fr !important; }
+  .ext-card { background: #f7f7f7 !important; border-color: #ccc !important; }
+  .ext-icon { background: #333 !important; }
+  .ext-name { color: #222 !important; }
+  .ext-badge { background: none !important; color: #222 !important; border-color: #ccc !important; }
+  .ext-publisher, .ext-bar-pct, .ext-tier-heading { color: #555 !important; }
+  .ext-bar-fill { background: #333 !important; }
 }
 
 /* (Mobile overrides for late-declared components — merged into main @media 640px block above) */
