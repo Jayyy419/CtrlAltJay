@@ -744,12 +744,12 @@
       <button class="modal-close" data-close-admin-login aria-label="Close login">
         <ion-icon aria-hidden="true" name="close-outline"></ion-icon>
       </button>
-      <h3 id="admin-login-title" class="text-xl font-bold text-white mb-1">Admin Login</h3>
-      <p class="text-ink-muted text-sm mb-5">Enter passcode to manage content.</p>
+      <h3 id="admin-login-title" class="text-xl font-bold mb-1">Admin Login</h3>
+      <p class="text-sm mb-5">Enter passcode to manage content.</p>
       <form id="admin-login-form" class="grid gap-3">
         <input type="password" id="admin-login-passcode" name="passcode" placeholder="Passcode" required autocomplete="current-password"
-          class="w-full px-4 py-3 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm placeholder:text-ink-muted focus:outline-none focus:border-accent transition-colors">
-        <button type="submit" class="btn-primary bg-gradient-to-r from-accent to-accent-dark text-surface-400 font-bold rounded-xl px-6 py-3 text-sm border-none cursor-pointer transition-all duration-300 hover:shadow-[0_0_24px_rgba(245,158,11,0.4)]">Sign In</button>
+          class="ide-control w-full">
+        <button type="submit" class="contact-submit-btn">Sign In</button>
       </form>
       <p id="admin-login-feedback" class="text-xs mt-3" style="color:#f87171" aria-live="polite"></p>
     </section>
@@ -762,41 +762,41 @@
       <button class="modal-close" data-close-admin-item aria-label="Close item editor">
         <ion-icon aria-hidden="true" name="close-outline"></ion-icon>
       </button>
-      <h3 id="admin-item-title" class="text-xl font-bold text-white mb-4">Create Item</h3>
+      <h3 id="admin-item-title" class="text-xl font-bold mb-4">Create Item</h3>
       <form id="admin-item-form" class="admin-item-form grid gap-3">
         <input type="hidden" id="admin-item-id" name="id">
         <div class="field-grid grid grid-cols-2 gap-3 max-sm:grid-cols-1" id="section-field-group">
           <div>
-            <label for="admin-item-section" class="text-sm text-ink-soft">Section <span class="required-star text-red-400 font-bold">*</span></label>
-            <select id="admin-item-section" name="section" required class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent">
+            <label for="admin-item-section" class="admin-label">Section <span class="required-star text-red-400 font-bold">*</span></label>
+            <select id="admin-item-section" name="section" required class="ide-control w-full mt-1">
               <option value="">Select an option</option>
               <option value="project">Project</option>
               <option value="experience">Experience</option>
             </select>
           </div>
           <div>
-            <label for="admin-item-category" class="text-sm text-ink-soft">Category <span class="required-star text-red-400 font-bold">*</span></label>
-            <select id="admin-item-category" name="category" required class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent">
+            <label for="admin-item-category" class="admin-label">Category <span class="required-star text-red-400 font-bold">*</span></label>
+            <select id="admin-item-category" name="category" required class="ide-control w-full mt-1">
               <option value="">Select section first</option>
             </select>
           </div>
         </div>
         <div>
-          <label for="admin-item-title-input" class="text-sm text-ink-soft">Title <span class="required-star text-red-400 font-bold">*</span></label>
-          <input id="admin-item-title-input" type="text" name="title" required class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent">
+          <label for="admin-item-title-input" class="admin-label">Title <span class="required-star text-red-400 font-bold">*</span></label>
+          <input id="admin-item-title-input" type="text" name="title" required class="ide-control w-full mt-1">
         </div>
         <div>
-          <label for="admin-item-summary" class="text-sm text-ink-soft">Summary</label>
-          <textarea id="admin-item-summary" name="summary" rows="2" class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent resize-y"></textarea>
+          <label for="admin-item-summary" class="admin-label">Summary</label>
+          <textarea id="admin-item-summary" name="summary" rows="2" class="ide-control w-full mt-1 resize-y"></textarea>
         </div>
         <div>
-          <label for="admin-item-description" class="text-sm text-ink-soft">Description</label>
-          <textarea id="admin-item-description" name="description" rows="4" class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent resize-y"></textarea>
+          <label for="admin-item-description" class="admin-label">Description</label>
+          <textarea id="admin-item-description" name="description" rows="4" class="ide-control w-full mt-1 resize-y"></textarea>
         </div>
         <div class="field-grid grid grid-cols-2 gap-3 max-sm:grid-cols-1">
           <div>
-            <label for="admin-item-date-label" class="text-sm text-ink-soft">Date Label</label>
-            <select id="admin-item-date-label" name="date_label" class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent">
+            <label for="admin-item-date-label" class="admin-label">Date Label</label>
+            <select id="admin-item-date-label" name="date_label" class="ide-control w-full mt-1">
               <option value="">None</option>
               <option value="Released">Released</option>
               <option value="Work in Progress">Work in Progress</option>
@@ -805,13 +805,13 @@
             </select>
           </div>
           <div>
-            <label for="admin-item-date-value" class="text-sm text-ink-soft">Date Value</label>
-            <input id="admin-item-date-value" type="date" name="date_value" class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent">
+            <label for="admin-item-date-value" class="admin-label">Date Value</label>
+            <input id="admin-item-date-value" type="date" name="date_value" class="ide-control w-full mt-1">
           </div>
         </div>
         <div>
-          <label for="admin-item-status" class="text-sm text-ink-soft">Status</label>
-          <select id="admin-item-status" name="status" class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent">
+          <label for="admin-item-status" class="admin-label">Status</label>
+          <select id="admin-item-status" name="status" class="ide-control w-full mt-1">
             <option value="">None</option>
             <option value="Active">Active</option>
             <option value="Archived">Archived</option>
@@ -820,54 +820,54 @@
           </select>
         </div>
         <div>
-          <label for="admin-item-deliverables" class="text-sm text-ink-soft">Deliverables</label>
-          <textarea id="admin-item-deliverables" name="deliverables" rows="2" class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent resize-y"></textarea>
+          <label for="admin-item-deliverables" class="admin-label">Deliverables</label>
+          <textarea id="admin-item-deliverables" name="deliverables" rows="2" class="ide-control w-full mt-1 resize-y"></textarea>
         </div>
         <div>
-          <label for="admin-item-challenges" class="text-sm text-ink-soft">Challenges</label>
-          <textarea id="admin-item-challenges" name="challenges" rows="2" class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent resize-y"></textarea>
+          <label for="admin-item-challenges" class="admin-label">Challenges</label>
+          <textarea id="admin-item-challenges" name="challenges" rows="2" class="ide-control w-full mt-1 resize-y"></textarea>
         </div>
         <div>
-          <label for="admin-item-future" class="text-sm text-ink-soft">Future Improvements</label>
-          <textarea id="admin-item-future" name="future_improvements" rows="2" class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent resize-y"></textarea>
+          <label for="admin-item-future" class="admin-label">Future Improvements</label>
+          <textarea id="admin-item-future" name="future_improvements" rows="2" class="ide-control w-full mt-1 resize-y"></textarea>
         </div>
         <div>
-          <label for="admin-item-extra" class="text-sm text-ink-soft">Extra Notes</label>
-          <textarea id="admin-item-extra" name="extra_notes" rows="2" class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm focus:outline-none focus:border-accent resize-y"></textarea>
+          <label for="admin-item-extra" class="admin-label">Extra Notes</label>
+          <textarea id="admin-item-extra" name="extra_notes" rows="2" class="ide-control w-full mt-1 resize-y"></textarea>
         </div>
         <div class="field-grid grid grid-cols-2 gap-3 max-sm:grid-cols-1">
           <div>
-            <label for="admin-item-image" class="text-sm text-ink-soft">Image</label>
-            <input id="admin-item-image" type="file" name="image" accept="image/*" class="w-full mt-1 text-sm text-ink file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-accent file:text-surface-400 file:cursor-pointer hover:file:bg-accent-dark">
+            <label for="admin-item-image" class="admin-label">Image</label>
+            <input id="admin-item-image" type="file" name="image" accept="image/*" class="admin-file-input w-full mt-1 text-sm file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:cursor-pointer">
             <input type="hidden" id="admin-item-image-path" name="image_path">
-            <p id="admin-item-image-info" class="text-xs text-ink-muted mt-1 truncate"></p>
+            <p id="admin-item-image-info" class="text-xs mt-1 truncate" style="color:var(--ide-text-dim)"></p>
             <img id="admin-item-image-preview" class="hidden mt-2 rounded-lg max-h-32 object-cover" alt="Preview">
           </div>
           <div>
-            <label for="admin-item-link" class="text-sm text-ink-soft">External Link</label>
-            <input id="admin-item-link" type="url" name="external_link" placeholder="https://..." class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm placeholder:text-ink-muted focus:outline-none focus:border-accent">
+            <label for="admin-item-link" class="admin-label">External Link</label>
+            <input id="admin-item-link" type="url" name="external_link" placeholder="https://..." class="ide-control w-full mt-1">
           </div>
         </div>
         <div>
-          <label for="admin-item-credential-url" class="text-sm text-ink-soft">Credential / Verification URL</label>
-          <input id="admin-item-credential-url" type="url" name="credential_url" placeholder="https://www.credly.com/badges/..." class="w-full mt-1 px-4 py-2.5 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm placeholder:text-ink-muted focus:outline-none focus:border-accent">
+          <label for="admin-item-credential-url" class="admin-label">Credential / Verification URL</label>
+          <input id="admin-item-credential-url" type="url" name="credential_url" placeholder="https://www.credly.com/badges/..." class="ide-control w-full mt-1">
         </div>
         <div>
-          <label for="admin-item-additional-images" class="text-sm text-ink-soft">Additional Images</label>
-          <input id="admin-item-additional-images" type="file" name="additional_images" accept="image/*" multiple class="w-full mt-1 text-sm text-ink file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-accent file:text-surface-400 file:cursor-pointer hover:file:bg-accent-dark">
+          <label for="admin-item-additional-images" class="admin-label">Additional Images</label>
+          <input id="admin-item-additional-images" type="file" name="additional_images" accept="image/*" multiple class="admin-file-input w-full mt-1 text-sm file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:cursor-pointer">
           <input type="hidden" id="admin-item-existing-additional" name="existing_additional_images">
           <div id="admin-item-additional-preview" class="flex gap-2 mt-2 flex-wrap"></div>
         </div>
         <div>
-          <label class="text-sm text-ink-soft">Skills</label>
+          <label class="admin-label">Skills</label>
           <div id="admin-item-skills-picker" class="skills-picker mt-1"></div>
           <input type="hidden" id="admin-item-skills" name="skills">
         </div>
         <div class="admin-item-actions flex justify-end gap-3 mt-4">
-          <button type="submit" class="btn-primary bg-gradient-to-r from-accent to-accent-dark text-surface-400 font-bold rounded-xl px-6 py-3 text-sm border-none cursor-pointer transition-all duration-300 hover:shadow-[0_0_24px_rgba(245,158,11,0.4)]" id="admin-item-submit">Save Item</button>
+          <button type="submit" class="contact-submit-btn" id="admin-item-submit">Save Item</button>
         </div>
       </form>
-      <p id="admin-item-feedback" class="form-note text-xs text-ink-muted mt-3" aria-live="polite"></p>
+      <p id="admin-item-feedback" class="form-note text-xs mt-3" aria-live="polite"></p>
     </section>
   </div>
 
@@ -880,14 +880,14 @@
         <ion-icon aria-hidden="true" name="close-outline"></ion-icon>
       </button>
       <div class="flex items-center gap-3 mb-1">
-        <ion-icon aria-hidden="true" name="lock-closed-outline" class="text-2xl text-accent"></ion-icon>
-        <h3 id="resume-key-modal-title" class="text-xl font-bold text-white">Print Resume</h3>
+        <ion-icon aria-hidden="true" name="lock-closed-outline" class="text-2xl" style="color:var(--ide-accent)"></ion-icon>
+        <h3 id="resume-key-modal-title" class="text-xl font-bold">Print Resume</h3>
       </div>
-      <p class="text-ink-muted text-sm mb-5">Enter the resume key to access the printable version.</p>
+      <p class="text-sm mb-5">Enter the resume key to access the printable version.</p>
       <form id="resume-key-form" class="grid gap-3">
         <input type="password" id="resume-key-input" placeholder="Paste resume key" required autocomplete="off"
-          class="w-full px-4 py-3 bg-surface-100 border border-white/[0.06] rounded-xl text-ink text-sm placeholder:text-ink-muted focus:outline-none focus:border-accent transition-colors font-mono">
-        <button type="submit" class="btn-primary bg-gradient-to-r from-accent to-accent-dark text-surface-400 font-bold rounded-xl px-6 py-3 text-sm border-none cursor-pointer transition-all duration-300 hover:shadow-[0_0_24px_rgba(245,158,11,0.4)]">
+          class="ide-control w-full font-mono">
+        <button type="submit" class="contact-submit-btn">
           <ion-icon aria-hidden="true" name="print-outline" class="mr-1 align-middle"></ion-icon> Unlock &amp; Print
         </button>
       </form>
@@ -902,21 +902,21 @@
       <button class="modal-close" onclick="closeBatchSkillModal()" aria-label="Close">
         <ion-icon aria-hidden="true" name="close-outline"></ion-icon>
       </button>
-      <h3 class="text-xl font-bold text-white mb-1">Batch Skill Assignment</h3>
-      <p class="text-ink-muted text-sm mb-4">Choose skills and mode to apply to selected items.</p>
+      <h3 class="text-xl font-bold mb-1">Batch Skill Assignment</h3>
+      <p class="text-sm mb-4">Choose skills and mode to apply to selected items.</p>
       <div class="flex gap-4 mb-4">
-        <label class="text-sm text-ink-soft flex items-center gap-1.5 cursor-pointer">
-          <input type="radio" name="batch-skill-mode" value="add" checked class="accent-accent"> Add
+        <label class="admin-label flex items-center gap-1.5 cursor-pointer">
+          <input type="radio" name="batch-skill-mode" value="add" checked style="accent-color:var(--ide-accent)"> Add
         </label>
-        <label class="text-sm text-ink-soft flex items-center gap-1.5 cursor-pointer">
-          <input type="radio" name="batch-skill-mode" value="remove" class="accent-accent"> Remove
+        <label class="admin-label flex items-center gap-1.5 cursor-pointer">
+          <input type="radio" name="batch-skill-mode" value="remove" style="accent-color:var(--ide-accent)"> Remove
         </label>
-        <label class="text-sm text-ink-soft flex items-center gap-1.5 cursor-pointer">
-          <input type="radio" name="batch-skill-mode" value="replace" class="accent-accent"> Replace
+        <label class="admin-label flex items-center gap-1.5 cursor-pointer">
+          <input type="radio" name="batch-skill-mode" value="replace" style="accent-color:var(--ide-accent)"> Replace
         </label>
       </div>
       <div id="batch-skills-picker" class="skills-picker mb-4"></div>
-      <button type="button" onclick="applyBatchSkills()" class="btn-primary bg-gradient-to-r from-accent to-accent-dark text-surface-400 font-bold rounded-xl px-6 py-3 text-sm border-none cursor-pointer transition-all duration-300 hover:shadow-[0_0_24px_rgba(245,158,11,0.4)]">Apply to Selected</button>
+      <button type="button" onclick="applyBatchSkills()" class="contact-submit-btn">Apply to Selected</button>
     </section>
   </div>
 
