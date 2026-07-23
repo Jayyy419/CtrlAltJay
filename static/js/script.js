@@ -150,6 +150,7 @@ function syncIdeChrome(tabName) {
   const label = IDE_TAB_META[tabName].label;
   if (sectionEl) sectionEl.textContent = label.endsWith("/") ? `${tabName}/` : label;
   updateIdeStatusCount(tabName);
+  refreshMinimap();
 }
 
 function showFileTreeSection(sectionTab) {
@@ -319,7 +320,37 @@ function initSidebarResize() {
 }
 
 /* ===== Decorative Minimap ===== */
-function renderMinimapLines(container) {
+const MINIMAP_BLOCK_SELECTOR = "h1, h2, h3, h4, p, li, td, th, .commit-node, .ext-card, .gh-activity-item, .related-card, .focus-card, .counter-card, .modal-row";
+
+function computeMinimapLineSpecs(root) {
+  if (!root) return [];
+  const candidates = Array.from(root.querySelectorAll(MINIMAP_BLOCK_SELECTOR));
+  const specs = [];
+  for (const el of candidates) {
+    if (specs.length >= 200) break;
+    if (el.offsetParent === null) continue;
+    let nested = false;
+    for (let p = el.parentElement; p && p !== root; p = p.parentElement) {
+      if (candidates.includes(p)) { nested = true; break; }
+    }
+    if (nested) continue;
+    const text = (el.textContent || "").trim();
+    if (!text) continue;
+    const len = Math.min(text.length, 160);
+    const width = Math.max(15, Math.min(95, Math.round((len / 160) * 85) + 12));
+    const tag = el.tagName.toLowerCase();
+    let color = "var(--ide-text-faint)";
+    if (/^h[1-3]$/.test(tag)) color = "var(--ide-keyword)";
+    else if (tag === "h4" || el.classList.contains("ext-name")) color = "var(--ide-function)";
+    else if (el.closest(".bio-highlight")) color = "var(--ide-comment)";
+    else if (el.classList.contains("commit-node")) color = "var(--ide-git-added)";
+    else if (el.classList.contains("ext-card")) color = "var(--ide-type)";
+    specs.push({ width, color });
+  }
+  return specs;
+}
+
+function renderMinimapNoise(container) {
   const colors = ["var(--ide-text-faint)", "var(--ide-comment)", "var(--ide-keyword)", "var(--ide-string)", "var(--ide-function)", "var(--ide-type)"];
   let seed = 42;
   const rand = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
@@ -333,6 +364,21 @@ function renderMinimapLines(container) {
   container.innerHTML = html;
 }
 
+function renderMinimapLines(container, root) {
+  const specs = computeMinimapLineSpecs(root);
+  if (!specs.length) {
+    renderMinimapNoise(container);
+    return;
+  }
+  container.innerHTML = specs.map((s) => `<div class="mm-line" style="width:${s.width}%;background:${s.color}"></div>`).join("");
+}
+
+function refreshMinimap() {
+  const linesEl = document.getElementById("ide-minimap-lines");
+  if (!linesEl) return;
+  renderMinimapLines(linesEl, document.querySelector(".tab-panel.active"));
+}
+
 function initMinimap() {
   const minimap = document.getElementById("ide-minimap");
   const linesEl = document.getElementById("ide-minimap-lines");
@@ -340,7 +386,7 @@ function initMinimap() {
   const scrollEl = document.getElementById("ide-panel-scroll");
   if (!minimap || !linesEl || !viewportEl || !scrollEl) return;
 
-  renderMinimapLines(linesEl);
+  renderMinimapLines(linesEl, document.querySelector(".tab-panel.active"));
 
   const updateViewport = () => {
     const ratio = scrollEl.scrollHeight ? scrollEl.clientHeight / scrollEl.scrollHeight : 1;
@@ -381,6 +427,7 @@ function openItemTab(item, sectionTab) {
   const sectionEl = document.getElementById("ide-status-section");
   if (sectionEl) sectionEl.textContent = `${sectionTab}/${filename}`;
   updateIdeStatusCount(sectionTab);
+  refreshMinimap();
 }
 
 function openIdeTabByName(name) {
