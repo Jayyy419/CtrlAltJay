@@ -442,6 +442,23 @@ function openSkillItemTab(skill) {
   const countEl = document.getElementById("ide-status-count");
   if (countEl) countEl.textContent = skill.focus || "";
   refreshMinimap();
+  playSkillInstallAnimation(skill.name);
+}
+
+function playSkillInstallAnimation(skillName) {
+  const panel = document.getElementById("skill-item-viewer");
+  if (!panel) return;
+  document.getElementById("skill-install-overlay")?.remove();
+
+  const overlay = document.createElement("div");
+  overlay.id = "skill-install-overlay";
+  overlay.className = "skill-install-overlay";
+  overlay.innerHTML = `
+    <div class="skill-install-line">Installing <strong>${escapeHtml(skillName)}</strong>...</div>
+    <div class="skill-install-bar"><div class="skill-install-bar-fill"></div></div>
+  `;
+  panel.appendChild(overlay);
+  setTimeout(() => overlay.remove(), 1100);
 }
 
 const SKILL_INFO = {
