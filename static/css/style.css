@@ -937,6 +937,41 @@ body.zen-mode .ide-panel-scroll { padding: 48px max(32px, calc(50% - 380px)); }
 .commit-meta { font-family: 'Plex Mono', monospace; font-size: 0.78rem; color: var(--ide-text-dim); margin-top: 4px; }
 .commit-body { font-size: 0.85rem; color: var(--ide-text); line-height: 1.6; margin-top: 6px; }
 
+/* Multi-cursor easter egg: Alt+click commit nodes to compare */
+.commit-node--selected {
+  background: rgba(245, 158, 11, 0.12);
+  outline: 1px dashed var(--ide-accent-strong);
+  outline-offset: 2px;
+}
+.multiselect-panel {
+  margin-top: 24px;
+  background: var(--ide-editor-bg-soft);
+  border: 1px solid var(--ide-accent-strong);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.multiselect-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Plex Mono', monospace;
+  font-size: 0.82rem;
+  color: var(--ide-text-bright);
+  font-weight: 700;
+}
+.multiselect-clear {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--ide-accent);
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-family: 'Plex Mono', monospace;
+}
+.multiselect-body { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+.multiselect-row { font-size: 0.82rem; color: var(--ide-text); }
+.multiselect-row strong { color: var(--ide-text-bright); }
+
 /* Git-blame-style hover tooltip on commit nodes */
 .blame-tooltip {
   position: absolute;
