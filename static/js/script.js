@@ -748,8 +748,15 @@ function buildCard(item, highlightQuery = "") {
   card.className = "card";
   card.tabIndex = 0;
 
-  // Tooltip preview
-  if (item.summary) card.title = item.summary;
+  // Git-blame-style hover preview (same pattern as Resume commit nodes)
+  const blameInfo = {
+    metaText: `Updated ${timeAgo(item.updated_at || item.created_at)} · ${item.category || item.tag || ""}`,
+    message: item.summary || item.title,
+  };
+  card.addEventListener("mouseenter", () => showBlameTooltip(card, blameInfo));
+  card.addEventListener("mouseleave", hideBlameTooltip);
+  card.addEventListener("focus", () => showBlameTooltip(card, blameInfo));
+  card.addEventListener("blur", hideBlameTooltip);
 
   let img = null;
   if (item.image_path) {
@@ -1305,9 +1312,10 @@ function buildCommitNode(item) {
   }
 
   li.tabIndex = 0;
-  li.addEventListener("mouseenter", () => showBlameTooltip(li, item));
+  const blameInfo = { metaText: [item.subtitle, item.period].filter(Boolean).join(" · "), message: item.title };
+  li.addEventListener("mouseenter", () => showBlameTooltip(li, blameInfo));
   li.addEventListener("mouseleave", hideBlameTooltip);
-  li.addEventListener("focus", () => showBlameTooltip(li, item));
+  li.addEventListener("focus", () => showBlameTooltip(li, blameInfo));
   li.addEventListener("blur", hideBlameTooltip);
 
   return li;
@@ -1315,21 +1323,20 @@ function buildCommitNode(item) {
 
 let blameTooltipEl = null;
 
-function showBlameTooltip(li, item) {
+function showBlameTooltip(anchorEl, { metaText, message }) {
   hideBlameTooltip();
   const author = document.querySelector(".profile-head h1")?.textContent.trim() || "Rone Peh";
-  const metaText = [item.period, item.subtitle].filter(Boolean).join(" · ");
 
   const tooltip = document.createElement("div");
   tooltip.className = "blame-tooltip";
   tooltip.innerHTML = `
     <div class="blame-tooltip-author"><ion-icon name="git-commit-outline" aria-hidden="true"></ion-icon> ${escapeHtml(author)}</div>
     ${metaText ? `<div class="blame-tooltip-meta">${escapeHtml(metaText)}</div>` : ""}
-    <div class="blame-tooltip-msg">${escapeHtml(item.title || "")}</div>
+    <div class="blame-tooltip-msg">${escapeHtml(message || "")}</div>
   `;
   document.body.appendChild(tooltip);
 
-  const rect = li.getBoundingClientRect();
+  const rect = anchorEl.getBoundingClientRect();
   const top = rect.top + window.scrollY - tooltip.offsetHeight - 10;
   const left = Math.min(rect.left + window.scrollX, window.innerWidth - tooltip.offsetWidth - 16);
   tooltip.style.top = `${Math.max(8, top)}px`;
@@ -3787,6 +3794,12 @@ function getCommandPaletteItems() {
   });
   state.experiences.forEach((p) => {
     items.push({ icon: "document-outline", label: p.title, hint: `experiences/${p.category || ""}`, action: () => openItemTab(p, "experiences") });
+  });
+  state.resume.forEach((entry) => {
+    items.push({ icon: "git-commit-outline", label: entry.title, hint: `resume/${entry.lane || ""}`, action: () => openResumeItemTab(entry) });
+  });
+  state.skills.forEach((skill) => {
+    items.push({ icon: "extension-puzzle-outline", label: skill.name, hint: `stack/${skill.focus || ""}`, action: () => openSkillItemTab(skill) });
   });
   const github = document.querySelector('a[href*="github.com"]');
   if (github?.href) items.push({ icon: "logo-github", label: "Open GitHub Profile", hint: "external", action: () => window.open(github.href, "_blank", "noopener") });
