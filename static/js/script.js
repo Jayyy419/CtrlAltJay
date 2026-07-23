@@ -111,6 +111,7 @@ function showSkeletons(gridId, count = 6) {
 }
 
 function switchTab(tabName) {
+  if (typeof hideBlameTooltip === "function") hideBlameTooltip();
   tabs.forEach((it) => {
     it.classList.remove("active");
     it.setAttribute("aria-selected", "false");
@@ -1273,7 +1274,44 @@ function buildCommitNode(item) {
     li.appendChild(body);
   }
 
+  li.tabIndex = 0;
+  li.addEventListener("mouseenter", () => showBlameTooltip(li, item));
+  li.addEventListener("mouseleave", hideBlameTooltip);
+  li.addEventListener("focus", () => showBlameTooltip(li, item));
+  li.addEventListener("blur", hideBlameTooltip);
+
   return li;
+}
+
+let blameTooltipEl = null;
+
+function showBlameTooltip(li, item) {
+  hideBlameTooltip();
+  const author = document.querySelector(".profile-head h1")?.textContent.trim() || "Rone Peh";
+  const metaText = [item.period, item.subtitle].filter(Boolean).join(" · ");
+
+  const tooltip = document.createElement("div");
+  tooltip.className = "blame-tooltip";
+  tooltip.innerHTML = `
+    <div class="blame-tooltip-author"><ion-icon name="git-commit-outline" aria-hidden="true"></ion-icon> ${escapeHtml(author)}</div>
+    ${metaText ? `<div class="blame-tooltip-meta">${escapeHtml(metaText)}</div>` : ""}
+    <div class="blame-tooltip-msg">${escapeHtml(item.title || "")}</div>
+  `;
+  document.body.appendChild(tooltip);
+
+  const rect = li.getBoundingClientRect();
+  const top = rect.top + window.scrollY - tooltip.offsetHeight - 10;
+  const left = Math.min(rect.left + window.scrollX, window.innerWidth - tooltip.offsetWidth - 16);
+  tooltip.style.top = `${Math.max(8, top)}px`;
+  tooltip.style.left = `${Math.max(8, left)}px`;
+  blameTooltipEl = tooltip;
+}
+
+function hideBlameTooltip() {
+  if (blameTooltipEl) {
+    blameTooltipEl.remove();
+    blameTooltipEl = null;
+  }
 }
 
 const EXT_TIER_COLOR = {
