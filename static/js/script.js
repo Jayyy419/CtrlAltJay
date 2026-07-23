@@ -21,6 +21,7 @@ const IDE_TAB_META = {
   projects: { label: "projects/", icon: "md" },
   experiences: { label: "experiences/", icon: "md" },
   resume: { label: "resume.pdf", icon: "md" },
+  stack: { label: "stack.json", icon: "json" },
   contact: { label: "contact.md", icon: "md" },
 };
 
@@ -141,12 +142,20 @@ function syncIdeChrome(tabName) {
   if (!IDE_TAB_META[tabName]) return;
   if (!state.ideOpenTabs.includes(tabName)) state.ideOpenTabs.push(tabName);
   renderIdeTabbar(tabName);
-  document.querySelectorAll(".file-tree-folder").forEach((el) => {
+  showFileTreeSection(tabName);
+  document.querySelectorAll(".file-tree-item[data-tab]").forEach((el) => {
     el.classList.toggle("active", el.dataset.tab === tabName);
   });
   const sectionEl = document.getElementById("ide-status-section");
-  if (sectionEl) sectionEl.textContent = tabName + (IDE_TAB_META[tabName].label.endsWith("/") ? "" : ".md").replace(".md.md", ".md");
+  const label = IDE_TAB_META[tabName].label;
+  if (sectionEl) sectionEl.textContent = label.endsWith("/") ? `${tabName}/` : label;
   updateIdeStatusCount(tabName);
+}
+
+function showFileTreeSection(sectionTab) {
+  document.querySelectorAll(".file-tree-section").forEach((el) => {
+    el.classList.toggle("active", el.dataset.treeSection === sectionTab);
+  });
 }
 
 function renderIdeTabbar(activeTab) {
@@ -181,6 +190,7 @@ function updateIdeStatusCount(tabName) {
   if (tabName === "projects") el.textContent = `${state.projects.length} file${state.projects.length !== 1 ? "s" : ""}`;
   else if (tabName === "experiences") el.textContent = `${state.experiences.length} file${state.experiences.length !== 1 ? "s" : ""}`;
   else if (tabName === "resume") el.textContent = `${state.resume.length} entries`;
+  else if (tabName === "stack") el.textContent = `${state.skills.length} package${state.skills.length !== 1 ? "s" : ""}`;
   else el.textContent = "";
 }
 
@@ -195,9 +205,9 @@ function initIdeStatusClock() {
 }
 
 function initIdeFileTree() {
-  document.querySelectorAll(".file-tree-folder").forEach((folder) => {
-    folder.addEventListener("click", () => {
-      const name = folder.dataset.tab;
+  document.querySelectorAll(".file-tree-section .file-tree-item[data-tab]").forEach((el) => {
+    el.addEventListener("click", () => {
+      const name = el.dataset.tab;
       switchTab(name);
       window.history.replaceState(null, "", `#${name}`);
     });
@@ -338,7 +348,7 @@ function openItemTab(item, sectionTab) {
   switchTab("item-viewer");
   renderIdeTabbar(tabId);
 
-  document.querySelectorAll(".file-tree-folder").forEach((el) => el.classList.toggle("active", el.dataset.tab === sectionTab));
+  showFileTreeSection(sectionTab);
   document.querySelectorAll(".file-tree-item.active").forEach((el) => el.classList.remove("active"));
   document.querySelectorAll(`.file-tree-item[data-id="${item.id}"]`).forEach((el) => el.classList.add("active"));
   const sectionEl = document.getElementById("ide-status-section");
@@ -992,10 +1002,11 @@ function renderSkills() {
   const target = document.getElementById("skills-grid");
   target.innerHTML = "";
 
-  const tierOrder = ["Primary Stack", "Experienced", "Familiar"];
+  const tierOrder = ["Primary Stack", "Experienced"];
   const grouped = {};
   state.skills.forEach((skill) => {
-    const tier = skill.focus || "Other";
+    let tier = skill.focus || "Other";
+    if (tier === "Familiar") tier = "Experienced";
     if (!grouped[tier]) grouped[tier] = [];
     grouped[tier].push(skill);
   });
@@ -1027,6 +1038,7 @@ function renderSkills() {
 function buildExtensionCard(skill, tier) {
   const card = document.createElement("div");
   card.className = "ext-card";
+  card.dataset.name = (skill.name || "").toLowerCase();
 
   const icon = document.createElement("div");
   icon.className = "ext-icon";
@@ -1073,6 +1085,23 @@ function buildExtensionCard(skill, tier) {
   card.appendChild(icon);
   card.appendChild(info);
   return card;
+}
+
+function initStackSearch() {
+  const input = document.getElementById("stack-search");
+  if (!input) return;
+  input.addEventListener("input", () => {
+    const q = input.value.trim().toLowerCase();
+    document.querySelectorAll("#skills-grid .ext-tier").forEach((tierEl) => {
+      let visibleCount = 0;
+      tierEl.querySelectorAll(".ext-card").forEach((card) => {
+        const match = !q || card.dataset.name.includes(q);
+        card.style.display = match ? "" : "none";
+        if (match) visibleCount++;
+      });
+      tierEl.style.display = visibleCount ? "" : "none";
+    });
+  });
 }
 
 async function fetchData() {
@@ -1578,6 +1607,7 @@ async function bootstrap() {
   initIdeFileTree();
   initSidebarResize();
   initMinimap();
+  initStackSearch();
   initIdeStatusClock();
   renderIdeTabbar("about");
   setAdminMode(false);
@@ -3127,9 +3157,9 @@ function initKeyboardShortcuts() {
         e.preventDefault();
         toggleShortcutsOverlay();
         break;
-      case "1": case "2": case "3": case "4": case "5": {
+      case "1": case "2": case "3": case "4": case "5": case "6": {
         if (modalActive) return;
-        const tabNames = ["about", "projects", "experiences", "resume", "contact"];
+        const tabNames = ["about", "projects", "experiences", "resume", "stack", "contact"];
         const idx = parseInt(e.key) - 1;
         if (tabNames[idx]) { switchTab(tabNames[idx]); e.preventDefault(); }
         break;
@@ -3192,7 +3222,7 @@ function toggleShortcutsOverlay() {
         <div class="shortcut-item"><kbd>Enter</kbd><span>Open focused card</span></div>
         <div class="shortcut-item"><kbd>Esc</kbd><span>Close modal / overlay</span></div>
         <div class="shortcut-item"><kbd>T</kbd><span>Toggle dark / light theme</span></div>
-        <div class="shortcut-item"><kbd>1</kbd>\u2013<kbd>5</kbd><span>Switch tabs</span></div>
+        <div class="shortcut-item"><kbd>1</kbd>\u2013<kbd>6</kbd><span>Switch tabs</span></div>
         <div class="shortcut-item"><kbd>/</kbd><span>Focus search field</span></div>
         <div class="shortcut-item"><kbd>[</kbd> <kbd>]</kbd><span>Previous / next open tab</span></div>
         <div class="shortcut-item"><kbd>W</kbd><span>Close current tab</span></div>
@@ -3227,6 +3257,7 @@ function getCommandPaletteItems() {
     { icon: "folder-outline", label: "Projects", hint: "projects/", action: () => openIdeTabByName("projects") },
     { icon: "briefcase-outline", label: "Experiences", hint: "experiences/", action: () => openIdeTabByName("experiences") },
     { icon: "document-text-outline", label: "Resume", hint: "resume.pdf", action: () => openIdeTabByName("resume") },
+    { icon: "extension-puzzle-outline", label: "Stack", hint: "stack.json", action: () => openIdeTabByName("stack") },
     { icon: "mail-outline", label: "Contact", hint: "contact.md", action: () => openIdeTabByName("contact") },
     { icon: "contrast-outline", label: "Toggle Theme", hint: "dark / light", action: () => document.getElementById("theme-toggle")?.click() },
     { icon: "keypad-outline", label: "Keyboard Shortcuts", hint: "?", action: () => toggleShortcutsOverlay() },
@@ -3417,7 +3448,7 @@ function runTerminalCommand(raw) {
       printTermLine("  cat <file>           open a file (e.g. cat about.md)");
       printTermLine("  open <github|linkedin>       open a social profile");
       printTermLine("  theme <dark|light>   switch theme");
-      printTermLine("  resume | contact     jump to a section");
+      printTermLine("  resume | stack | contact    jump to a section");
       printTermLine("  banner               print an intro banner");
       printTermLine("  clear                clear the terminal");
       printTermLine("  exit                 close the terminal");
@@ -3487,6 +3518,10 @@ function runTerminalCommand(raw) {
     }
     case "resume":
       openIdeTabByName("resume");
+      closeTerminalPanel();
+      break;
+    case "stack":
+      openIdeTabByName("stack");
       closeTerminalPanel();
       break;
     case "contact":
@@ -3598,7 +3633,7 @@ function initMobileSwipe() {
   let touchStartY = 0;
   const content = document.querySelector(".content");
   if (!content) return;
-  const tabOrder = ["about", "projects", "experiences", "resume", "contact"];
+  const tabOrder = ["about", "projects", "experiences", "resume", "stack", "contact"];
   content.addEventListener("touchstart", (e) => {
     touchStartX = e.changedTouches[0].screenX;
     touchStartY = e.changedTouches[0].screenY;
