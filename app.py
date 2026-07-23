@@ -380,6 +380,48 @@ def index():
     return render_template("index.html", profile=profile)
 
 
+@app.route("/old")
+def legacy_index():
+    # Frozen snapshot of the pre-redesign site (commit 4d1c76b), kept around
+    # as a nostalgia link — not linked from primary navigation.
+    profile = {
+        "name": "Rone Peh",
+        "headline": "Information Technology student @ NYP | SWE Intern @ J.P. Morgan Chase",
+        "location": "Singapore",
+        "email": "Rone_peh@hotmail.com",
+        "phone": "+65 8808 1760",
+        "credly": "https://www.credly.com/users/ronepeh",
+        "github": "https://github.com/Jayyy419",
+        "linkedin": "https://www.linkedin.com/in/ronepeh",
+        "bio": (
+            "I'm an Information Technology student who enjoys turning ideas into systems that actually work "
+            "in real environments — not just for assignments, but for teams, organisations, and users. "
+            "I've had hands-on exposure to software development, web technologies, and process automation "
+            "through internships and student-led initiatives, where I've worked on building internal tools, "
+            "improving workflows, and collaborating across technical and non-technical stakeholders. "
+            "I'm especially interested in how technology can streamline operations and scale impact "
+            "without overengineering. Alongside my technical work, I've taken on leadership responsibilities "
+            "in a growing organisation, helping to shape processes, manage projects end-to-end, and build "
+            "things from the ground up. I'm driven by curiosity, ownership, and continuous improvement."
+        ),
+        "now_building": [
+            {
+                "title": "Cloud Migration @ JPMC",
+                "description": "Working on server workloads migration from on-premise to public cloud within Currencies & Emerging Markets.",
+            },
+            {
+                "title": "ASEAN Youth Advocates",
+                "description": "Leading operations and finance to strengthen organisational sustainability and programme delivery.",
+            },
+            {
+                "title": "AI Prototyping Sprint",
+                "description": "Exploring rapid prototypes in GenAI, RAG, and product UX alignment.",
+            },
+        ],
+    }
+    return render_template("legacy_index.html", profile=profile)
+
+
 _public_data_cache = {"payload": None, "expires_at": 0.0}
 PUBLIC_DATA_CACHE_SECONDS = 30
 
