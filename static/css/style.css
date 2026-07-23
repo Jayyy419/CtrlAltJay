@@ -371,6 +371,7 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
 .file-tree-item .fdot.py { background: #4b8bbe; }
 .file-tree-item .fdot.json { background: #cbcb41; }
 .file-tree-item .fdot.pdf { background: #e06c75; }
+.file-tree-item .fdot.diff { background: #e2c08d; }
 
 .ide-sidebar-resizer {
   width: 5px;
@@ -470,6 +471,7 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
 .ide-tab .fdot.py { background: #4b8bbe; }
 .ide-tab .fdot.json { background: #cbcb41; }
 .ide-tab .fdot.pdf { background: #e06c75; }
+.ide-tab .fdot.diff { background: #e2c08d; }
 .ide-tab .close { opacity: 0.55; font-size: 0.9rem; margin-left: 2px; padding: 0 2px; border-radius: 3px; }
 .ide-tab .close:hover { opacity: 1; background: var(--ide-border-soft); }
 
@@ -597,63 +599,72 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
   font-size: 0.8rem;
 }
 
-/* ===== Run and Debug Panel ===== */
-.debug-toolbar {
+/* ===== Source Control Panel ===== */
+.scm-commit-box {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 16px;
-  padding: 8px 12px;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+  padding: 10px;
   background: var(--ide-editor-bg-soft);
   border: 1px solid var(--ide-border-soft);
   border-radius: 8px;
 }
-.debug-toolbar-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  background: none;
+.scm-commit-input {
+  resize: none;
+  background: transparent;
   border: none;
-  border-radius: 5px;
+  outline: none;
   color: var(--ide-text-dim);
-  font-size: 1.1rem;
-  cursor: not-allowed;
-  opacity: 0.55;
+  font-family: 'Plex Mono', monospace;
+  font-size: 0.82rem;
 }
-.debug-toolbar-status {
-  margin-left: auto;
+.scm-commit-btn {
+  align-self: flex-end;
   display: flex;
   align-items: center;
   gap: 6px;
+  padding: 6px 14px;
+  background: var(--ide-border-soft);
+  color: var(--ide-text-dim);
+  border: none;
+  border-radius: 5px;
+  font-size: 0.78rem;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.scm-changes-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-family: 'Plex Mono', monospace;
   font-size: 0.78rem;
   color: var(--ide-text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
 }
-.debug-live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ide-accent-strong); display: inline-block; }
-
-.debug-code-viewer {
-  background: var(--ide-editor-bg-soft);
-  border: 1px solid var(--ide-border-soft);
-  border-radius: 8px;
-  overflow-x: auto;
+.scm-changes-count { background: var(--ide-border-soft); color: var(--ide-text-bright); border-radius: 9px; padding: 0 7px; font-size: 0.7rem; }
+.scm-changes-list { display: flex; flex-direction: column; }
+.scm-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 4px;
   font-family: 'Plex Mono', monospace;
   font-size: 0.82rem;
-  line-height: 1.7;
+  color: var(--ide-text);
+  cursor: pointer;
+  border-radius: 4px;
 }
-.debug-loading { padding: 20px; color: var(--ide-text-dim); }
-.debug-line { display: flex; }
-.debug-line--current { background: rgba(245, 158, 11, 0.12); }
-.debug-gutter { flex-shrink: 0; width: 26px; display: flex; align-items: center; justify-content: center; position: relative; }
-.debug-breakpoint { width: 9px; height: 9px; border-radius: 50%; background: #e51400; }
-.debug-arrow { position: absolute; color: var(--ide-accent-strong); font-size: 0.9rem; }
-.debug-lineno { flex-shrink: 0; width: 34px; text-align: right; padding-right: 12px; color: var(--ide-text-faint); user-select: none; }
-.debug-code { color: var(--ide-text); white-space: pre; padding-right: 20px; }
-.tok-keyword { color: var(--ide-keyword); font-weight: 600; }
-.tok-string { color: var(--ide-string); }
-.tok-comment { color: var(--ide-comment); font-style: italic; }
-.tok-decorator { color: var(--ide-function); }
+.scm-row:hover, .scm-row:focus-visible { background: var(--ide-editor-bg-soft); outline: none; }
+.scm-status { width: 16px; text-align: center; font-weight: 700; border-radius: 3px; font-size: 0.75rem; flex-shrink: 0; }
+.scm-status--A { color: var(--ide-git-added); }
+.scm-status--M { color: #e2c08d; }
+.scm-filename { color: var(--ide-text-bright); }
+.scm-path { color: var(--ide-text-dim); }
+.scm-time { margin-left: auto; color: var(--ide-text-faint); font-size: 0.74rem; white-space: nowrap; }
+.scm-empty { padding: 20px; color: var(--ide-text-dim); font-family: 'Plex Mono', monospace; font-size: 0.85rem; }
 
 /* ===== Live Visitor Presence ===== */
 .presence-indicator { display: flex; align-items: center; gap: 6px; }
