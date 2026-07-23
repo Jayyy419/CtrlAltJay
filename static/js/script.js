@@ -211,6 +211,7 @@ function updateTabbarOverflow() {
 function initTabbarScroll() {
   const bar = document.getElementById("ide-tabbar");
   if (!bar) return;
+  document.getElementById("ide-tabbar-clear-btn")?.addEventListener("click", () => closeAllIdeTabs());
   bar.addEventListener("scroll", updateTabbarOverflow, { passive: true });
   bar.addEventListener("wheel", (e) => {
     if (e.deltaY === 0) return;
@@ -519,32 +520,53 @@ function initSidebarResize() {
 }
 
 /* ===== Decorative Minimap ===== */
-const MINIMAP_BLOCK_SELECTOR = "h1, h2, h3, h4, p, li, td, th, .commit-node, .ext-card, .gh-activity-item, .related-card, .focus-card, .counter-card, .modal-row";
+const MINIMAP_BLOCK_SELECTOR = "h1, h2, h3, h4, p, li, td, th, input, textarea, select, .commit-node, .ext-card, .gh-activity-item, .related-card, .focus-card, .counter-card, .modal-row";
+
+const MINIMAP_LINE_HEIGHT_PX = 18;
+const MINIMAP_MAX_LINES = 400;
 
 function computeMinimapLineSpecs(root) {
   if (!root) return [];
   const candidates = Array.from(root.querySelectorAll(MINIMAP_BLOCK_SELECTOR));
   const specs = [];
   for (const el of candidates) {
-    if (specs.length >= 200) break;
+    if (specs.length >= MINIMAP_MAX_LINES) break;
     if (el.offsetParent === null) continue;
     let nested = false;
     for (let p = el.parentElement; p && p !== root; p = p.parentElement) {
       if (candidates.includes(p)) { nested = true; break; }
     }
     if (nested) continue;
-    const text = (el.textContent || "").trim();
-    if (!text) continue;
-    const len = Math.min(text.length, 160);
-    const width = Math.max(15, Math.min(95, Math.round((len / 160) * 85) + 12));
     const tag = el.tagName.toLowerCase();
+    let text = (el.textContent || "").trim();
+    let isFieldPlaceholder = false;
+    if (!text && (tag === "input" || tag === "textarea" || tag === "select")) {
+      text = el.getAttribute("placeholder") || el.getAttribute("name") || "field";
+      isFieldPlaceholder = true;
+    }
+    if (!text) continue;
+
     let color = "var(--ide-text-faint)";
     if (/^h[1-3]$/.test(tag)) color = "var(--ide-keyword)";
     else if (tag === "h4" || el.classList.contains("ext-name")) color = "var(--ide-function)";
     else if (el.closest(".bio-highlight")) color = "var(--ide-comment)";
     else if (el.classList.contains("commit-node")) color = "var(--ide-git-added)";
     else if (el.classList.contains("ext-card")) color = "var(--ide-type)";
-    specs.push({ width, color });
+
+    // Chunk each block into multiple synthetic lines sized to its rendered
+    // height, so a long paragraph reads as several packed minimap lines
+    // instead of just one — real minimaps are dense, not one dash per element.
+    const renderedHeight = el.getBoundingClientRect().height || MINIMAP_LINE_HEIGHT_PX;
+    const lineCount = isFieldPlaceholder ? 1 : Math.max(1, Math.min(12, Math.round(renderedHeight / MINIMAP_LINE_HEIGHT_PX)));
+    const words = text.split(/\s+/);
+    const wordsPerLine = Math.max(1, Math.ceil(words.length / lineCount));
+    for (let i = 0; i < lineCount; i++) {
+      if (specs.length >= MINIMAP_MAX_LINES) break;
+      const chunk = words.slice(i * wordsPerLine, (i + 1) * wordsPerLine).join(" ") || text;
+      const len = Math.min(chunk.length, 160);
+      const width = Math.max(15, Math.min(95, Math.round((len / 160) * 85) + 12));
+      specs.push({ width, color });
+    }
   }
   return specs;
 }
@@ -664,6 +686,12 @@ function closeIdeTab(name, activeTab) {
   } else {
     renderIdeTabbar(activeTab);
   }
+}
+
+function closeAllIdeTabs() {
+  state.ideOpenTabs = ["about"];
+  state.ideItemMeta = {};
+  openIdeTabByName("about");
 }
 
 function closeItemTabIfOpen(itemId) {
@@ -3645,6 +3673,12 @@ function initKeyboardShortcuts() {
           if (activeTab) { closeIdeTab(activeTab, activeTab); e.preventDefault(); }
         }
         break;
+      case "W":
+        if (!e.ctrlKey && !e.metaKey && !modalActive) {
+          closeAllIdeTabs();
+          e.preventDefault();
+        }
+        break;
     }
   });
 }
@@ -3701,6 +3735,7 @@ function toggleShortcutsOverlay() {
         <div class="shortcut-item"><kbd>/</kbd><span>Focus search field</span></div>
         <div class="shortcut-item"><kbd>[</kbd> <kbd>]</kbd><span>Previous / next open tab</span></div>
         <div class="shortcut-item"><kbd>W</kbd><span>Close current tab</span></div>
+        <div class="shortcut-item"><kbd>Shift</kbd>+<kbd>W</kbd><span>Close all tabs</span></div>
         <div class="shortcut-item"><kbd>Dbl-click</kbd><span>Edit card (admin)</span></div>
       </div>
     </div>`;
@@ -3740,6 +3775,7 @@ function getCommandPaletteItems() {
     { icon: "logo-linkedin", label: "LinkedIn", hint: "linkedin.md", action: () => openIdeTabByName("linkedin") },
     { icon: "contrast-outline", label: "Toggle Theme", hint: "dark / light", action: () => document.getElementById("theme-toggle")?.click() },
     { icon: "contract-outline", label: "Toggle Zen Mode", hint: "Z", action: () => toggleZenMode() },
+    { icon: "close-outline", label: "Close All Tabs", hint: "Shift+W", action: () => closeAllIdeTabs() },
     { icon: "keypad-outline", label: "Keyboard Shortcuts", hint: "?", action: () => toggleShortcutsOverlay() },
   ];
   if (typeof toggleTerminalPanel === "function") {
