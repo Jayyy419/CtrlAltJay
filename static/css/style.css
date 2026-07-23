@@ -348,7 +348,31 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
 .ide-tab .close { opacity: 0.55; font-size: 0.9rem; margin-left: 2px; padding: 0 2px; border-radius: 3px; }
 .ide-tab .close:hover { opacity: 1; background: var(--ide-border-soft); }
 
-.ide-panel-scroll { flex: 1; overflow-y: auto; padding: 28px 32px 40px; }
+.ide-panel-scroll-wrap { flex: 1; min-height: 0; display: flex; }
+.ide-panel-scroll { flex: 1; overflow-y: auto; padding: 28px 32px 40px; min-width: 0; }
+
+/* ===== Minimap ===== */
+.ide-minimap {
+  width: 80px;
+  flex-shrink: 0;
+  position: relative;
+  border-left: 1px solid var(--ide-border);
+  background: var(--ide-editor-bg-soft);
+  cursor: pointer;
+  overflow: hidden;
+}
+.ide-minimap-lines { position: absolute; inset: 0; padding: 8px 8px; opacity: 0.55; }
+.mm-line { height: 2px; margin-bottom: 3px; border-radius: 1px; }
+.mm-gap { height: 6px; }
+.ide-minimap-viewport {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: var(--ide-selection);
+  border: 1px solid var(--ide-accent);
+  opacity: 0.55;
+  pointer-events: none;
+}
 
 /* ===== Integrated Terminal Panel ===== */
 .ide-terminal-panel {
@@ -438,6 +462,7 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
 
 @media (max-width: 900px) {
   .ide-sidebar { display: none; }
+  .ide-minimap { display: none; }
 }
 
 .tab-panel { display: none; }
