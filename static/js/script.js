@@ -19,10 +19,11 @@ const state = {
 /* Top-level activity-bar sections: switching to these just changes the active
    panel, they never get a tab in the tab bar — tabs are reserved for actual
    listing items (project/experience cards, resume entries, skills, etc.) */
-const ROOT_SECTION_TABS = ["about", "projects", "experiences", "resume", "stack", "contact", "scm", "profile", "settings"];
+const ROOT_SECTION_TABS = ["about", "chat", "projects", "experiences", "resume", "stack", "contact", "scm", "profile", "settings"];
 
 const IDE_TAB_META = {
   about: { label: "bio.md", icon: "md" },
+  chat: { label: "assistant.ts", icon: "ts" },
   projects: { label: "projects/", icon: "md" },
   experiences: { label: "experiences/", icon: "md" },
   resume: { label: "resume.pdf", icon: "md" },
@@ -2343,6 +2344,7 @@ async function bootstrap() {
   initTabTransitions();
   initContactForm();
   initGuestbook();
+  initChat();
   initAdminAuth();
   initInlineAdminEditor();
   initEscapeKey();
@@ -2512,6 +2514,69 @@ function initContactForm() {
     } finally {
       submitBtn.textContent = origText;
       submitBtn.disabled = false;
+    }
+  });
+}
+
+/* ===== Ask AI chat assistant ===== */
+const chatState = { history: [], sending: false };
+
+function appendChatMessage(role, text, isTyping, isError) {
+  const container = document.getElementById("chat-messages");
+  if (!container) return null;
+  const wrap = document.createElement("div");
+  wrap.className = `chat-message chat-message--${role}`;
+  const bubble = document.createElement("div");
+  bubble.className = `chat-bubble${isTyping ? " chat-bubble--typing" : ""}${isError ? " chat-bubble--error" : ""}`;
+  bubble.textContent = text;
+  wrap.appendChild(bubble);
+  container.appendChild(wrap);
+  container.scrollTop = container.scrollHeight;
+  return wrap;
+}
+
+function initChat() {
+  const form = document.getElementById("chat-form");
+  if (!form) return;
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (chatState.sending) return;
+    const input = document.getElementById("chat-input");
+    const message = input.value.trim();
+    if (!message) return;
+
+    appendChatMessage("user", message);
+    input.value = "";
+    const historyBeforeThisTurn = chatState.history.slice();
+    chatState.history.push({ role: "user", content: message });
+
+    const sendBtn = document.getElementById("chat-send-btn");
+    chatState.sending = true;
+    sendBtn.disabled = true;
+    const typingEl = appendChatMessage("assistant", "Thinking...", true);
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message, history: historyBeforeThisTurn }),
+      });
+      const data = await res.json().catch(() => ({}));
+      typingEl.remove();
+      if (res.ok) {
+        appendChatMessage("assistant", data.reply);
+        chatState.history.push({ role: "assistant", content: data.reply });
+      } else {
+        appendChatMessage("assistant", data.error || "Something went wrong.", false, true);
+      }
+    } catch {
+      typingEl.remove();
+      appendChatMessage("assistant", "Network error. Please try again.", false, true);
+    } finally {
+      chatState.sending = false;
+      sendBtn.disabled = false;
+      input.focus();
     }
   });
 }
@@ -4341,7 +4406,7 @@ function initKeyboardShortcuts() {
         break;
       case "1": case "2": case "3": case "4": case "5": case "6": case "7": case "8": {
         if (modalActive) return;
-        const tabNames = ["about", "contact", "experiences", "projects", "resume", "scm", "stack", "profile"];
+        const tabNames = ["about", "chat", "contact", "experiences", "projects", "resume", "scm", "stack", "profile"];
         const idx = parseInt(e.key) - 1;
         if (tabNames[idx]) { switchTab(tabNames[idx]); e.preventDefault(); }
         break;
@@ -4473,6 +4538,7 @@ function fuzzyScore(query, target) {
 function getCommandPaletteItems() {
   const items = [
     { icon: "person-outline", label: "About Me", hint: "bio.md", action: () => openIdeTabByName("about") },
+    { icon: "sparkles-outline", label: "Ask AI", hint: "assistant.ts", action: () => openIdeTabByName("chat") },
     { icon: "folder-outline", label: "Projects", hint: "projects/", action: () => openIdeTabByName("projects") },
     { icon: "briefcase-outline", label: "Experiences", hint: "experiences/", action: () => openIdeTabByName("experiences") },
     { icon: "document-text-outline", label: "Resume", hint: "resume.pdf", action: () => openIdeTabByName("resume") },
@@ -4751,7 +4817,7 @@ function runTerminalCommand(raw) {
       printTermLine("  cat <file>           open a file (e.g. cat about.md)");
       printTermLine("  open <github|linkedin>       open a social profile");
       printTermLine("  theme <dark|light>   switch theme");
-      printTermLine("  contact | resume | scm | stack | profile    jump to a section");
+      printTermLine("  contact | resume | scm | stack | profile | chat    jump to a section");
       printTermLine("  zen                  toggle distraction-free zen mode");
       printTermLine("  admin                sign in to the admin panel");
       printTermLine("  banner               print an intro banner");
@@ -4821,6 +4887,10 @@ function runTerminalCommand(raw) {
       }
       break;
     }
+    case "chat":
+      openIdeTabByName("chat");
+      closeTerminalPanel();
+      break;
     case "resume":
       openIdeTabByName("resume");
       closeTerminalPanel();
@@ -4963,7 +5033,7 @@ function initMobileSwipe() {
   let touchStartY = 0;
   const content = document.querySelector(".content");
   if (!content) return;
-  const tabOrder = ["about", "contact", "experiences", "projects", "resume", "scm", "stack", "profile"];
+  const tabOrder = ["about", "chat", "contact", "experiences", "projects", "resume", "scm", "stack", "profile"];
   content.addEventListener("touchstart", (e) => {
     touchStartX = e.changedTouches[0].screenX;
     touchStartY = e.changedTouches[0].screenY;
