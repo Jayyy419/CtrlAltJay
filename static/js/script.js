@@ -182,6 +182,33 @@ function renderIdeTabbar(activeTab) {
       closeIdeTab(btn.dataset.closeTab, activeTab);
     });
   });
+
+  bar.querySelector(".ide-tab.active")?.scrollIntoView({ inline: "nearest", block: "nearest" });
+  updateTabbarOverflow();
+}
+
+function updateTabbarOverflow() {
+  const bar = document.getElementById("ide-tabbar");
+  const wrap = document.getElementById("ide-tabbar-wrap");
+  if (!bar || !wrap) return;
+  wrap.classList.toggle("has-overflow-left", bar.scrollLeft > 2);
+  wrap.classList.toggle("has-overflow-right", bar.scrollLeft + bar.clientWidth < bar.scrollWidth - 2);
+}
+
+function initTabbarScroll() {
+  const bar = document.getElementById("ide-tabbar");
+  if (!bar) return;
+  bar.addEventListener("scroll", updateTabbarOverflow, { passive: true });
+  bar.addEventListener("wheel", (e) => {
+    if (e.deltaY === 0) return;
+    bar.scrollLeft += e.deltaY;
+    e.preventDefault();
+  }, { passive: false });
+  window.addEventListener("resize", updateTabbarOverflow);
+  if (typeof ResizeObserver !== "undefined") {
+    new ResizeObserver(updateTabbarOverflow).observe(bar);
+  }
+  updateTabbarOverflow();
 }
 
 function updateIdeStatusCount(tabName) {
@@ -1608,6 +1635,7 @@ async function bootstrap() {
   initSidebarResize();
   initMinimap();
   initStackSearch();
+  initTabbarScroll();
   initIdeStatusClock();
   renderIdeTabbar("about");
   setAdminMode(false);
