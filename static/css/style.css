@@ -700,7 +700,8 @@ body.zen-mode .ide-panel-scroll { padding: 48px max(32px, calc(50% - 380px)); }
   width: 2px;
   background: var(--ide-border);
 }
-.commit-node { position: relative; padding: 0 0 26px 28px; }
+.commit-node { position: relative; padding: 0 0 26px 28px; cursor: default; border-radius: 4px; transition: background 0.15s ease; }
+.commit-node:hover, .commit-node:focus-visible { background: var(--ide-editor-bg-soft); outline: none; }
 .commit-node:last-child { padding-bottom: 0; }
 .commit-node::before {
   content: '';
@@ -730,6 +731,29 @@ body.zen-mode .ide-panel-scroll { padding: 48px max(32px, calc(50% - 380px)); }
 }
 .commit-meta { font-family: 'Plex Mono', monospace; font-size: 0.78rem; color: var(--ide-text-dim); margin-top: 4px; }
 .commit-body { font-size: 0.85rem; color: var(--ide-text); line-height: 1.6; margin-top: 6px; }
+
+/* Git-blame-style hover tooltip on commit nodes */
+.blame-tooltip {
+  position: absolute;
+  z-index: 200;
+  max-width: 320px;
+  padding: 10px 14px;
+  background: var(--ide-statusbar-bg);
+  color: #fff;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  box-shadow: 0 12px 30px -10px rgba(0,0,0,0.6);
+  pointer-events: none;
+  animation: blameTooltipIn 0.12s ease-out;
+}
+.blame-tooltip-author { display: flex; align-items: center; gap: 6px; font-family: 'Plex Mono', monospace; font-weight: 700; color: var(--ide-git-added); }
+.blame-tooltip-meta { font-family: 'Plex Mono', monospace; color: rgba(255,255,255,0.65); margin-top: 2px; font-size: 0.72rem; }
+.blame-tooltip-msg { margin-top: 4px; color: rgba(255,255,255,0.9); }
+@keyframes blameTooltipIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
 /* Skills: Extensions marketplace panel (JS-generated) */
 .ext-tier-heading {
