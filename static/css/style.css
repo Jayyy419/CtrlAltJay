@@ -721,6 +721,25 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
 .scm-time { margin-left: auto; color: var(--ide-text-faint); font-size: 0.74rem; white-space: nowrap; }
 .scm-empty { padding: 20px; color: var(--ide-text-dim); font-family: 'Plex Mono', monospace; font-size: 0.85rem; }
 
+/* ===== Settings Panel ===== */
+.settings-json-viewer {
+  background: var(--ide-editor-bg-soft);
+  border: 1px solid var(--ide-border-soft);
+  border-radius: 8px;
+  padding: 16px 18px;
+  font-family: 'Plex Mono', monospace;
+  font-size: 0.82rem;
+  line-height: 1.7;
+  color: var(--ide-text);
+  overflow-x: auto;
+  white-space: pre;
+}
+.json-key { color: var(--ide-keyword); }
+.json-string { color: var(--ide-string); }
+.json-number { color: var(--ide-function); }
+.json-boolean { color: var(--ide-type); font-weight: 600; }
+.json-null { color: var(--ide-text-faint); font-style: italic; }
+
 /* ===== Live Visitor Presence ===== */
 .presence-indicator { display: flex; align-items: center; gap: 6px; }
 .presence-avatars { display: flex; align-items: center; }
