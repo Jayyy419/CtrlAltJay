@@ -44,10 +44,18 @@ jobs:
 
       - name: Create application version
         run: |
-          aws elasticbeanstalk create-application-version \
+          existing=$(aws elasticbeanstalk describe-application-versions \
             --application-name "${EB_APPLICATION_NAME}" \
-            --version-label "gh-${GITHUB_SHA}" \
-            --source-bundle S3Bucket="${EB_S3_BUCKET}",S3Key="${EB_APPLICATION_NAME}/gh-${GITHUB_SHA}.zip"
+            --version-labels "gh-${GITHUB_SHA}" \
+            --query 'ApplicationVersions[0].VersionLabel' --output text)
+          if [ "$existing" = "gh-${GITHUB_SHA}" ]; then
+            echo "Application version gh-${GITHUB_SHA} already exists (likely a re-run) — skipping creation."
+          else
+            aws elasticbeanstalk create-application-version \
+              --application-name "${EB_APPLICATION_NAME}" \
+              --version-label "gh-${GITHUB_SHA}" \
+              --source-bundle S3Bucket="${EB_S3_BUCKET}",S3Key="${EB_APPLICATION_NAME}/gh-${GITHUB_SHA}.zip"
+          fi
 
       - name: Deploy new version
         run: |
