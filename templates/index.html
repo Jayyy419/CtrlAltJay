@@ -515,6 +515,17 @@
       </article>
 
         </div>
+        <div class="ide-terminal-panel" id="ide-terminal-panel" style="display:none">
+          <div class="ide-terminal-header">
+            <span class="ide-terminal-title"><ion-icon aria-hidden="true" name="terminal-outline"></ion-icon> TERMINAL</span>
+            <button type="button" class="ide-terminal-close" id="ide-terminal-close" aria-label="Close terminal">&times;</button>
+          </div>
+          <div class="ide-terminal-body" id="ide-terminal-body"></div>
+          <div class="ide-terminal-input-row">
+            <span class="ide-terminal-prompt">visitor@ctrlaltjay:~$</span>
+            <input type="text" id="ide-terminal-input" class="ide-terminal-input" autocomplete="off" spellcheck="false" autocapitalize="off" aria-label="Terminal input">
+          </div>
+        </div>
         <div class="ide-statusbar">
           <div class="side">
             <span id="ide-status-section">about</span>
