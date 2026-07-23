@@ -1956,6 +1956,7 @@ async function bootstrap() {
   renderRecentlyViewed();
   handleDeepLink();
   initHitCounter();
+  initLivePresence();
   initAnimatedCounters();
   initGithubActivity();
   registerServiceWorker();
@@ -3392,6 +3393,59 @@ async function renderDebugCodeViewer() {
   } catch (err) {
     container.innerHTML = `<div class="debug-loading">// couldn't load ${escapeHtml(DEBUG_FILE_PATH)} from GitHub right now</div>`;
   }
+}
+
+/* ===== Live Visitor Presence ===== */
+const PRESENCE_AVATAR_COLORS = ["#f59e0b", "#3b82f6", "#22c55e", "#ec4899", "#8b5cf6", "#ef4444"];
+const PRESENCE_HEARTBEAT_MS = 25000;
+
+function getPresenceSessionId() {
+  let id = sessionStorage.getItem("ctrlaltjay_presence_id");
+  if (!id) {
+    id = (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    sessionStorage.setItem("ctrlaltjay_presence_id", id);
+  }
+  return id;
+}
+
+function renderPresence(count) {
+  const avatarsEl = document.getElementById("presence-avatars");
+  const countEl = document.getElementById("presence-count-text");
+  if (!avatarsEl || !countEl) return;
+  const shown = Math.min(count, 4);
+  avatarsEl.innerHTML = "";
+  for (let i = 0; i < shown; i++) {
+    const dot = document.createElement("span");
+    dot.className = "presence-avatar";
+    dot.style.background = PRESENCE_AVATAR_COLORS[i % PRESENCE_AVATAR_COLORS.length];
+    dot.style.zIndex = String(shown - i);
+    avatarsEl.appendChild(dot);
+  }
+  countEl.textContent = count === 1 ? "1 here" : `${count} here`;
+  const indicator = document.getElementById("presence-indicator");
+  if (indicator) indicator.title = count === 1 ? "You're the only one viewing this page right now" : `${count} people viewing this page right now`;
+}
+
+async function presenceHeartbeat(sessionId) {
+  try {
+    const res = await fetch("/api/presence", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sessionId }),
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    renderPresence(Math.max(1, parseInt(data.count, 10) || 1));
+  } catch (err) {
+    // decorative feature — fail silently
+  }
+}
+
+function initLivePresence() {
+  if (!document.getElementById("presence-avatars")) return;
+  const sessionId = getPresenceSessionId();
+  presenceHeartbeat(sessionId);
+  setInterval(() => presenceHeartbeat(sessionId), PRESENCE_HEARTBEAT_MS);
 }
 
 /* ===== Visitor Hit Counter ===== */
