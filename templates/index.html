@@ -139,6 +139,7 @@
       <section class="ide-shell">
       <nav class="activity-bar" role="tablist" aria-label="Site sections">
         <button class="tab-btn active" data-tab="about" role="tab" aria-selected="true" aria-controls="about" id="tab-about" title="About" aria-label="About"><ion-icon aria-hidden="true" name="person-outline"></ion-icon></button>
+        <button class="tab-btn" data-tab="chat" role="tab" aria-selected="false" aria-controls="chat" id="tab-chat" title="Ask AI" aria-label="Ask AI"><ion-icon aria-hidden="true" name="sparkles-outline"></ion-icon></button>
         <button class="tab-btn" data-tab="contact" role="tab" aria-selected="false" aria-controls="contact" id="tab-contact" title="Contact" aria-label="Contact"><ion-icon aria-hidden="true" name="mail-outline"></ion-icon></button>
         <button class="tab-btn" data-tab="experiences" role="tab" aria-selected="false" aria-controls="experiences" id="tab-experiences" title="Experiences" aria-label="Experiences"><ion-icon aria-hidden="true" name="briefcase-outline"></ion-icon><span class="tab-count-badge" id="tab-count-experiences" aria-hidden="true"></span></button>
         <button class="tab-btn" data-tab="projects" role="tab" aria-selected="false" aria-controls="projects" id="tab-projects" title="Projects" aria-label="Projects"><ion-icon aria-hidden="true" name="folder-outline"></ion-icon><span class="tab-count-badge" id="tab-count-projects" aria-hidden="true"></span></button>
@@ -156,6 +157,10 @@
 
         <div class="file-tree-section active" data-tree-section="about">
           <div class="file-tree-item" data-tab="about"><span class="fdot md"></span> bio.md</div>
+        </div>
+
+        <div class="file-tree-section" data-tree-section="chat">
+          <div class="file-tree-item" data-tab="chat"><span class="fdot ts"></span> assistant.ts</div>
         </div>
 
         <div class="file-tree-section" data-tree-section="contact">
@@ -270,6 +275,27 @@
           </button>
           <p class="text-xs text-ink-muted mt-2">Open a random portfolio item</p>
         </section>
+      </article>
+
+      <!-- Ask AI -->
+      <article id="chat" class="tab-panel animate-fade-up" role="tabpanel" aria-labelledby="tab-chat" tabindex="0">
+        <header class="panel-head mb-6">
+          <h2 class="font-display text-3xl font-bold text-white tracking-tight"><ion-icon aria-hidden="true" name="sparkles-outline" class="align-middle mr-2"></ion-icon>Ask AI</h2>
+          <p class="mt-2 text-ink-muted">Ask about my projects, experience, or skills — answered using the real content on this site.</p>
+        </header>
+
+        <div class="chat-window">
+          <div class="chat-messages" id="chat-messages">
+            <div class="chat-message chat-message--assistant">
+              <div class="chat-bubble">Hi! Ask me anything about the projects, experience, resume, or skills on this site — I'll answer from what's actually here.</div>
+            </div>
+          </div>
+          <form id="chat-form" class="chat-input-row">
+            <input type="text" id="chat-input" placeholder="Ask a question..." maxlength="600" autocomplete="off" class="ide-control">
+            <button type="submit" class="contact-submit-btn" id="chat-send-btn">Ask</button>
+          </form>
+          <p class="form-note">AI-generated from real site content — may not be fully accurate. For anything important, use the Contact tab.</p>
+        </div>
       </article>
 
       <!-- Projects -->
