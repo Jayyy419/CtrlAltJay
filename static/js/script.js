@@ -1600,6 +1600,7 @@ async function bootstrap() {
   handleDeepLink();
   initHitCounter();
   initAnimatedCounters();
+  initGithubActivity();
   registerServiceWorker();
 
   // Smooth page load transition
@@ -2895,6 +2896,78 @@ function animateCounter(id, target) {
     if (progress < 1) requestAnimationFrame(step);
   }
   requestAnimationFrame(step);
+}
+
+/* ===== Live GitHub Activity Strip ===== */
+async function initGithubActivity() {
+  const container = document.getElementById("github-activity-strip");
+  if (!container) return;
+  const link = document.querySelector('a[href*="github.com"]');
+  const match = link?.href.match(/github\.com\/([^/?#]+)/i);
+  const username = match?.[1];
+  if (!username) {
+    document.getElementById("github-activity-section")?.remove();
+    return;
+  }
+
+  try {
+    const res = await fetch(`https://api.github.com/users/${encodeURIComponent(username)}/events/public?per_page=6`);
+    if (!res.ok) throw new Error(`GitHub API ${res.status}`);
+    const events = await res.json();
+    renderGithubActivity(container, Array.isArray(events) ? events.slice(0, 6) : []);
+  } catch (err) {
+    container.innerHTML = `<div class="gh-activity-error">// couldn't load GitHub activity right now</div>`;
+  }
+}
+
+function describeGithubEvent(event) {
+  const repo = event.repo?.name || "unknown/repo";
+  switch (event.type) {
+    case "PushEvent": {
+      const n = event.payload?.commits?.length || 0;
+      return { icon: "arrow-up-circle-outline", text: `pushed ${n} commit${n === 1 ? "" : "s"} to` , repo };
+    }
+    case "CreateEvent":
+      return { icon: "add-circle-outline", text: `created a ${event.payload?.ref_type || "ref"} in`, repo };
+    case "PullRequestEvent":
+      return { icon: "git-pull-request-outline", text: `${event.payload?.action || "updated"} a pull request in`, repo };
+    case "IssuesEvent":
+      return { icon: "alert-circle-outline", text: `${event.payload?.action || "updated"} an issue in`, repo };
+    case "IssueCommentEvent":
+      return { icon: "chatbubble-outline", text: "commented on an issue in", repo };
+    case "WatchEvent":
+      return { icon: "star-outline", text: "starred", repo };
+    case "ForkEvent":
+      return { icon: "git-branch-outline", text: "forked", repo };
+    default:
+      return { icon: "git-commit-outline", text: `${(event.type || "activity").replace("Event", "").toLowerCase()} in`, repo };
+  }
+}
+
+function timeAgo(dateStr) {
+  const diffMs = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 60) return `${Math.max(mins, 0)}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  return `${Math.floor(days / 30)}mo ago`;
+}
+
+function renderGithubActivity(container, events) {
+  if (!events.length) {
+    container.innerHTML = `<div class="gh-activity-empty">// no recent public activity</div>`;
+    return;
+  }
+  container.innerHTML = events.map((event) => {
+    const { icon, text, repo } = describeGithubEvent(event);
+    return `<div class="gh-activity-item">
+      <ion-icon name="${escapeHtml(icon)}" aria-hidden="true"></ion-icon>
+      <span class="gh-activity-text">${escapeHtml(text)} <strong>${escapeHtml(repo)}</strong></span>
+      <span class="gh-activity-time">${escapeHtml(timeAgo(event.created_at))}</span>
+    </div>`;
+  }).join("");
 }
 
 /* ===== Visitor Hit Counter ===== */

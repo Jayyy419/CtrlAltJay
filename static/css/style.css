@@ -239,6 +239,29 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
 }
 .counter-label::before { content: "// "; opacity: 0.6; }
 
+/* ===== GitHub Activity Strip ===== */
+.gh-activity-strip { display: flex; flex-direction: column; gap: 8px; }
+.gh-activity-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--ide-border-soft);
+  border-radius: 6px;
+  background: var(--ide-editor-bg-soft);
+  font-size: 0.85rem;
+}
+.gh-activity-item ion-icon { color: var(--ide-accent); flex-shrink: 0; font-size: 1rem; }
+.gh-activity-text { flex: 1; min-width: 0; color: var(--ide-text); }
+.gh-activity-text strong { color: var(--ide-type); font-family: 'Plex Mono', monospace; font-weight: 600; }
+.gh-activity-time { font-family: 'Plex Mono', monospace; font-size: 0.72rem; color: var(--ide-text-faint); flex-shrink: 0; }
+.gh-activity-loading, .gh-activity-empty, .gh-activity-error {
+  font-family: 'Plex Mono', monospace;
+  font-size: 0.85rem;
+  color: var(--ide-text-faint);
+  padding: 8px 0;
+}
+
 /* File-tree sidebar */
 .ide-sidebar {
   width: 300px;
