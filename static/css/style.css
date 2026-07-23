@@ -261,6 +261,61 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
 .credly-cert-row:hover { border-color: var(--ide-accent); color: var(--ide-text-bright); }
 .credly-cert-row::before { content: "▸ "; color: var(--ide-type); }
 
+/* Now sub-tab: reuses the same real "current focus" data as About */
+.now-card {
+  padding: 12px 14px;
+  background: var(--ide-editor-bg-soft);
+  border: 1px solid var(--ide-border-soft);
+  border-left: 2px solid var(--ide-accent);
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+.now-card-title { margin: 0 0 4px; font-family: 'Plex Mono', monospace; font-size: 0.9rem; font-weight: 700; color: var(--ide-text-bright); }
+.now-card-desc { margin: 0; font-size: 0.85rem; color: var(--ide-text); line-height: 1.6; }
+
+/* Uses sub-tab: key/value rows */
+.uses-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 14px;
+  background: var(--ide-editor-bg-soft);
+  border: 1px solid var(--ide-border-soft);
+  border-radius: 6px;
+  margin-bottom: 8px;
+  font-family: 'Plex Mono', monospace;
+  font-size: 0.85rem;
+}
+.uses-label { color: var(--ide-text-dim); }
+.uses-value { color: var(--ide-text-bright); font-weight: 600; }
+
+/* Timeline sub-tab: merged resume + experience milestones */
+.timeline-list { display: flex; flex-direction: column; }
+.timeline-item { position: relative; padding: 0 0 20px 22px; }
+.timeline-item:last-child { padding-bottom: 0; }
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 4px;
+  bottom: -4px;
+  width: 2px;
+  background: var(--ide-border);
+}
+.timeline-item:last-child::before { display: none; }
+.timeline-dot {
+  position: absolute;
+  left: 0;
+  top: 4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ide-accent);
+}
+.timeline-dot--milestone { background: var(--ide-git-added); }
+.timeline-title { font-family: 'Plex Mono', monospace; font-size: 0.88rem; font-weight: 700; color: var(--ide-text-bright); }
+.timeline-meta { font-family: 'Plex Mono', monospace; font-size: 0.78rem; color: var(--ide-text-dim); margin-top: 2px; }
+
 /* About Me: bio as a docstring, focus cards + counters as code, not glassy cards */
 .bio-highlight {
   background: var(--ide-editor-bg-soft) !important;
