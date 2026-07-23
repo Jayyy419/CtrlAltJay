@@ -638,6 +638,19 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
 .tok-comment { color: var(--ide-comment); font-style: italic; }
 .tok-decorator { color: var(--ide-function); }
 
+/* ===== Live Visitor Presence ===== */
+.presence-indicator { display: flex; align-items: center; gap: 6px; }
+.presence-avatars { display: flex; align-items: center; }
+.presence-avatar {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 2px solid var(--ide-statusbar-bg);
+  margin-left: -6px;
+}
+.presence-avatar:first-child { margin-left: 0; }
+.presence-count { font-size: 0.72rem; white-space: nowrap; }
+
 /* ===== Problems Panel ===== */
 .ide-problems-body { flex: 1; overflow-y: auto; padding: 4px 0; }
 .problem-row {
