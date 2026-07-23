@@ -481,6 +481,25 @@
           <button type="submit" class="contact-submit-btn">Send Message</button>
           <p class="form-note">I'll get back to you within 24-48 hours.</p>
         </form>
+
+        <section class="guestbook-section mt-10" id="guestbook-section">
+          <h3 class="font-display text-xl font-semibold text-white mb-2"><ion-icon aria-hidden="true" name="chatbubbles-outline" class="align-middle mr-2"></ion-icon>Leave a Note</h3>
+          <p class="text-sm text-ink-muted mb-4">Public notes, reviewed before they go live — say hello, leave feedback, or just sign the guestbook.</p>
+
+          <form id="guestbook-form" class="guestbook-form">
+            <input type="text" name="name" placeholder="Your name" required minlength="2" maxlength="60" class="ide-control">
+            <textarea name="message" placeholder="Say something..." required minlength="3" maxlength="500" rows="3" class="ide-control"></textarea>
+            <div class="hp-field" aria-hidden="true" tabindex="-1">
+              <input type="text" name="website" tabindex="-1" autocomplete="off">
+            </div>
+            <button type="submit" class="contact-submit-btn">Post Note</button>
+            <p id="guestbook-feedback" class="form-note" aria-live="polite"></p>
+          </form>
+
+          <div id="guestbook-list" class="guestbook-list">
+            <div class="guestbook-loading">// loading notes...</div>
+          </div>
+        </section>
       </article>
 
       <!-- Source Control -->

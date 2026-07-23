@@ -2325,6 +2325,67 @@ body.zen-mode .ide-panel-scroll { padding: 48px max(32px, calc(50% - 380px)); }
 .contact-submit-btn:active { transform: scale(0.98); }
 .form-note { font-size: 0.78rem; color: var(--ide-text-faint); margin-top: 4px; }
 
+/* ===== Guestbook: "Leave a Note" ===== */
+.guestbook-form { display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px; }
+.guestbook-form .ide-control { width: 100%; }
+.guestbook-list { display: flex; flex-direction: column; gap: 12px; }
+.guestbook-loading, .guestbook-empty {
+  font-family: 'Plex Mono', monospace;
+  font-size: 0.85rem;
+  color: var(--ide-text-faint);
+  padding: 8px 0;
+}
+.guestbook-note {
+  display: flex;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--ide-editor-bg-soft);
+  border: 1px solid var(--ide-border-soft);
+  border-radius: 8px;
+}
+.guestbook-note-avatar {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--ide-accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Plex Mono', monospace;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+.guestbook-note-body { flex: 1; min-width: 0; }
+.guestbook-note-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
+.guestbook-note-head strong { color: var(--ide-text-bright); font-size: 0.88rem; }
+.guestbook-note-time { font-family: 'Plex Mono', monospace; font-size: 0.72rem; color: var(--ide-text-faint); margin-left: auto; }
+.guestbook-note-message { margin: 0; font-size: 0.85rem; color: var(--ide-text); line-height: 1.6; white-space: pre-wrap; }
+.guestbook-status {
+  font-family: 'Plex Mono', monospace;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 1px 7px;
+  border-radius: 999px;
+}
+.guestbook-status--pending { background: rgba(226,185,59,0.15); color: #e2b93b; }
+.guestbook-status--rejected { background: rgba(239,68,68,0.15); color: #ef4444; }
+.guestbook-admin-actions { display: flex; gap: 8px; margin-top: 10px; }
+.guestbook-action-btn {
+  background: none;
+  border: 1px solid var(--ide-border-soft);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-family: 'Plex Mono', monospace;
+  font-size: 0.72rem;
+  cursor: pointer;
+  color: var(--ide-text-dim);
+}
+.guestbook-action-btn--approve:hover { border-color: var(--ide-git-added); color: var(--ide-git-added); }
+.guestbook-action-btn--reject:hover, .guestbook-action-btn--delete:hover { border-color: #ef4444; color: #ef4444; }
+
 /* ===== Light Theme ===== */
 .light-theme {
   --bg-surface: #f8fafc;
