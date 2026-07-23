@@ -378,6 +378,12 @@ def index():
                 "description": "Leading operations and finance to strengthen organisational sustainability and programme delivery as Head of Operations & Finance.",
             },
         ],
+        "now_updated": "2026-07-01",
+        "now_cadence": "Refreshed roughly once a month — ping me if something here looks stale.",
+        "availability": {
+            "status": "open",
+            "label": "Open to new opportunities",
+        },
     }
     return render_template("index.html", profile=profile)
 
