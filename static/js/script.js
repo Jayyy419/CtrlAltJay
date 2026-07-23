@@ -161,43 +161,16 @@ function renderIdeTabbar(activeTab) {
     </div>`;
   }).join("");
 
-  const openItemTabByName = (name) => {
-    const meta = state.ideItemMeta?.[name];
-    if (!meta) return;
-    switchTab(meta.sectionTab);
-    const item = findItemById(meta.itemId);
-    if (item) openModal(item);
-    renderIdeTabbar(name);
-  };
-
   bar.querySelectorAll(".ide-tab").forEach((tabEl) => {
     tabEl.addEventListener("click", (e) => {
       if (e.target.dataset.closeTab) return;
-      const name = tabEl.dataset.tab;
-      if (name.startsWith("item:")) { openItemTabByName(name); return; }
-      switchTab(name);
-      window.history.replaceState(null, "", `#${name}`);
+      openIdeTabByName(tabEl.dataset.tab);
     });
   });
   bar.querySelectorAll("[data-close-tab]").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
-      const name = btn.dataset.closeTab;
-      state.ideOpenTabs = state.ideOpenTabs.filter((t) => t !== name);
-      if (state.ideOpenTabs.length === 0) state.ideOpenTabs = ["about"];
-      if (name === activeTab) {
-        const next = state.ideOpenTabs[state.ideOpenTabs.length - 1];
-        if (next.startsWith("item:")) {
-          const meta = state.ideItemMeta?.[next];
-          switchTab(meta ? meta.sectionTab : "about");
-          renderIdeTabbar(next);
-        } else {
-          switchTab(next);
-          window.history.replaceState(null, "", `#${next}`);
-        }
-      } else {
-        renderIdeTabbar(activeTab);
-      }
+      closeIdeTab(btn.dataset.closeTab, activeTab);
     });
   });
 }
@@ -265,22 +238,85 @@ function renderIdeFileTreeItems() {
   }
 }
 
+const SIDEBAR_WIDTH_KEY = "ctrlaltjay-filetree-width";
+
+function initSidebarResize() {
+  const sidebar = document.getElementById("file-tree");
+  const resizer = document.getElementById("ide-sidebar-resizer");
+  if (!sidebar || !resizer) return;
+
+  const saved = parseInt(localStorage.getItem(SIDEBAR_WIDTH_KEY), 10);
+  if (saved) sidebar.style.width = `${Math.min(500, Math.max(200, saved))}px`;
+
+  let dragging = false;
+  resizer.addEventListener("mousedown", (e) => {
+    dragging = true;
+    resizer.classList.add("dragging");
+    document.body.style.userSelect = "none";
+    e.preventDefault();
+  });
+  document.addEventListener("mousemove", (e) => {
+    if (!dragging) return;
+    const newWidth = Math.min(500, Math.max(200, e.clientX - sidebar.getBoundingClientRect().left));
+    sidebar.style.width = `${newWidth}px`;
+  });
+  document.addEventListener("mouseup", () => {
+    if (!dragging) return;
+    dragging = false;
+    resizer.classList.remove("dragging");
+    document.body.style.userSelect = "";
+    localStorage.setItem(SIDEBAR_WIDTH_KEY, parseInt(sidebar.style.width, 10));
+  });
+}
+
 function openItemTab(item, sectionTab) {
   const tabId = `item:${item.id}`;
   const ext = sectionTab === "projects" ? "py" : "md";
+  const filename = `${slugifyTitle(item.title)}.${ext}`;
   state.ideItemMeta = state.ideItemMeta || {};
-  state.ideItemMeta[tabId] = {
-    label: `${slugifyTitle(item.title)}.${ext}`,
-    icon: ext,
-    sectionTab,
-    itemId: item.id,
-  };
+  state.ideItemMeta[tabId] = { label: filename, icon: ext, sectionTab, itemId: item.id };
   if (!state.ideOpenTabs.includes(tabId)) state.ideOpenTabs.push(tabId);
-  switchTab(sectionTab);
+
+  renderItemViewer(item);
+  switchTab("item-viewer");
   renderIdeTabbar(tabId);
+
+  document.querySelectorAll(".file-tree-folder").forEach((el) => el.classList.toggle("active", el.dataset.tab === sectionTab));
   document.querySelectorAll(".file-tree-item.active").forEach((el) => el.classList.remove("active"));
   document.querySelectorAll(`.file-tree-item[data-id="${item.id}"]`).forEach((el) => el.classList.add("active"));
-  openModal(item);
+  const sectionEl = document.getElementById("ide-status-section");
+  if (sectionEl) sectionEl.textContent = `${sectionTab}/${filename}`;
+  updateIdeStatusCount(sectionTab);
+}
+
+function openIdeTabByName(name) {
+  if (name.startsWith("item:")) {
+    const meta = state.ideItemMeta?.[name];
+    if (!meta) return;
+    const item = findItemById(meta.itemId);
+    if (item) openItemTab(item, meta.sectionTab);
+    return;
+  }
+  switchTab(name);
+  window.history.replaceState(null, "", `#${name}`);
+}
+
+function closeIdeTab(name, activeTab) {
+  state.ideOpenTabs = state.ideOpenTabs.filter((t) => t !== name);
+  if (state.ideItemMeta?.[name]) delete state.ideItemMeta[name];
+  if (state.ideOpenTabs.length === 0) state.ideOpenTabs = ["about"];
+  if (name === activeTab) {
+    openIdeTabByName(state.ideOpenTabs[state.ideOpenTabs.length - 1]);
+  } else {
+    renderIdeTabbar(activeTab);
+  }
+}
+
+function closeItemTabIfOpen(itemId) {
+  const tabId = `item:${itemId}`;
+  if (!state.ideOpenTabs.includes(tabId)) return;
+  const activeTab = document.querySelector(".ide-tab.active")?.dataset.tab || tabId;
+  closeIdeTab(tabId, activeTab);
 }
 
 function compareBySort(a, b, mode) {
@@ -402,7 +438,7 @@ function buildCard(item, highlightQuery = "") {
   if (img) card.appendChild(img);
   card.appendChild(content);
 
-  card.addEventListener("click", () => openModal(item));
+  card.addEventListener("click", () => openItemTab(item, item.section === "experience" ? "experiences" : "projects"));
 
   return card;
 }
@@ -658,9 +694,9 @@ function rowToHTML(label, value) {
   return `<div class="modal-row"><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value)}</div>`;
 }
 
-function openModal(item) {
+function renderItemViewer(item) {
   state.modalItem = item;
-  const shell = document.getElementById("detail-modal");
+  const shell = document.getElementById("item-viewer");
   const image = document.getElementById("modal-image");
   const title = document.getElementById("modal-title");
   const tag = document.getElementById("modal-tag");
@@ -741,7 +777,6 @@ function openModal(item) {
       chip.title = `Filter by \"${s}\"`;
       chip.addEventListener("click", (e) => {
         e.stopPropagation();
-        closeDetailModal();
         const tab = item.section === "experience" ? "experiences" : "projects";
         switchTab(tab);
         const filterContainer = document.getElementById(`${tab}-skills-filter`);
@@ -792,9 +827,6 @@ function openModal(item) {
   // Update share buttons
   updateShareLinks(item);
 
-  shell.classList.add("active");
-  shell.setAttribute("aria-hidden", "false");
-
   // Deep link: update URL hash
   if (item.id) {
     window.history.replaceState(null, "", `#item/${item.id}`);
@@ -827,25 +859,6 @@ function openModal(item) {
       showToast("Item exported.", "success");
     };
   }
-}
-
-function initModal() {
-  const shell = document.getElementById("detail-modal");
-  shell.querySelectorAll("[data-close-modal]").forEach((element) => {
-    element.addEventListener("click", () => {
-      closeDetailModal();
-    });
-  });
-}
-
-function closeDetailModal() {
-  const shell = document.getElementById("detail-modal");
-  state.modalItem = null;
-  shell.classList.remove("active");
-  shell.setAttribute("aria-hidden", "true");
-  // Clear deep link hash
-  const section = document.querySelector(".tab-panel.active")?.id;
-  window.history.replaceState(null, "", section ? `#${section}` : window.location.pathname);
 }
 
 function renderResume() {
@@ -1153,11 +1166,6 @@ function initInlineAdminEditor() {
     if (!state.isAdmin || !state.modalItem) {
       return;
     }
-    const detailModal = document.getElementById("detail-modal");
-    if (detailModal) {
-      detailModal.classList.remove("active");
-      detailModal.setAttribute("aria-hidden", "true");
-    }
     openAdminItemModal(state.modalItem, state.modalItem.section || "project");
   });
 
@@ -1171,7 +1179,7 @@ function initInlineAdminEditor() {
       try {
         const res = await fetch(`/api/admin/items/${item.id}`, { method: "DELETE" });
         if (!res.ok) throw new Error("Delete failed");
-        closeDetailModal();
+        closeItemTabIfOpen(item.id);
         await fetchData();
         wireProjectControls();
         logActivity("Delete", item.title);
@@ -1191,7 +1199,6 @@ function initInlineAdminEditor() {
       const item = { ...state.modalItem };
       const section = item.section || "project";
       item.title = item.title + " (Copy)";
-      closeDetailModal();
       openAdminItemModal(item, section);
       document.getElementById("admin-item-id").value = "";
       const titleEl = document.getElementById("admin-item-title");
@@ -1251,7 +1258,14 @@ function initInlineAdminEditor() {
       if (state.modalItem?.id && itemId) {
         const refreshedItem = findItemById(itemId);
         if (refreshedItem) {
-          openModal(refreshedItem);
+          renderItemViewer(refreshedItem);
+          const tabId = `item:${refreshedItem.id}`;
+          if (state.ideItemMeta[tabId]) {
+            const sectionTab = state.ideItemMeta[tabId].sectionTab;
+            const ext = sectionTab === "projects" ? "py" : "md";
+            state.ideItemMeta[tabId].label = `${slugifyTitle(refreshedItem.title)}.${ext}`;
+            renderIdeTabbar(document.querySelector(".ide-tab.active")?.dataset.tab || tabId);
+          }
         }
       }
     } catch (error) {
@@ -1398,7 +1412,6 @@ function wireProjectControls() {
 async function bootstrap() {
   initTabs();
   initTabTransitions();
-  initModal();
   initContactForm();
   initAdminAuth();
   initInlineAdminEditor();
@@ -1428,6 +1441,7 @@ async function bootstrap() {
   initAdminToolsPopup();
   initProfileFlyout();
   initIdeFileTree();
+  initSidebarResize();
   initIdeStatusClock();
   renderIdeTabbar("about");
   setAdminMode(false);
@@ -1470,11 +1484,8 @@ function initEscapeKey() {
     if (confirm) { confirm.remove(); return; }
     const adminItem = document.getElementById("admin-item-modal");
     if (adminItem?.classList.contains("active")) { closeAdminItemModal(); return; }
-    const detail = document.getElementById("detail-modal");
-    if (detail?.classList.contains("active")) {
-      closeDetailModal();
-      return;
-    }
+    const activeItemTab = document.querySelector('.ide-tab.active[data-tab^="item:"]');
+    if (activeItemTab) { activeItemTab.querySelector("[data-close-tab]")?.click(); return; }
     const loginModal = document.getElementById("admin-login-modal");
     if (loginModal?.classList.contains("active")) { closeAdminLoginModal(); return; }
     const resumeKeyModal = document.getElementById("resume-key-modal");
@@ -2214,10 +2225,8 @@ function handleDeepLink() {
   const itemId = hash.replace("item/", "");
   const item = findItemById(itemId);
   if (item) {
-    // Switch to the correct tab
     const tab = item.section === "experience" ? "experiences" : "projects";
-    switchTab(tab);
-    openModal(item);
+    openItemTab(item, tab);
   }
 }
 
@@ -2292,7 +2301,7 @@ function renderRecentStrip(containerId, items) {
     card.tabIndex = 0;
     const imgHtml = item.image_path ? `<img src="${item.image_path}" alt="${escapeHtml(item.title)}" loading="lazy">` : "";
     card.innerHTML = `${imgHtml}<span>${escapeHtml(item.title)}</span>`;
-    card.addEventListener("click", () => openModal(item));
+    card.addEventListener("click", () => openItemTab(item, item.section === "experience" ? "experiences" : "projects"));
     strip.appendChild(card);
   });
 }
@@ -2329,7 +2338,7 @@ function renderRelatedItems(item) {
     card.tabIndex = 0;
     const imgHtml = rel.image_path ? `<img src="${rel.image_path}" alt="${escapeHtml(rel.title)}" loading="lazy">` : "";
     card.innerHTML = `${imgHtml}<span>${escapeHtml(rel.title)}</span>`;
-    card.addEventListener("click", () => openModal(rel));
+    card.addEventListener("click", () => openItemTab(rel, rel.section === "experience" ? "experiences" : "projects"));
     strip.appendChild(card);
   });
 }
@@ -3033,8 +3042,7 @@ function initSurpriseMe() {
     if (allItems.length === 0) { showToast("No items loaded yet.", "info"); return; }
     const random = allItems[Math.floor(Math.random() * allItems.length)];
     const tab = random.section === "experience" ? "experiences" : "projects";
-    switchTab(tab);
-    openModal(random);
+    openItemTab(random, tab);
   });
 }
 
