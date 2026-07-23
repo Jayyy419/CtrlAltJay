@@ -1,0 +1,59 @@
+name: Deploy to Elastic Beanstalk
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: eb-deploy-prod
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ap-southeast-1
+  EB_APPLICATION_NAME: CtrlAltJay
+  EB_ENVIRONMENT_NAME: ctrlaltjay-prod
+  EB_S3_BUCKET: elasticbeanstalk-ap-southeast-1-140023398409
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Sanity check Python syntax
+        run: python3 -m py_compile app.py
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Build deployment package
+        run: zip -r deploy.zip . -x ".git/*" ".github/*" ".elasticbeanstalk/*"
+
+      - name: Upload package to EB S3 bucket
+        run: |
+          aws s3 cp deploy.zip "s3://${EB_S3_BUCKET}/${EB_APPLICATION_NAME}/gh-${GITHUB_SHA}.zip"
+
+      - name: Create application version
+        run: |
+          aws elasticbeanstalk create-application-version \
+            --application-name "${EB_APPLICATION_NAME}" \
+            --version-label "gh-${GITHUB_SHA}" \
+            --source-bundle S3Bucket="${EB_S3_BUCKET}",S3Key="${EB_APPLICATION_NAME}/gh-${GITHUB_SHA}.zip"
+
+      - name: Deploy new version
+        run: |
+          aws elasticbeanstalk update-environment \
+            --environment-name "${EB_ENVIRONMENT_NAME}" \
+            --version-label "gh-${GITHUB_SHA}"
+
+      - name: Wait for environment to stabilize
+        run: aws elasticbeanstalk wait environment-updated --environment-name "${EB_ENVIRONMENT_NAME}"
