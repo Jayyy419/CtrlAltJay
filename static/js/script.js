@@ -12,6 +12,15 @@ const state = {
   rerenderExperiences: null,
   currentSection: null,
   dataLoaded: false,
+  ideOpenTabs: ["about"],
+};
+
+const IDE_TAB_META = {
+  about: { label: "bio.md", icon: "md" },
+  projects: { label: "projects/", icon: "md" },
+  experiences: { label: "experiences/", icon: "md" },
+  resume: { label: "resume.pdf", icon: "md" },
+  contact: { label: "contact.md", icon: "md" },
 };
 
 const tabs = document.querySelectorAll(".tab-btn");
@@ -106,6 +115,7 @@ function switchTab(tabName) {
     btn.setAttribute("aria-selected", "true");
   }
   if (panel) panel.classList.add("active");
+  syncIdeChrome(tabName);
 }
 
 function initTabs() {
@@ -121,6 +131,114 @@ function initTabs() {
   const hash = window.location.hash.replace("#", "");
   if (hash && !hash.startsWith("item/") && document.getElementById(hash)) {
     switchTab(hash);
+  }
+}
+
+/* ===== IDE chrome: tab bar, file tree, status bar ===== */
+
+function syncIdeChrome(tabName) {
+  if (!IDE_TAB_META[tabName]) return;
+  if (!state.ideOpenTabs.includes(tabName)) state.ideOpenTabs.push(tabName);
+  renderIdeTabbar(tabName);
+  document.querySelectorAll(".file-tree-folder").forEach((el) => {
+    el.classList.toggle("active", el.dataset.tab === tabName);
+  });
+  const sectionEl = document.getElementById("ide-status-section");
+  if (sectionEl) sectionEl.textContent = tabName + (IDE_TAB_META[tabName].label.endsWith("/") ? "" : ".md").replace(".md.md", ".md");
+  updateIdeStatusCount(tabName);
+}
+
+function renderIdeTabbar(activeTab) {
+  const bar = document.getElementById("ide-tabbar");
+  if (!bar) return;
+  bar.innerHTML = state.ideOpenTabs.map((name) => {
+    const meta = IDE_TAB_META[name] || { label: name, icon: "md" };
+    const isActive = name === activeTab;
+    return `<div class="ide-tab ${isActive ? "active" : ""}" data-tab="${name}">
+      <span class="fdot ${meta.icon}"></span> ${escapeHtml(meta.label)}
+      <span class="close" data-close-tab="${name}" title="Close" aria-label="Close ${escapeHtml(meta.label)}">&times;</span>
+    </div>`;
+  }).join("");
+
+  bar.querySelectorAll(".ide-tab").forEach((tabEl) => {
+    tabEl.addEventListener("click", (e) => {
+      if (e.target.dataset.closeTab) return;
+      switchTab(tabEl.dataset.tab);
+      window.history.replaceState(null, "", `#${tabEl.dataset.tab}`);
+    });
+  });
+  bar.querySelectorAll("[data-close-tab]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const name = btn.dataset.closeTab;
+      state.ideOpenTabs = state.ideOpenTabs.filter((t) => t !== name);
+      if (state.ideOpenTabs.length === 0) state.ideOpenTabs = ["about"];
+      if (name === activeTab) {
+        const next = state.ideOpenTabs[state.ideOpenTabs.length - 1];
+        switchTab(next);
+        window.history.replaceState(null, "", `#${next}`);
+      } else {
+        renderIdeTabbar(activeTab);
+      }
+    });
+  });
+}
+
+function updateIdeStatusCount(tabName) {
+  const el = document.getElementById("ide-status-count");
+  if (!el) return;
+  if (tabName === "projects") el.textContent = `${state.projects.length} file${state.projects.length !== 1 ? "s" : ""}`;
+  else if (tabName === "experiences") el.textContent = `${state.experiences.length} file${state.experiences.length !== 1 ? "s" : ""}`;
+  else if (tabName === "resume") el.textContent = `${state.resume.length} entries`;
+  else el.textContent = "";
+}
+
+function initIdeStatusClock() {
+  const el = document.getElementById("ide-status-clock");
+  if (!el) return;
+  const tick = () => {
+    el.textContent = new Date().toLocaleTimeString("en-SG", { hour: "2-digit", minute: "2-digit" });
+  };
+  tick();
+  setInterval(tick, 30000);
+}
+
+function initIdeFileTree() {
+  document.querySelectorAll(".file-tree-folder").forEach((folder) => {
+    folder.addEventListener("click", () => {
+      const name = folder.dataset.tab;
+      switchTab(name);
+      window.history.replaceState(null, "", `#${name}`);
+    });
+  });
+}
+
+function renderIdeFileTreeItems() {
+  const projTarget = document.getElementById("tree-projects-items");
+  const expTarget = document.getElementById("tree-experiences-items");
+  const slug = (title) => (title || "untitled").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+
+  if (projTarget) {
+    projTarget.innerHTML = state.projects.map((item) =>
+      `<div class="file-tree-item" data-id="${escapeHtml(item.id)}"><span class="fdot py"></span> ${escapeHtml(slug(item.title))}.py</div>`
+    ).join("");
+    projTarget.querySelectorAll(".file-tree-item").forEach((el) => {
+      el.addEventListener("click", () => {
+        const item = state.projects.find((p) => String(p.id) === el.dataset.id);
+        if (item) { switchTab("projects"); openModal(item); }
+      });
+    });
+  }
+  if (expTarget) {
+    expTarget.innerHTML = state.experiences.map((item) =>
+      `<div class="file-tree-item" data-id="${escapeHtml(item.id)}"><span class="fdot py"></span> ${escapeHtml(slug(item.title))}.py</div>`
+    ).join("");
+    expTarget.querySelectorAll(".file-tree-item").forEach((el) => {
+      el.addEventListener("click", () => {
+        const item = state.experiences.find((p) => String(p.id) === el.dataset.id);
+        if (item) { switchTab("experiences"); openModal(item); }
+      });
+    });
   }
 }
 
@@ -767,12 +885,22 @@ function renderSkills() {
 }
 
 async function fetchData() {
-  const response = await fetch("/api/public-data");
-  const payload = await response.json();
-  state.projects = payload.projects || [];
-  state.experiences = payload.experiences || [];
-  state.resume = payload.resume || [];
-  state.skills = payload.skills || [];
+  try {
+    const response = await fetch("/api/public-data");
+    if (!response.ok) throw new Error(`public-data request failed: ${response.status}`);
+    const payload = await response.json();
+    state.projects = payload.projects || [];
+    state.experiences = payload.experiences || [];
+    state.resume = payload.resume || [];
+    state.skills = payload.skills || [];
+  } catch (err) {
+    console.error("Failed to load portfolio data", err);
+    state.projects = [];
+    state.experiences = [];
+    state.resume = [];
+    state.skills = [];
+    state.dataLoadFailed = true;
+  }
 }
 
 function setAdminMode(enabled) {
@@ -1257,6 +1385,9 @@ async function bootstrap() {
   initMobileSwipe();
   initDeletedItems();
   initAdminToolsPopup();
+  initIdeFileTree();
+  initIdeStatusClock();
+  renderIdeTabbar("about");
   setAdminMode(false);
 
   // Show skeletons while data loads
@@ -1269,6 +1400,8 @@ async function bootstrap() {
   updateDraftIndicator();
   renderResume();
   renderSkills();
+  renderIdeFileTreeItems();
+  updateIdeStatusCount(state.currentSection || "about");
   updateTabBadges();
   updateFooterTimestamp();
   renderRecentlyViewed();
