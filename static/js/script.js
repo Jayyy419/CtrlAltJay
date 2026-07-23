@@ -2325,6 +2325,8 @@ function initEscapeKey() {
     // Close in order: command palette, shortcuts overlay, lightbox, confirm overlay, admin item modal, detail modal, admin login modal
     const cmdPalette = document.getElementById("command-palette-overlay");
     if (cmdPalette) { closeCommandPalette(); return; }
+    const celebration = document.getElementById("celebration-overlay");
+    if (celebration) { celebration.remove(); return; }
     const terminalPanel = document.getElementById("ide-terminal-panel");
     if (terminalPanel && terminalPanel.style.display !== "none") { closeTerminalPanel(); return; }
     const shortcuts = document.getElementById("shortcuts-overlay");
@@ -3823,8 +3825,47 @@ function markTabExplored(tabName) {
   localStorage.setItem(EXPLORE_STORAGE_KEY, JSON.stringify([...explored]));
   renderExplorationProgress(explored);
   if (!wasComplete && explored.size === EXPLORE_TABS.length) {
-    showToast("You've explored every section of this portfolio!", "success");
+    showExplorationCelebration();
   }
+}
+
+function showExplorationCelebration() {
+  if (document.getElementById("celebration-overlay")) return;
+  const colors = ["#f59e0b", "#3b82f6", "#22c55e", "#ec4899", "#8b5cf6", "#ef4444"];
+  const confettiHtml = Array.from({ length: 28 }).map((_, i) => {
+    const color = colors[i % colors.length];
+    const left = Math.round((i / 28) * 100);
+    const delay = (i % 7) * 0.12;
+    const duration = (1.6 + (i % 5) * 0.3).toFixed(2);
+    return `<span class="confetti-piece" style="left:${left}%;background:${color};animation-delay:${delay}s;animation-duration:${duration}s"></span>`;
+  }).join("");
+
+  const overlay = document.createElement("div");
+  overlay.id = "celebration-overlay";
+  overlay.className = "celebration-overlay";
+  overlay.innerHTML = `
+    <div class="celebration-confetti">${confettiHtml}</div>
+    <div class="celebration-card">
+      <button type="button" class="celebration-close" id="celebration-close" aria-label="Close">&times;</button>
+      <div class="celebration-icon"><ion-icon name="trophy-outline" aria-hidden="true"></ion-icon></div>
+      <h2 class="celebration-title">You've explored it all!</h2>
+      <p class="celebration-message">You've now seen everything this portfolio has to offer. If something here resonated — a project to build together, a business idea worth exploring, or a role you're looking to fill — I'd love to hear from you.</p>
+      <div class="celebration-actions">
+        <button type="button" class="celebration-cta" id="celebration-cta">Get in Touch</button>
+        <button type="button" class="celebration-dismiss" id="celebration-dismiss">Maybe later</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const close = () => overlay.remove();
+  overlay.querySelector("#celebration-close").addEventListener("click", close);
+  overlay.querySelector("#celebration-dismiss").addEventListener("click", close);
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) close(); });
+  overlay.querySelector("#celebration-cta").addEventListener("click", () => {
+    close();
+    openIdeTabByName("contact");
+  });
 }
 
 function initExplorationProgress() {
