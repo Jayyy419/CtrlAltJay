@@ -1920,6 +1920,7 @@ async function bootstrap() {
   initKeyboardShortcuts();
   initCommandPalette();
   initTerminalPanel();
+  renderProblemsPanel();
   initJSONImport();
   initSurpriseMe();
   initMobileSwipe();
@@ -3623,6 +3624,7 @@ function getCommandPaletteItems() {
   ];
   if (typeof toggleTerminalPanel === "function") {
     items.push({ icon: "terminal-outline", label: "Open Terminal", hint: "`", action: () => toggleTerminalPanel() });
+    items.push({ icon: "warning-outline", label: "Open Problems Panel", hint: `${PROBLEMS_DATA.length} items`, action: () => openProblemsPanel() });
   }
   state.projects.forEach((p) => {
     items.push({ icon: "logo-python", label: p.title, hint: `projects/${p.category || ""}`, action: () => openItemTab(p, "projects") });
@@ -3768,7 +3770,7 @@ function printTermLine(text, cls) {
 function toggleTerminalPanel() {
   const panel = document.getElementById("ide-terminal-panel");
   if (!panel) return;
-  if (panel.style.display === "none") openTerminalPanel();
+  if (panel.style.display === "none" || switchBottomPanelTab.current !== "terminal") openTerminalPanel();
   else closeTerminalPanel();
 }
 
@@ -3776,6 +3778,7 @@ function openTerminalPanel() {
   const panel = document.getElementById("ide-terminal-panel");
   if (!panel) return;
   panel.style.display = "flex";
+  switchBottomPanelTab("terminal");
   if (!panel.dataset.welcomed) {
     printTermLine("CtrlAltJay portfolio shell. Type 'help' to see available commands.", "term-line--accent");
     panel.dataset.welcomed = "1";
@@ -3786,6 +3789,64 @@ function openTerminalPanel() {
 function closeTerminalPanel() {
   const panel = document.getElementById("ide-terminal-panel");
   if (panel) panel.style.display = "none";
+}
+
+/* ===== Problems Panel ===== */
+const PROBLEMS_DATA = [
+  { severity: "warning", message: "'coffee_reserves' trending toward empty after 18:00 daily", source: "about.md", code: "life-lint" },
+  { severity: "info", message: "Deployed via GitHub Actions on every push to main — zero manual steps", source: ".github/workflows/deploy.yml", code: "ci-cd" },
+  { severity: "info", message: "Server-rendered with Flask + Jinja2 and backed by DynamoDB — no client framework", source: "app.py", code: "architecture" },
+  { severity: "info", message: "Projects, resume, and stack are all admin-editable at runtime, no redeploy needed", source: "templates/index.html", code: "data-model" },
+];
+
+const PROBLEM_ICON = { error: "close-circle", warning: "warning-outline", info: "information-circle-outline" };
+
+function renderProblemsPanel() {
+  const body = document.getElementById("ide-problems-body");
+  if (!body) return;
+
+  const errors = PROBLEMS_DATA.filter((p) => p.severity === "error").length;
+  const warnings = PROBLEMS_DATA.filter((p) => p.severity === "warning").length;
+
+  document.getElementById("problems-count-badge").textContent = String(PROBLEMS_DATA.length);
+  document.getElementById("status-problems-errors").textContent = String(errors);
+  document.getElementById("status-problems-warnings").textContent = String(warnings);
+
+  body.innerHTML = "";
+  PROBLEMS_DATA.forEach((p) => {
+    const row = document.createElement("div");
+    row.className = `problem-row problem-row--${p.severity}`;
+    row.innerHTML = `
+      <ion-icon aria-hidden="true" name="${PROBLEM_ICON[p.severity] || "information-circle-outline"}" class="problem-icon"></ion-icon>
+      <span class="problem-message">${escapeHtml(p.message)}</span>
+      <span class="problem-source">${escapeHtml(p.source)}</span>
+      <span class="problem-code">${escapeHtml(p.code)}</span>
+    `;
+    body.appendChild(row);
+  });
+}
+
+function switchBottomPanelTab(tab) {
+  switchBottomPanelTab.current = tab;
+  document.querySelectorAll(".ide-bottom-tab").forEach((btn) => {
+    const isActive = btn.dataset.panelTab === tab;
+    btn.classList.toggle("active", isActive);
+    btn.setAttribute("aria-selected", String(isActive));
+  });
+  const problemsBody = document.getElementById("ide-problems-body");
+  const terminalBody = document.getElementById("ide-terminal-body");
+  const inputRow = document.getElementById("ide-terminal-input-row");
+  if (problemsBody) problemsBody.style.display = tab === "problems" ? "block" : "none";
+  if (terminalBody) terminalBody.style.display = tab === "terminal" ? "block" : "none";
+  if (inputRow) inputRow.style.display = tab === "terminal" ? "flex" : "none";
+  if (tab === "terminal") document.getElementById("ide-terminal-input")?.focus();
+}
+
+function openProblemsPanel() {
+  const panel = document.getElementById("ide-terminal-panel");
+  if (!panel) return;
+  panel.style.display = "flex";
+  switchBottomPanelTab("problems");
 }
 
 function runTerminalCommand(raw) {
@@ -3913,6 +3974,9 @@ function initTerminalPanel() {
   if (!closeBtn || !input) return;
 
   closeBtn.addEventListener("click", () => closeTerminalPanel());
+  document.getElementById("bottom-tab-problems")?.addEventListener("click", () => openProblemsPanel());
+  document.getElementById("bottom-tab-terminal")?.addEventListener("click", () => openTerminalPanel());
+  document.getElementById("status-problems-btn")?.addEventListener("click", () => openProblemsPanel());
 
   input.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
