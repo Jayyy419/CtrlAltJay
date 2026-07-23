@@ -1902,6 +1902,7 @@ function setAdminMode(enabled) {
     renderDeletedItems();
   }
   updateDraftIndicator();
+  if (document.getElementById("guestbook-list")) loadGuestbookNotes();
 }
 
 function findItemById(itemId) {
@@ -2341,6 +2342,7 @@ async function bootstrap() {
   initTabs();
   initTabTransitions();
   initContactForm();
+  initGuestbook();
   initAdminAuth();
   initInlineAdminEditor();
   initEscapeKey();
@@ -2512,6 +2514,113 @@ function initContactForm() {
       submitBtn.disabled = false;
     }
   });
+}
+
+/* ===== Guestbook: "Leave a Note" ===== */
+function initGuestbook() {
+  const form = document.getElementById("guestbook-form");
+  if (!form) return;
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const feedback = document.getElementById("guestbook-feedback");
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const origText = submitBtn.textContent;
+    submitBtn.textContent = "Posting...";
+    submitBtn.disabled = true;
+    feedback.textContent = "";
+    try {
+      const res = await fetch("/api/notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: form.name.value.trim(),
+          message: form.message.value.trim(),
+          website: form.website.value,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        form.reset();
+        feedback.textContent = data.message || "Note submitted.";
+        feedback.style.color = "var(--ide-git-added)";
+        showToast(data.message || "Note submitted — it'll appear once reviewed.", "success");
+      } else {
+        feedback.textContent = data.error || "Could not submit note.";
+        feedback.style.color = "#ef4444";
+      }
+    } catch {
+      feedback.textContent = "Network error. Please try again.";
+      feedback.style.color = "#ef4444";
+    } finally {
+      submitBtn.textContent = origText;
+      submitBtn.disabled = false;
+    }
+  });
+}
+
+async function loadGuestbookNotes() {
+  const list = document.getElementById("guestbook-list");
+  if (!list) return;
+  const endpoint = state.isAdmin ? "/api/admin/notes" : "/api/notes";
+  try {
+    const res = await fetch(endpoint);
+    if (!res.ok) throw new Error(`notes API ${res.status}`);
+    const notes = await res.json();
+    renderGuestbookNotes(list, Array.isArray(notes) ? notes : []);
+  } catch {
+    list.innerHTML = `<div class="guestbook-empty">// couldn't load notes right now</div>`;
+  }
+}
+
+function renderGuestbookNotes(list, notes) {
+  if (!notes.length) {
+    list.innerHTML = `<div class="guestbook-empty">// no notes yet — be the first to say hello</div>`;
+    return;
+  }
+  list.innerHTML = notes.map((n) => {
+    const initial = (n.name || "?").trim().charAt(0).toUpperCase();
+    const statusBadge = state.isAdmin && n.status && n.status !== "approved"
+      ? `<span class="guestbook-status guestbook-status--${escapeHtml(n.status)}">${escapeHtml(n.status)}</span>`
+      : "";
+    const adminActions = state.isAdmin ? `
+      <div class="guestbook-admin-actions">
+        ${n.status !== "approved" ? `<button type="button" class="guestbook-action-btn guestbook-action-btn--approve" data-note-action="approved" data-note-id="${escapeHtml(n.id)}">Approve</button>` : ""}
+        ${n.status !== "rejected" ? `<button type="button" class="guestbook-action-btn guestbook-action-btn--reject" data-note-action="rejected" data-note-id="${escapeHtml(n.id)}">Reject</button>` : ""}
+        <button type="button" class="guestbook-action-btn guestbook-action-btn--delete" data-note-action="delete" data-note-id="${escapeHtml(n.id)}">Delete</button>
+      </div>` : "";
+    return `
+      <div class="guestbook-note">
+        <div class="guestbook-note-avatar">${escapeHtml(initial)}</div>
+        <div class="guestbook-note-body">
+          <div class="guestbook-note-head">
+            <strong>${escapeHtml(n.name || "Anonymous")}</strong>
+            ${statusBadge}
+            <span class="guestbook-note-time">${escapeHtml(timeAgo(n.created_at))}</span>
+          </div>
+          <p class="guestbook-note-message">${escapeHtml(n.message || "")}</p>
+          ${adminActions}
+        </div>
+      </div>`;
+  }).join("");
+
+  if (state.isAdmin) {
+    list.querySelectorAll("[data-note-action]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const noteId = btn.dataset.noteId;
+        const action = btn.dataset.noteAction;
+        try {
+          const res = await fetch(`/api/admin/notes/${encodeURIComponent(noteId)}`, action === "delete"
+            ? { method: "DELETE" }
+            : { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: action }) });
+          if (!res.ok) throw new Error();
+          loadGuestbookNotes();
+        } catch {
+          showToast("Could not update note.", "error");
+        }
+      });
+    });
+  }
 }
 
 function validateField(field) {

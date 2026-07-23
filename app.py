@@ -1144,6 +1144,98 @@ def presence_heartbeat():
     return jsonify({"count": max(active, 1)})
 
 
+# ─── Guestbook: public "leave a note" board, admin-moderated ────────────────
+# Notes are stored in the shared items table under a "__note_" id prefix —
+# same trick as presence rows above — so they're automatically excluded from
+# every existing project/experience scan (those already skip "__"-prefixed
+# ids) without touching that filtering logic.
+
+NOTE_PREFIX = "__note_"
+MAX_NOTE_ATTEMPTS = 5
+NOTE_RATE_WINDOW_SECONDS = 600
+MAX_NOTES_RETURNED = 50
+
+
+@app.route("/api/notes", methods=["GET", "POST"])
+def notes():
+    if request.method == "GET":
+        rows = scan_all(table_items, filter_expression=Attr("id").begins_with(NOTE_PREFIX))
+        approved = [
+            {"id": r["id"], "name": r.get("name", ""), "message": r.get("message", ""), "created_at": r.get("created_at", "")}
+            for r in rows
+            if r.get("status") == "approved"
+        ]
+        approved.sort(key=lambda r: r["created_at"], reverse=True)
+        return jsonify(approved[:MAX_NOTES_RETURNED])
+
+    ip = _client_ip()
+    remaining_lock = _rate_limit_locked_seconds("notes", ip)
+    if remaining_lock > 0:
+        return jsonify({"error": "Too many notes submitted recently. Please wait a bit before trying again.", "retry_in": remaining_lock}), 429
+    _record_rate_limit_failure("notes", ip, MAX_NOTE_ATTEMPTS, NOTE_RATE_WINDOW_SECONDS)
+
+    payload = request.get_json(silent=True) or request.form
+
+    # Honeypot — silently pretend success for bot submissions
+    if (payload.get("website") or "").strip():
+        return jsonify({"message": "Note submitted — it'll appear once reviewed."}), 201
+
+    name = (payload.get("name") or "").strip()
+    message = (payload.get("message") or "").strip()
+
+    if not (2 <= len(name) <= 60):
+        return jsonify({"error": "Name should be between 2 and 60 characters."}), 400
+    if not (3 <= len(message) <= 500):
+        return jsonify({"error": "Note should be between 3 and 500 characters."}), 400
+
+    now = now_iso()
+    table_items.put_item(Item={
+        "id": f"{NOTE_PREFIX}{uuid.uuid4()}",
+        "name": name,
+        "message": message,
+        "status": "pending",
+        "created_at": now,
+        "updated_at": now,
+    })
+    return jsonify({"message": "Note submitted — it'll appear once reviewed."}), 201
+
+
+@app.route("/api/admin/notes", methods=["GET"])
+def admin_notes():
+    unauthorized = unauthorized_admin_response()
+    if unauthorized:
+        return unauthorized
+    rows = scan_all(table_items, filter_expression=Attr("id").begins_with(NOTE_PREFIX))
+    rows.sort(key=lambda r: r.get("created_at", ""), reverse=True)
+    return jsonify([dynamo_to_dict(r) for r in rows])
+
+
+@app.route("/api/admin/notes/<note_id>", methods=["PATCH", "DELETE"])
+def admin_note_item(note_id):
+    unauthorized = unauthorized_admin_response()
+    if unauthorized:
+        return unauthorized
+    full_id = note_id if note_id.startswith(NOTE_PREFIX) else f"{NOTE_PREFIX}{note_id}"
+    existing = table_items.get_item(Key={"id": full_id}).get("Item")
+    if not existing:
+        return jsonify({"error": "Note not found."}), 404
+
+    if request.method == "DELETE":
+        table_items.delete_item(Key={"id": full_id})
+        return jsonify({"message": "Note deleted."})
+
+    status = (request.get_json(silent=True) or {}).get("status", "").strip()
+    if status not in {"approved", "rejected", "pending"}:
+        return jsonify({"error": "status must be approved, rejected, or pending."}), 400
+    table_items.update_item(
+        Key={"id": full_id},
+        UpdateExpression="SET #s = :s, updated_at = :u",
+        ExpressionAttributeNames={"#s": "status"},
+        ExpressionAttributeValues={":s": status, ":u": now_iso()},
+    )
+    return jsonify({"message": f"Note {status}."})
+
+
 # ─── Auto-Backup to S3 ──────────────────────────────────────────────────────
 
 @app.route("/api/admin/backup", methods=["POST"])
