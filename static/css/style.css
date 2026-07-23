@@ -1123,6 +1123,30 @@ body.zen-mode .ide-panel-scroll { padding: 48px max(32px, calc(50% - 380px)); }
   white-space: pre;
 }
 
+/* Extensions marketplace-style "install" animation on opening a skill */
+#skill-item-viewer { position: relative; }
+.skill-install-overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--ide-editor-bg);
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  animation: skillInstallFadeOut 0.3s ease 0.7s forwards;
+}
+.skill-install-line { font-family: 'Plex Mono', monospace; font-size: 0.85rem; color: var(--ide-text-dim); }
+.skill-install-line strong { color: var(--ide-accent-strong); }
+.skill-install-bar { width: 220px; height: 4px; background: var(--ide-border-soft); border-radius: 2px; overflow: hidden; }
+.skill-install-bar-fill { height: 100%; width: 0%; background: var(--ide-accent-strong); animation: skillInstallFill 0.7s ease forwards; }
+@keyframes skillInstallFill { from { width: 0%; } to { width: 100%; } }
+@keyframes skillInstallFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; visibility: hidden; }
+}
+
 .admin-item-card { width: min(94vw, 920px); }
 
 .icon-edit-btn {
