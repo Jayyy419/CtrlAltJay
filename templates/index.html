@@ -77,43 +77,43 @@
           <button type="button" id="profile-flyout-close" class="admin-tools-close profile-flyout-close-btn" aria-label="Close profile">&times;</button>
 
           <div class="profile-flyout-head">
-            <div class="portrait-wrap relative w-24 h-24 rounded-2xl overflow-hidden ring-2 ring-accent/60 ring-offset-2 ring-offset-surface-400 shrink-0">
-              <img src="../static/images/Portrait_ZoomedIn.JPG" alt="{{ profile.name }}" class="w-full h-full object-cover portrait">
+            <div class="profile-flyout-portrait">
+              <img src="../static/images/Portrait_ZoomedIn.JPG" alt="{{ profile.name }}" class="portrait">
             </div>
             <div>
-              <h1 class="text-xl font-bold text-white tracking-tight">{{ profile.name }}</h1>
-              <p class="headline mt-1 text-ink-soft text-sm leading-relaxed">{{ profile.headline }}</p>
+              <h1>{{ profile.name }}</h1>
+              <p class="headline">{{ profile.headline }}</p>
             </div>
           </div>
 
-          <div class="contact-cluster grid gap-2.5 mt-6">
-            <a href="mailto:{{ profile.email }}" class="chip group flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-100 border border-white/[0.06] text-ink-soft text-sm no-underline transition-all duration-300 hover:bg-accent hover:text-surface-400 hover:border-accent">
-              <ion-icon aria-hidden="true" name="mail-outline" class="text-lg text-accent group-hover:text-surface-400 transition-colors"></ion-icon>
+          <div class="contact-cluster">
+            <a href="mailto:{{ profile.email }}" class="profile-flyout-chip">
+              <ion-icon aria-hidden="true" name="mail-outline"></ion-icon>
               <span>{{ profile.email }}</span>
             </a>
-            <a href="tel:{{ profile.phone|replace(' ', '') }}" class="chip group flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-100 border border-white/[0.06] text-ink-soft text-sm no-underline transition-all duration-300 hover:bg-accent hover:text-surface-400 hover:border-accent">
-              <ion-icon aria-hidden="true" name="call-outline" class="text-lg text-accent group-hover:text-surface-400 transition-colors"></ion-icon>
+            <a href="tel:{{ profile.phone|replace(' ', '') }}" class="profile-flyout-chip">
+              <ion-icon aria-hidden="true" name="call-outline"></ion-icon>
               <span>{{ profile.phone }}</span>
             </a>
-            <span class="chip group flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-100 border border-white/[0.06] text-ink-soft text-sm transition-all duration-300">
-              <ion-icon aria-hidden="true" name="location-outline" class="text-lg text-accent"></ion-icon>
+            <span class="profile-flyout-chip">
+              <ion-icon aria-hidden="true" name="location-outline"></ion-icon>
               <span>{{ profile.location }}</span>
             </span>
-            <a href="{{ profile.credly }}" class="chip group flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-100 border border-white/[0.06] text-ink-soft text-sm no-underline transition-all duration-300 hover:bg-accent hover:text-surface-400 hover:border-accent" target="_blank" rel="noopener noreferrer">
-              <ion-icon aria-hidden="true" name="ribbon-outline" class="text-lg text-accent group-hover:text-surface-400 transition-colors"></ion-icon>
+            <a href="{{ profile.credly }}" class="profile-flyout-chip" target="_blank" rel="noopener noreferrer">
+              <ion-icon aria-hidden="true" name="ribbon-outline"></ion-icon>
               <span>Credly</span>
             </a>
-            <a href="{{ profile.github }}" class="chip group flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-100 border border-white/[0.06] text-ink-soft text-sm no-underline transition-all duration-300 hover:bg-accent hover:text-surface-400 hover:border-accent" target="_blank" rel="noopener noreferrer">
-              <ion-icon aria-hidden="true" name="logo-github" class="text-lg text-accent group-hover:text-surface-400 transition-colors"></ion-icon>
+            <a href="{{ profile.github }}" class="profile-flyout-chip" target="_blank" rel="noopener noreferrer">
+              <ion-icon aria-hidden="true" name="logo-github"></ion-icon>
               <span>GitHub</span>
             </a>
-            <a href="{{ profile.linkedin }}" class="chip group flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-100 border border-white/[0.06] text-ink-soft text-sm no-underline transition-all duration-300 hover:bg-accent hover:text-surface-400 hover:border-accent" target="_blank" rel="noopener noreferrer">
-              <ion-icon aria-hidden="true" name="logo-linkedin" class="text-lg text-accent group-hover:text-surface-400 transition-colors"></ion-icon>
+            <a href="{{ profile.linkedin }}" class="profile-flyout-chip" target="_blank" rel="noopener noreferrer">
+              <ion-icon aria-hidden="true" name="logo-linkedin"></ion-icon>
               <span>LinkedIn</span>
             </a>
           </div>
 
-          <button type="button" id="admin-logout-btn" class="admin-link admin-logout w-full text-center mt-4 bg-red-500/10 text-red-400 font-semibold rounded-xl px-4 py-3 text-sm border border-red-500/30 transition-all duration-300 hover:bg-red-500/20 hover:border-red-500/60 hover:text-red-300 cursor-pointer" hidden>Exit Admin Mode</button>
+          <button type="button" id="admin-logout-btn" class="admin-link admin-logout profile-flyout-logout-btn" hidden>Exit Admin Mode</button>
 
           <!-- Admin Tools Popup (Admin) -->
           <div class="admin-only mt-3" hidden>
