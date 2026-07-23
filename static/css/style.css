@@ -1110,6 +1110,19 @@ body.zen-mode .ide-panel-scroll { padding: 48px max(32px, calc(50% - 380px)); }
 }
 .modal-row strong::before { content: "# "; opacity: 0.8; }
 
+.skill-snippet-code {
+  background: var(--ide-editor-bg-soft);
+  border: 1px solid var(--ide-border-soft);
+  border-radius: 8px;
+  padding: 14px 16px;
+  font-family: 'Plex Mono', monospace;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: var(--ide-text);
+  overflow-x: auto;
+  white-space: pre;
+}
+
 .admin-item-card { width: min(94vw, 920px); }
 
 .icon-edit-btn {
