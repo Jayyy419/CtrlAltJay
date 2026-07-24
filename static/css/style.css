@@ -102,7 +102,7 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
   overflow: hidden;
   border: 1px solid var(--ide-border);
   box-shadow: 0 30px 80px -30px rgba(0,0,0,0.6);
-  background: var(--ide-editor-bg);
+  background: var(--ide-editor-bg) !important;
   height: 100%;
   min-height: 0;
 }
@@ -280,27 +280,6 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
   font-weight: 600;
   color: var(--ide-text-bright);
 }
-.profile-quickfact-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: auto;
-  padding: 7px 14px;
-  background: var(--ide-editor-bg-soft);
-  border: 1px solid var(--ide-border-soft);
-  border-radius: 6px;
-  color: var(--ide-accent);
-  font-family: 'Plex Mono', monospace;
-  font-size: 0.78rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-.profile-quickfact-link ion-icon { font-size: 0.95rem; transition: transform 0.15s ease; }
-.profile-quickfact-link:hover { color: var(--ide-accent-strong); border-color: var(--ide-accent); background: rgba(55,148,255,0.08); }
-.profile-quickfact-link:hover ion-icon { transform: translateX(2px); }
-.profile-section-link { align-self: flex-end; margin-left: 0; margin-top: 2px; }
-
 .profile-values { display: flex; flex-wrap: wrap; gap: 8px; max-width: 480px; margin: 0 0 20px; }
 .profile-value-pill {
   padding: 5px 12px;
@@ -2629,6 +2608,9 @@ body.zen-mode .ide-panel-scroll { padding: 48px max(32px, calc(50% - 380px)); }
   margin-right: -8px;
   padding-left: 8px;
   padding-right: 8px;
+  flex-wrap: wrap;
+  row-gap: 8px;
+  overflow: visible;
 }
 
 /* Card skill chips */
@@ -2874,7 +2856,6 @@ select.ide-control:hover { border-color: var(--ide-accent); }
 
 /* ===== Ctrl+Alt+AI chat assistant ===== */
 #chat.tab-panel.active { display: flex; flex-direction: column; height: 100%; min-height: 0; }
-#chat .panel-head { flex-shrink: 0; }
 
 .chat-window {
   display: flex;
@@ -3066,6 +3047,7 @@ select.ide-control:hover { border-color: var(--ide-accent); }
   --text-muted: #94a3b8;
 }
 .light-theme body { color: var(--text-primary) !important; }
+.light-theme .ide-shell { box-shadow: 0 8px 30px -12px rgba(0,0,0,0.12) !important; }
 .light-theme .content { background: var(--bg-card) !important; border-color: var(--border-color) !important; }
 .light-theme .tab-btn { background: var(--bg-input) !important; color: var(--text-secondary) !important; border-color: var(--border-color) !important; }
 .light-theme .panel-head h2 { color: var(--text-primary) !important; }
