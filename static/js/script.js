@@ -465,18 +465,23 @@ function openSkillItemTab(skill) {
 }
 
 function playSkillInstallAnimation(skillName) {
-  const panel = document.getElementById("skill-item-viewer");
-  if (!panel) return;
+  const scrollport = document.getElementById("ide-panel-scroll");
+  if (!scrollport) return;
   document.getElementById("skill-install-overlay")?.remove();
 
+  const rect = scrollport.getBoundingClientRect();
   const overlay = document.createElement("div");
   overlay.id = "skill-install-overlay";
   overlay.className = "skill-install-overlay";
+  overlay.style.top = `${rect.top}px`;
+  overlay.style.left = `${rect.left}px`;
+  overlay.style.width = `${rect.width}px`;
+  overlay.style.height = `${rect.height}px`;
   overlay.innerHTML = `
     <div class="skill-install-line">Installing <strong>${escapeHtml(skillName)}</strong>...</div>
     <div class="skill-install-bar"><div class="skill-install-bar-fill"></div></div>
   `;
-  panel.appendChild(overlay);
+  document.body.appendChild(overlay);
   setTimeout(() => overlay.remove(), 1100);
 }
 
@@ -2342,6 +2347,7 @@ async function bootstrap() {
   initMobileSwipe();
   initDeletedItems();
   initAdminToolsPopup();
+  initProfileQuickFacts();
   initIdeFileTree();
   initSidebarResize();
   initMinimap();
@@ -3211,6 +3217,13 @@ function initAdminToolsPopup() {
   toggle.addEventListener("click", () => { popup.style.display = "flex"; });
   closeBtn?.addEventListener("click", () => { popup.style.display = "none"; });
   backdrop?.addEventListener("click", () => { popup.style.display = "none"; });
+}
+
+/* ===== Profile quick-facts "See what I'm up to" link ===== */
+function initProfileQuickFacts() {
+  document.querySelectorAll(".profile-quickfact-link[data-tab]").forEach((btn) => {
+    btn.addEventListener("click", () => switchTab(btn.dataset.tab));
+  });
 }
 
 function initDeletedItems() {
@@ -4737,10 +4750,23 @@ async function loadAdminAnalytics() {
       html += data.referrers.map((r) => `<div class="stat-row"><span class="stat-label">${escapeHtml(r.host)}</span><span class="stat-value">${r.count}</span></div>`).join("");
     }
     if (data.recent_chat_questions?.length) {
-      html += `<h5 class="text-xs font-semibold text-ink-muted mt-3 mb-1">Recent Chat Questions</h5>`;
+      html += `<div class="stats-subheader-row">
+        <h5 class="text-xs font-semibold text-ink-muted mt-3 mb-1">Recent Chat Questions</h5>
+        <button type="button" class="stats-clear-btn" id="admin-clear-chatlog-btn">Clear</button>
+      </div>`;
       html += data.recent_chat_questions.map((q) => `<div class="stat-row stat-row--stacked"><span class="stat-label">${escapeHtml(q.question)}</span><span class="stat-time">${escapeHtml(timeAgo(q.created_at))}</span></div>`).join("");
     }
     el.innerHTML = html || `<div class="stat-row"><span class="stat-label">No analytics yet</span></div>`;
+    document.getElementById("admin-clear-chatlog-btn")?.addEventListener("click", async () => {
+      const confirmed = await showConfirm("Clear Chat Questions", "This will permanently delete the recent chat questions log. This cannot be undone.");
+      if (!confirmed) return;
+      try {
+        const res = await fetch("/api/admin/chatlog", { method: "DELETE" });
+        if (!res.ok) throw new Error();
+        showToast("Chat questions log cleared.", "success");
+        loadAdminAnalytics();
+      } catch { showToast("Failed to clear chat questions log.", "error"); }
+    });
   } catch {
     el.innerHTML = `<div class="stat-row"><span class="stat-label">Couldn't load analytics</span></div>`;
   }

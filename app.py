@@ -355,6 +355,7 @@ def build_profile():
     return {
         "name": "Rone Peh",
         "headline": "NTU CS Undergraduate | Founder @ Sentrix",
+        "tagline": "I like taking messy, real-world problems and shipping something that actually works — then improving it in the open.",
         "location": "Singapore",
         "email": "Rone_peh@hotmail.com",
         "phone": "+65 8808 1760",
@@ -1245,6 +1246,21 @@ def admin_analytics():
         "referrers": referrers,
         "recent_chat_questions": chatlog,
     })
+
+
+@app.route("/api/admin/chatlog", methods=["DELETE"])
+def admin_clear_chatlog():
+    unauthorized = unauthorized_admin_response()
+    if unauthorized:
+        return unauthorized
+
+    rows = scan_all(table_items, filter_expression=Attr("id").begins_with(CHATLOG_PREFIX))
+    for row in rows:
+        try:
+            table_items.delete_item(Key={"id": row["id"]})
+        except Exception:
+            pass
+    return jsonify({"ok": True})
 
 
 # ─── Live Visitor Presence ───────────────────────────────────────────────────
