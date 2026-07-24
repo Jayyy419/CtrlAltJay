@@ -805,13 +805,24 @@ function initMinimap() {
   });
 }
 
+function trackItemView(itemId) {
+  fetch("/api/track-view", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ item_id: itemId }),
+  }).catch(() => {});
+}
+
 function openItemTab(item, sectionTab) {
   const tabId = `item:${item.id}`;
   const ext = sectionTab === "projects" ? "py" : "md";
   const filename = `${slugifyTitle(item.title)}.${ext}`;
   state.ideItemMeta = state.ideItemMeta || {};
   state.ideItemMeta[tabId] = { label: filename, icon: ext, sectionTab, itemId: item.id };
-  if (!state.ideOpenTabs.includes(tabId)) state.ideOpenTabs.push(tabId);
+  if (!state.ideOpenTabs.includes(tabId)) {
+    state.ideOpenTabs.push(tabId);
+    trackItemView(item.id);
+  }
 
   renderItemViewer(item);
   switchTab("item-viewer");
@@ -4172,7 +4183,6 @@ const REFERRER_GREETINGS = [
 ];
 
 function initReferrerEasterEgg() {
-  if (sessionStorage.getItem("ctrlaltjay-referrer-greeted")) return;
   if (!document.referrer) return;
   let refHost;
   try {
@@ -4181,6 +4191,14 @@ function initReferrerEasterEgg() {
     return;
   }
   if (refHost === window.location.hostname) return;
+
+  fetch("/api/track-referrer", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ host: refHost }),
+  }).catch(() => {});
+
+  if (sessionStorage.getItem("ctrlaltjay-referrer-greeted")) return;
 
   const match = REFERRER_GREETINGS.find((entry) => entry.hosts.some((h) => refHost === h || refHost.endsWith(`.${h}`)));
   if (!match) return;
@@ -4657,7 +4675,40 @@ function renderAdminStats() {
     html += `<h5 class="text-xs font-semibold text-ink-muted mt-3 mb-1">Top Skills</h5>`;
     html += topSkills.map(([s, n]) => `<div class="stat-row"><span class="stat-label">${s}</span><span class="stat-value">${n}</span></div>`).join("");
   }
+  html += `<div id="admin-analytics-extra"><div class="stat-row"><span class="stat-label">Loading analytics...</span></div></div>`;
   container.innerHTML = html;
+  loadAdminAnalytics();
+}
+
+async function loadAdminAnalytics() {
+  const el = document.getElementById("admin-analytics-extra");
+  if (!el) return;
+  try {
+    const res = await fetch("/api/admin/analytics");
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    let html = "";
+
+    if (data.top_projects?.length) {
+      html += `<h5 class="text-xs font-semibold text-ink-muted mt-3 mb-1">Most Viewed Projects</h5>`;
+      html += data.top_projects.map((p) => `<div class="stat-row"><span class="stat-label">${escapeHtml(p.title)}</span><span class="stat-value">${p.view_count}</span></div>`).join("");
+    }
+    if (data.top_experiences?.length) {
+      html += `<h5 class="text-xs font-semibold text-ink-muted mt-3 mb-1">Most Viewed Experiences</h5>`;
+      html += data.top_experiences.map((p) => `<div class="stat-row"><span class="stat-label">${escapeHtml(p.title)}</span><span class="stat-value">${p.view_count}</span></div>`).join("");
+    }
+    if (data.referrers?.length) {
+      html += `<h5 class="text-xs font-semibold text-ink-muted mt-3 mb-1">Top Referrers</h5>`;
+      html += data.referrers.map((r) => `<div class="stat-row"><span class="stat-label">${escapeHtml(r.host)}</span><span class="stat-value">${r.count}</span></div>`).join("");
+    }
+    if (data.recent_chat_questions?.length) {
+      html += `<h5 class="text-xs font-semibold text-ink-muted mt-3 mb-1">Recent Chat Questions</h5>`;
+      html += data.recent_chat_questions.map((q) => `<div class="stat-row stat-row--stacked"><span class="stat-label">${escapeHtml(q.question)}</span><span class="stat-time">${escapeHtml(timeAgo(q.created_at))}</span></div>`).join("");
+    }
+    el.innerHTML = html || `<div class="stat-row"><span class="stat-label">No analytics yet</span></div>`;
+  } catch {
+    el.innerHTML = `<div class="stat-row"><span class="stat-label">Couldn't load analytics</span></div>`;
+  }
 }
 
 /* ===== Admin Backup ===== */
