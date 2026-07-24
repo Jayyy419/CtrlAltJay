@@ -185,6 +185,7 @@ function syncIdeChrome(tabName) {
   if (tabName === "scm") renderSourceControlPanel();
   if (tabName === "timeline") renderTimelinePanel();
   if (tabName === "settings") renderSettingsPanel();
+  if (tabName === "testimonials") loadTestimonials();
   markTabExplored(tabName);
   refreshMinimap();
 }
@@ -2345,6 +2346,7 @@ async function bootstrap() {
   initContactForm();
   initGuestbook();
   initChat();
+  initTestimonialForm();
   initAdminAuth();
   initInlineAdminEditor();
   initEscapeKey();
@@ -2685,6 +2687,125 @@ function renderGuestbookNotes(list, notes) {
           loadGuestbookNotes();
         } catch {
           showToast("Could not update note.", "error");
+        }
+      });
+    });
+  }
+}
+
+/* ===== Testimonials: request form + admin moderation ===== */
+function initTestimonialForm() {
+  const form = document.getElementById("testimonial-form");
+  if (!form) return;
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const feedback = document.getElementById("testimonial-feedback");
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const origText = submitBtn.textContent;
+    submitBtn.textContent = "Submitting...";
+    submitBtn.disabled = true;
+    feedback.textContent = "";
+    try {
+      const res = await fetch("/api/testimonials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: form.name.value.trim(),
+          role: form.role.value.trim(),
+          quote: form.quote.value.trim(),
+          website: form.website.value,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        form.reset();
+        feedback.textContent = data.message || "Submitted.";
+        feedback.style.color = "var(--ide-git-added)";
+        showToast(data.message || "Thank you — it'll appear once reviewed.", "success");
+      } else {
+        feedback.textContent = data.error || "Could not submit testimonial.";
+        feedback.style.color = "#ef4444";
+      }
+    } catch {
+      feedback.textContent = "Network error. Please try again.";
+      feedback.style.color = "#ef4444";
+    } finally {
+      submitBtn.textContent = origText;
+      submitBtn.disabled = false;
+    }
+  });
+
+  document.getElementById("copy-testimonial-link-btn")?.addEventListener("click", async () => {
+    const link = `${window.location.origin}${window.location.pathname}#testimonials`;
+    try {
+      await navigator.clipboard.writeText(link);
+      showToast("Testimonial request link copied.", "success");
+    } catch {
+      showToast(link, "info");
+    }
+  });
+}
+
+async function loadTestimonials() {
+  const list = document.getElementById("testimonials-list");
+  if (!list) return;
+  const endpoint = state.isAdmin ? "/api/admin/testimonials" : "/api/testimonials";
+  try {
+    const res = await fetch(endpoint);
+    if (!res.ok) throw new Error(`testimonials API ${res.status}`);
+    const items = await res.json();
+    renderTestimonials(list, Array.isArray(items) ? items : []);
+  } catch {
+    list.innerHTML = `<div class="guestbook-empty">// couldn't load testimonials right now</div>`;
+  }
+}
+
+function renderTestimonials(list, items) {
+  if (!items.length) {
+    list.innerHTML = `<div class="guestbook-empty">// no testimonials yet — be the first to leave one</div>`;
+    return;
+  }
+  list.innerHTML = items.map((t) => {
+    const initial = (t.name || "?").trim().charAt(0).toUpperCase();
+    const statusBadge = state.isAdmin && t.status && t.status !== "approved"
+      ? `<span class="guestbook-status guestbook-status--${escapeHtml(t.status)}">${escapeHtml(t.status)}</span>`
+      : "";
+    const adminActions = state.isAdmin ? `
+      <div class="guestbook-admin-actions">
+        ${t.status !== "approved" ? `<button type="button" class="guestbook-action-btn guestbook-action-btn--approve" data-testimonial-action="approved" data-testimonial-id="${escapeHtml(t.id)}">Approve</button>` : ""}
+        ${t.status !== "rejected" ? `<button type="button" class="guestbook-action-btn guestbook-action-btn--reject" data-testimonial-action="rejected" data-testimonial-id="${escapeHtml(t.id)}">Reject</button>` : ""}
+        <button type="button" class="guestbook-action-btn guestbook-action-btn--delete" data-testimonial-action="delete" data-testimonial-id="${escapeHtml(t.id)}">Delete</button>
+      </div>` : "";
+    return `
+      <div class="guestbook-note testimonial-card">
+        <div class="guestbook-note-avatar">${escapeHtml(initial)}</div>
+        <div class="guestbook-note-body">
+          <div class="guestbook-note-head">
+            <strong>${escapeHtml(t.name || "Anonymous")}</strong>
+            ${t.role ? `<span class="testimonial-role">${escapeHtml(t.role)}</span>` : ""}
+            ${statusBadge}
+            <span class="guestbook-note-time">${escapeHtml(timeAgo(t.created_at))}</span>
+          </div>
+          <p class="guestbook-note-message">&ldquo;${escapeHtml(t.quote || "")}&rdquo;</p>
+          ${adminActions}
+        </div>
+      </div>`;
+  }).join("");
+
+  if (state.isAdmin) {
+    list.querySelectorAll("[data-testimonial-action]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const testimonialId = btn.dataset.testimonialId;
+        const action = btn.dataset.testimonialAction;
+        try {
+          const res = await fetch(`/api/admin/testimonials/${encodeURIComponent(testimonialId)}`, action === "delete"
+            ? { method: "DELETE" }
+            : { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: action }) });
+          if (!res.ok) throw new Error();
+          loadTestimonials();
+        } catch {
+          showToast("Could not update testimonial.", "error");
         }
       });
     });
