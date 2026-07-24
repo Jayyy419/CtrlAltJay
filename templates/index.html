@@ -364,11 +364,6 @@
 
       <!-- Ask AI -->
       <article id="chat" class="tab-panel animate-fade-up" role="tabpanel" aria-labelledby="tab-chat" tabindex="0">
-        <header class="panel-head mb-6">
-          <h2 class="font-display text-3xl font-bold text-white tracking-tight"><ion-icon aria-hidden="true" name="sparkles-outline" class="align-middle mr-2"></ion-icon>Ctrl+Alt+AI</h2>
-          <p class="mt-2 text-ink-muted">Ask about my projects, experience, or skills — answered using the real content on this site.</p>
-        </header>
-
         <div class="chat-window">
           <div class="chat-header">
             <span class="chat-header-avatar"><ion-icon aria-hidden="true" name="sparkles"></ion-icon></span>
@@ -411,7 +406,7 @@
           <p class="mt-2 text-ink-muted">Latest projects first. Filter and sort to explore the full build history.</p>
         </header>
 
-        <div class="subsection-nav flex gap-3 mb-5 pb-4 border-b border-white/[0.06] overflow-x-auto scrollbar-hide" id="projects-subsection-nav">
+        <div class="subsection-nav flex flex-wrap gap-3 mb-5 pb-4 border-b border-white/[0.06]" id="projects-subsection-nav">
           <button class="subsection-btn shrink-0 active" data-subsection="all">All</button>
         </div>
 
@@ -462,7 +457,7 @@
           <p class="mt-2 text-ink-muted">Achievements, certifications, events, and more moments that shaped my journey.</p>
         </header>
 
-        <div class="subsection-nav flex gap-3 mb-5 pb-4 border-b border-white/[0.06] overflow-x-auto scrollbar-hide" id="experiences-subsection-nav">
+        <div class="subsection-nav flex flex-wrap gap-3 mb-5 pb-4 border-b border-white/[0.06]" id="experiences-subsection-nav">
           <button class="subsection-btn shrink-0 active" data-subsection="all">All</button>
         </div>
 
@@ -873,9 +868,6 @@
             </div>
             {% endfor %}
           </div>
-          <button type="button" class="profile-quickfact-link profile-section-link" data-tab="now">
-            Full now-page &amp; update history <ion-icon aria-hidden="true" name="arrow-forward-outline"></ion-icon>
-          </button>
         </section>
         {% endif %}
 
