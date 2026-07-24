@@ -444,7 +444,10 @@
         <div id="projects-grid" class="card-grid grid grid-cols-[repeat(auto-fill,minmax(min(280px,100%),1fr))] gap-5 py-2"></div>
         <!-- Recently Viewed Projects -->
         <div id="recently-viewed-projects" class="recently-viewed-section mt-8" style="display:none">
-          <h4 class="text-sm font-semibold text-ink-soft mb-2"><ion-icon aria-hidden="true" name="time-outline" class="align-middle mr-1"></ion-icon>Recently Viewed</h4>
+          <h4 class="text-sm font-semibold text-ink-soft mb-2 flex items-center justify-between gap-2">
+            <span><ion-icon aria-hidden="true" name="time-outline" class="align-middle mr-1"></ion-icon>Recently Viewed</span>
+            <button type="button" class="recent-clear-btn" data-clear-recent title="Clear recently viewed">Clear</button>
+          </h4>
           <div class="h-scroll-wrap"><div class="recent-strip"></div></div>
         </div>
       </article>
@@ -492,7 +495,10 @@
         <div id="experiences-grid" class="card-grid grid grid-cols-[repeat(auto-fill,minmax(min(280px,100%),1fr))] gap-5 py-2"></div>
         <!-- Recently Viewed Experiences -->
         <div id="recently-viewed-experiences" class="recently-viewed-section mt-8" style="display:none">
-          <h4 class="text-sm font-semibold text-ink-soft mb-2"><ion-icon aria-hidden="true" name="time-outline" class="align-middle mr-1"></ion-icon>Recently Viewed</h4>
+          <h4 class="text-sm font-semibold text-ink-soft mb-2 flex items-center justify-between gap-2">
+            <span><ion-icon aria-hidden="true" name="time-outline" class="align-middle mr-1"></ion-icon>Recently Viewed</span>
+            <button type="button" class="recent-clear-btn" data-clear-recent title="Clear recently viewed">Clear</button>
+          </h4>
           <div class="h-scroll-wrap"><div class="recent-strip"></div></div>
         </div>
       </article>
@@ -980,9 +986,88 @@
       <article id="settings" class="tab-panel animate-fade-up" role="tabpanel" aria-labelledby="tab-settings" tabindex="0">
         <header class="panel-head mb-6">
           <h2 class="font-display text-3xl font-bold text-white tracking-tight">Settings</h2>
-          <p class="mt-2 text-ink-muted">A read-only snapshot of this site's real configuration.</p>
+          <p class="mt-2 text-ink-muted">Real controls for how this site behaves for you &mdash; stored only in this browser, nothing sent anywhere.</p>
         </header>
-        <pre id="settings-json" class="settings-json-viewer"></pre>
+
+        <div class="settings-groups">
+          <section class="settings-group">
+            <h3 class="settings-group-title"><ion-icon aria-hidden="true" name="color-palette-outline"></ion-icon>Appearance</h3>
+            <div class="settings-row">
+              <div class="settings-row-text">
+                <span class="settings-row-label">Theme</span>
+                <span class="settings-row-desc">Switch between the Dark+ and Light+ palettes.</span>
+              </div>
+              <div class="settings-theme-switch" id="settings-theme-switch">
+                <button type="button" class="settings-theme-btn" data-theme-choice="dark"><ion-icon aria-hidden="true" name="moon-outline"></ion-icon>Dark</button>
+                <button type="button" class="settings-theme-btn" data-theme-choice="light"><ion-icon aria-hidden="true" name="sunny-outline"></ion-icon>Light</button>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div class="settings-row-text">
+                <span class="settings-row-label">Reduce motion</span>
+                <span class="settings-row-desc">Turns off animations and smooth-scrolling, regardless of your OS setting.</span>
+              </div>
+              <label class="settings-toggle">
+                <input type="checkbox" id="setting-reduce-motion">
+                <span class="settings-toggle-track"><span class="settings-toggle-thumb"></span></span>
+              </label>
+            </div>
+          </section>
+
+          <section class="settings-group">
+            <h3 class="settings-group-title"><ion-icon aria-hidden="true" name="people-outline"></ion-icon>Live Features</h3>
+            <div class="settings-row">
+              <div class="settings-row-text">
+                <span class="settings-row-label">Share my cursor</span>
+                <span class="settings-row-desc">Let other visitors browsing right now see your cursor move &mdash; and see theirs.</span>
+              </div>
+              <label class="settings-toggle">
+                <input type="checkbox" id="setting-share-cursor">
+                <span class="settings-toggle-track"><span class="settings-toggle-thumb"></span></span>
+              </label>
+            </div>
+            <div class="settings-row">
+              <div class="settings-row-text">
+                <span class="settings-row-label">Appear in visitor presence</span>
+                <span class="settings-row-desc">Count yourself in the "people browsing now" indicator.</span>
+              </div>
+              <label class="settings-toggle">
+                <input type="checkbox" id="setting-share-presence">
+                <span class="settings-toggle-track"><span class="settings-toggle-thumb"></span></span>
+              </label>
+            </div>
+          </section>
+
+          <section class="settings-group">
+            <h3 class="settings-group-title"><ion-icon aria-hidden="true" name="terminal-outline"></ion-icon>Navigation</h3>
+            <div class="settings-row">
+              <div class="settings-row-text">
+                <span class="settings-row-label">Vim-style shortcuts</span>
+                <span class="settings-row-desc">Use j/k to move between cards and gg/G to jump to the top/bottom of a panel.</span>
+              </div>
+              <label class="settings-toggle">
+                <input type="checkbox" id="setting-vim-nav">
+                <span class="settings-toggle-track"><span class="settings-toggle-thumb"></span></span>
+              </label>
+            </div>
+          </section>
+
+          <section class="settings-group">
+            <h3 class="settings-group-title"><ion-icon aria-hidden="true" name="trash-outline"></ion-icon>Your Local Data</h3>
+            <div class="settings-row">
+              <div class="settings-row-text">
+                <span class="settings-row-label">Reset browsing history &amp; progress</span>
+                <span class="settings-row-desc">Clears recently viewed items, achievement/exploration progress, sort filters, and your local activity log. Favorites and these settings are kept.</span>
+              </div>
+              <button type="button" id="settings-reset-data-btn" class="settings-reset-btn">Reset</button>
+            </div>
+          </section>
+        </div>
+
+        <details class="settings-advanced">
+          <summary>View raw site config (JSON)</summary>
+          <pre id="settings-json" class="settings-json-viewer"></pre>
+        </details>
       </article>
 
       <!-- Item Viewer: opened when a project/experience file-tree item is clicked -->

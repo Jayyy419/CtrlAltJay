@@ -1832,12 +1832,18 @@ def api_semantic_search():
         )
         text = "".join(block.text for block in response.content if getattr(block, "type", "") == "text").strip()
         text = re.sub(r"^```(?:json)?|```$", "", text, flags=re.MULTILINE).strip()
-        parsed = json.loads(text)
+        try:
+            parsed = json.loads(text)
+        except json.JSONDecodeError:
+            # Claude occasionally adds a stray sentence around the array despite
+            # instructions — fall back to pulling out the first bracketed list.
+            match = re.search(r"\[.*\]", text, re.DOTALL)
+            parsed = json.loads(match.group(0)) if match else []
         ids = [str(x) for x in parsed] if isinstance(parsed, list) else []
         valid_ids = {i["id"] for i in corpus}
         ids = [i for i in ids if i in valid_ids]
     except Exception as e:
-        print(f"WARNING: semantic search failed: {e}", flush=True)
+        print(f"WARNING: semantic search failed: {e!r}", flush=True)
         return jsonify({"error": "Smart search is temporarily unavailable."}), 502
 
     return jsonify({"results": ids})
