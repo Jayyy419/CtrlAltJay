@@ -5462,7 +5462,7 @@ function initMobileSwipe() {
   let touchStartY = 0;
   const content = document.querySelector(".content");
   if (!content) return;
-  const tabOrder = ["about", "chat", "contact", "experiences", "projects", "resume", "scm", "stack", "profile"];
+  const tabOrder = ["about", "chat", "contact", "experiences", "profile", "projects", "resume", "scm", "stack"];
   content.addEventListener("touchstart", (e) => {
     touchStartX = e.changedTouches[0].screenX;
     touchStartY = e.changedTouches[0].screenY;
