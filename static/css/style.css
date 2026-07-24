@@ -857,6 +857,27 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
 .presence-avatar:first-child { margin-left: 0; }
 .presence-count { font-size: 0.72rem; white-space: nowrap; }
 
+/* ===== Live multiplayer cursors ===== */
+#ghost-cursor-layer { position: fixed; inset: 0; z-index: 9990; pointer-events: none; overflow: hidden; }
+.ghost-cursor {
+  position: absolute;
+  transform: translate(-2px, -2px);
+  transition: left 0.4s linear, top 0.4s linear;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.4));
+}
+.ghost-cursor-label {
+  position: absolute;
+  left: 16px;
+  top: 16px;
+  font-family: 'Plex Mono', monospace;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #fff;
+  padding: 1px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
 /* ===== Problems Panel ===== */
 .ide-problems-body { flex: 1; overflow-y: auto; padding: 4px 0; }
 .problem-row {
