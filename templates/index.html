@@ -496,29 +496,74 @@
         {% endwith %}
 
         <form action="/send_message" method="POST" class="contact-form mt-4" id="contact-form">
-          <div class="field-grid">
-            <input type="text" name="fullname" placeholder="Full name" required minlength="2" maxlength="100" pattern="[a-zA-Z\s'-]+" title="Name should contain only letters, spaces, hyphens, and apostrophes" class="ide-control">
-            <input type="email" name="email" placeholder="Email address" required title="Please enter a valid email address" class="ide-control">
+          <div class="contact-form-card">
+            <div class="contact-form-card-header">
+              <span class="traffic-dots"><span class="traffic-dot traffic-dot--red"></span><span class="traffic-dot traffic-dot--yellow"></span><span class="traffic-dot traffic-dot--green"></span></span>
+              <ion-icon aria-hidden="true" name="mail-outline"></ion-icon>
+              <span class="filename">new_message.json</span>
+            </div>
+            <div class="contact-form-card-body">
+              <div class="field-grid">
+                <div class="field-group">
+                  <label for="contact-fullname" class="field-label">Full name</label>
+                  <div class="field-icon-input">
+                    <ion-icon aria-hidden="true" name="person-outline"></ion-icon>
+                    <input type="text" id="contact-fullname" name="fullname" placeholder="Ada Lovelace" required minlength="2" maxlength="100" pattern="[a-zA-Z\s'-]+" title="Name should contain only letters, spaces, hyphens, and apostrophes" class="ide-control">
+                  </div>
+                </div>
+                <div class="field-group">
+                  <label for="contact-email" class="field-label">Email address</label>
+                  <div class="field-icon-input">
+                    <ion-icon aria-hidden="true" name="at-outline"></ion-icon>
+                    <input type="email" id="contact-email" name="email" placeholder="you@example.com" required title="Please enter a valid email address" class="ide-control">
+                  </div>
+                </div>
+              </div>
+              <div class="field-grid">
+                <div class="field-group">
+                  <label for="contact-company" class="field-label">Company <span class="field-optional">(optional)</span></label>
+                  <div class="field-icon-input">
+                    <ion-icon aria-hidden="true" name="business-outline"></ion-icon>
+                    <input type="text" id="contact-company" name="company" placeholder="Acme Inc." maxlength="100" class="ide-control">
+                  </div>
+                </div>
+                <div class="field-group">
+                  <label for="contact-subject" class="field-label">Subject</label>
+                  <div class="field-icon-input">
+                    <ion-icon aria-hidden="true" name="pricetag-outline"></ion-icon>
+                    <input type="text" id="contact-subject" name="subject" placeholder="Let's build something" required minlength="5" maxlength="100" title="Subject should be between 5 and 100 characters" class="ide-control">
+                  </div>
+                </div>
+              </div>
+              <div class="field-group">
+                <label for="contact-reason" class="field-label">Reason for reaching out <span class="field-optional">(optional)</span></label>
+                <div class="field-icon-input field-icon-input--select">
+                  <ion-icon aria-hidden="true" name="help-circle-outline"></ion-icon>
+                  <select id="contact-reason" name="reason" class="ide-control">
+                    <option value="">Select a reason&hellip;</option>
+                    <option value="hiring">Hiring / Job Opportunity</option>
+                    <option value="collaboration">Collaboration / Partnership</option>
+                    <option value="freelance">Freelance / Contract Work</option>
+                    <option value="feedback">Feedback on Portfolio</option>
+                    <option value="question">General Question</option>
+                    <option value="other">Other</option>
+                  </select>
+                  <ion-icon aria-hidden="true" name="chevron-down-outline" class="field-select-chevron"></ion-icon>
+                </div>
+              </div>
+              <div class="field-group">
+                <label for="contact-message" class="field-label">Message</label>
+                <textarea id="contact-message" name="message" placeholder="Tell me what you are building or hiring for" required minlength="10" maxlength="5000" title="Message should be between 10 and 5000 characters" rows="6" class="ide-control contact-textarea"></textarea>
+              </div>
+              <div class="hp-field" aria-hidden="true" tabindex="-1">
+                <input type="text" name="website" tabindex="-1" autocomplete="off">
+              </div>
+              <div class="contact-form-footer">
+                <button type="submit" class="contact-submit-btn"><ion-icon aria-hidden="true" name="paper-plane-outline"></ion-icon>Send Message</button>
+                <p class="form-note">I'll get back to you within 24-48 hours.</p>
+              </div>
+            </div>
           </div>
-          <div class="field-grid">
-            <input type="text" name="company" placeholder="Company (optional)" maxlength="100" class="ide-control">
-            <input type="text" name="subject" placeholder="Subject" required minlength="5" maxlength="100" title="Subject should be between 5 and 100 characters" class="ide-control">
-          </div>
-          <select name="reason" class="ide-control">
-            <option value="">Reason for reaching out (optional)</option>
-            <option value="hiring">Hiring / Job Opportunity</option>
-            <option value="collaboration">Collaboration / Partnership</option>
-            <option value="freelance">Freelance / Contract Work</option>
-            <option value="feedback">Feedback on Portfolio</option>
-            <option value="question">General Question</option>
-            <option value="other">Other</option>
-          </select>
-          <textarea name="message" placeholder="Tell me what you are building or hiring for" required minlength="10" maxlength="5000" title="Message should be between 10 and 5000 characters" rows="6" class="ide-control contact-textarea"></textarea>
-          <div class="hp-field" aria-hidden="true" tabindex="-1">
-            <input type="text" name="website" tabindex="-1" autocomplete="off">
-          </div>
-          <button type="submit" class="contact-submit-btn">Send Message</button>
-          <p class="form-note">I'll get back to you within 24-48 hours.</p>
         </form>
 
         <section class="guestbook-section mt-10" id="guestbook-section">

@@ -2414,6 +2414,9 @@ body.zen-mode .ide-panel-scroll { padding: 48px max(32px, calc(50% - 380px)); }
 .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .contact-textarea { resize: vertical; min-height: 160px; }
 .contact-submit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   align-self: flex-start;
   background: var(--ide-accent);
   color: #fff;
@@ -2424,11 +2427,57 @@ body.zen-mode .ide-panel-scroll { padding: 48px max(32px, calc(50% - 380px)); }
   border-radius: 6px;
   padding: 10px 22px;
   cursor: pointer;
-  transition: background 0.2s ease, transform 0.1s ease;
+  box-shadow: 0 4px 14px -4px rgba(55,148,255,0.4);
+  transition: background 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
 }
-.contact-submit-btn:hover { background: var(--ide-accent-strong); }
+.contact-submit-btn ion-icon { font-size: 1.05rem; }
+.contact-submit-btn:hover { background: var(--ide-accent-strong); box-shadow: 0 6px 18px -4px rgba(55,148,255,0.5); }
 .contact-submit-btn:active { transform: scale(0.98); }
 .form-note { font-size: 0.78rem; color: var(--ide-text-faint); margin-top: 4px; }
+
+.contact-form-card {
+  border: 1px solid var(--ide-border-soft);
+  border-radius: 10px;
+  background: var(--ide-editor-bg-soft);
+  overflow: hidden;
+  box-shadow: 0 20px 50px -30px rgba(0,0,0,0.5);
+}
+.contact-form-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  background: var(--ide-editor-bg);
+  border-bottom: 1px solid var(--ide-border-soft);
+}
+.traffic-dots { display: flex; gap: 6px; }
+.traffic-dot { width: 9px; height: 9px; border-radius: 50%; }
+.traffic-dot--red { background: #ef4444; }
+.traffic-dot--yellow { background: #f5b942; }
+.traffic-dot--green { background: #22c55e; }
+.contact-form-card-header ion-icon { color: var(--ide-accent); font-size: 1rem; margin-left: 4px; }
+.contact-form-card-header .filename { font-family: 'Plex Mono', monospace; font-size: 0.78rem; color: var(--ide-text-dim); }
+.contact-form-card-body { padding: 22px; display: flex; flex-direction: column; gap: 16px; }
+.field-group { display: flex; flex-direction: column; gap: 6px; }
+.field-label {
+  font-family: 'Plex Mono', monospace;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ide-text-faint);
+}
+.field-optional { text-transform: none; letter-spacing: normal; opacity: 0.7; }
+.field-icon-input { position: relative; display: flex; align-items: center; }
+.field-icon-input > ion-icon:first-child { position: absolute; left: 11px; color: var(--ide-accent); font-size: 1rem; pointer-events: none; }
+.field-icon-input .ide-control { padding-left: 34px; }
+.field-icon-input--select select.ide-control {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 32px;
+  cursor: pointer;
+}
+.field-select-chevron { position: absolute; right: 11px; color: var(--ide-text-faint); font-size: 0.9rem; pointer-events: none; }
+.contact-form-footer { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
 
 /* ===== Ask AI chat assistant ===== */
 .chat-window { display: flex; flex-direction: column; max-width: 760px; }
