@@ -182,7 +182,7 @@ function initTabs() {
 
   // Deep link: activate tab from URL hash (skip item/ deep links — handled after data loads)
   const hash = window.location.hash.replace("#", "");
-  if (hash && !hash.startsWith("item/") && document.getElementById(hash)) {
+  if (hash && !hash.startsWith("item/") && hash !== "scm" && document.getElementById(hash)) {
     switchTab(hash);
   }
 }
@@ -4352,7 +4352,7 @@ function triggerKonamiEasterEgg() {
 /* ===== Referrer-triggered easter egg ===== */
 const REFERRER_GREETINGS = [
   { hosts: ["linkedin.com"], message: "Coming from LinkedIn? Small world — take a look around, and let's actually connect." },
-  { hosts: ["github.com"], message: "Found this via GitHub — check out the live build status and architecture in Build & Deploy." },
+  { hosts: ["github.com"], message: "Found this via GitHub — feel free to poke around the actual source, it's all real." },
   { hosts: ["indeed.com", "glassdoor.com", "myworkdayjobs.com", "lever.co", "greenhouse.io", "workable.com"], message: "Looks like you might be hiring — my Resume tab has the full story, and Contact is right there when you're ready." },
   { hosts: ["news.ycombinator.com"], message: "Hey Hacker News — thanks for stopping by. Built solo, top to bottom." },
   { hosts: ["reddit.com"], message: "Welcome from Reddit! Poke around — everything here is real and self-hosted." },
@@ -4538,7 +4538,7 @@ function buildSettingsSnapshot() {
       zen_mode: "Z",
       close_tab: "W",
       close_all_tabs: "Shift+W",
-      switch_tabs: "1-8",
+      switch_tabs: "1-9",
       theme_toggle: "T",
       shortcuts_overlay: "?",
     },
@@ -5285,9 +5285,11 @@ function initKeyboardShortcuts() {
         e.preventDefault();
         toggleShortcutsOverlay();
         break;
-      case "1": case "2": case "3": case "4": case "5": case "6": case "7": case "8": {
+      case "1": case "2": case "3": case "4": case "5": case "6": case "7": case "8": case "9": {
         if (modalActive) return;
-        const tabNames = ["about", "chat", "contact", "experiences", "projects", "resume", "scm", "stack", "profile"];
+        const tabNames = [...document.querySelectorAll(".activity-bar .tab-btn")]
+          .filter((btn) => !btn.hidden)
+          .map((btn) => btn.dataset.tab);
         const idx = parseInt(e.key) - 1;
         if (tabNames[idx]) { switchTab(tabNames[idx]); e.preventDefault(); }
         break;
@@ -5385,7 +5387,7 @@ function toggleShortcutsOverlay() {
         <div class="shortcut-item"><kbd>Esc</kbd><span>Close modal / overlay</span></div>
         <div class="shortcut-item"><kbd>T</kbd><span>Toggle dark / light theme</span></div>
         <div class="shortcut-item"><kbd>Z</kbd><span>Toggle Zen mode</span></div>
-        <div class="shortcut-item"><kbd>1</kbd>\u2013<kbd>8</kbd><span>Switch tabs</span></div>
+        <div class="shortcut-item"><kbd>1</kbd>\u2013<kbd>9</kbd><span>Switch tabs</span></div>
         <div class="shortcut-item"><kbd>/</kbd><span>Focus search field</span></div>
         <div class="shortcut-item"><kbd>[</kbd> <kbd>]</kbd><span>Previous / next open tab</span></div>
         <div class="shortcut-item"><kbd>W</kbd><span>Close current tab</span></div>
@@ -5427,7 +5429,6 @@ function getCommandPaletteItems() {
     { icon: "document-text-outline", label: "Resume", hint: "resume.pdf", action: () => openIdeTabByName("resume") },
     { icon: "extension-puzzle-outline", label: "Stack", hint: "stack.json", action: () => openIdeTabByName("stack") },
     { icon: "mail-outline", label: "Contact", hint: "contact.md", action: () => openIdeTabByName("contact") },
-    { icon: "git-network-outline", label: "Build & Deploy", hint: "build.yml", action: () => openIdeTabByName("scm") },
     { icon: "person-circle-outline", label: "Profile", hint: "profile.md", action: () => openIdeTabByName("profile") },
     { icon: "flash-outline", label: "Now", hint: "happening-now.md", action: () => openIdeTabByName("now") },
     { icon: "construct-outline", label: "Uses", hint: "uses.json", action: () => openIdeTabByName("uses") },
@@ -5443,6 +5444,8 @@ function getCommandPaletteItems() {
   ];
   if (!state.isAdmin) {
     items.push({ icon: "lock-closed-outline", label: "Admin Sign In", hint: "manage content", action: () => openAdminLoginModal() });
+  } else {
+    items.push({ icon: "git-network-outline", label: "Build & Deploy", hint: "build.yml", action: () => openIdeTabByName("scm") });
   }
   if (typeof toggleTerminalPanel === "function") {
     items.push({ icon: "terminal-outline", label: "Open Terminal", hint: "`", action: () => toggleTerminalPanel() });
@@ -5904,7 +5907,6 @@ function initMobileSwipe() {
   let touchStartY = 0;
   const content = document.querySelector(".content");
   if (!content) return;
-  const tabOrder = ["about", "scm", "contact", "chat", "experiences", "profile", "projects", "resume", "stack"];
   content.addEventListener("touchstart", (e) => {
     touchStartX = e.changedTouches[0].screenX;
     touchStartY = e.changedTouches[0].screenY;
@@ -5914,6 +5916,9 @@ function initMobileSwipe() {
     const dy = e.changedTouches[0].screenY - touchStartY;
     if (Math.abs(dx) < 60 || Math.abs(dy) > Math.abs(dx)) return;
     if (e.target.closest(".modal-shell, .recent-strip, .related-strip, .subsection-nav, .skills-filter-row, .modal-carousel")) return;
+    const tabOrder = [...document.querySelectorAll(".activity-bar .tab-btn")]
+      .filter((btn) => !btn.hidden)
+      .map((btn) => btn.dataset.tab);
     const active = document.querySelector(".tab-btn.active");
     const currentIdx = tabOrder.indexOf(active?.dataset.tab);
     if (currentIdx === -1) return;
