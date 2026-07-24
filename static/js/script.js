@@ -1568,8 +1568,12 @@ function renderResume() {
   work.forEach((item) => workTarget.appendChild(buildCommitNode(item)));
 }
 
-function shortCommitHash(id) {
-  return (id || "0000000").replace(/-/g, "").slice(0, 7).padEnd(7, "0");
+function commitDateLabel(item) {
+  const raw = item.created_at || item.updated_at;
+  if (!raw) return "unstaged";
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return "unstaged";
+  return d.toISOString().slice(0, 10);
 }
 
 function buildCommitNode(item) {
@@ -1583,7 +1587,8 @@ function buildCommitNode(item) {
 
   const hash = document.createElement("span");
   hash.className = "commit-hash";
-  hash.textContent = shortCommitHash(item.id);
+  hash.title = "Added to this timeline on " + commitDateLabel(item);
+  hash.textContent = commitDateLabel(item);
   topRow.appendChild(hash);
 
   const msg = document.createElement("span");
@@ -3263,11 +3268,10 @@ async function fetchDeletedItems() {
 }
 
 async function renderDeletedItems() {
-  const panel = document.getElementById("deleted-items-panel");
   const list = document.getElementById("deleted-items-list");
   const badge = document.getElementById("deleted-count-badge");
-  if (!panel || !list) return;
-  if (!state.isAdmin) { panel.style.display = "none"; return; }
+  if (!list) return;
+  if (!state.isAdmin) return;
   const items = await fetchDeletedItems();
   badge.textContent = items.length;
   badge.style.display = items.length > 0 ? "" : "none";
@@ -3331,6 +3335,44 @@ function initAdminToolsPopup() {
   toggle.addEventListener("click", () => { popup.style.display = "flex"; });
   closeBtn?.addEventListener("click", () => { popup.style.display = "none"; });
   backdrop?.addEventListener("click", () => { popup.style.display = "none"; });
+
+  document.querySelectorAll("[data-tool-modal]").forEach((btn) => {
+    btn.addEventListener("click", () => openAdminToolModal(btn.dataset.toolModal));
+  });
+  document.querySelectorAll("[data-close-admin-tool]").forEach((el) => {
+    el.addEventListener("click", closeAdminToolModal);
+  });
+}
+
+const ADMIN_TOOL_MODAL_META = {
+  activity: { title: "Activity Log", icon: "document-text-outline", onOpen: () => renderActivityLog() },
+  stats: { title: "Stats Dashboard", icon: "bar-chart-outline", onOpen: () => renderAdminStats() },
+  links: { title: "Broken Link Checker", icon: "link-outline", onOpen: () => runLinkCheck() },
+  "rename-skill": { title: "Rename / Merge Skill Tag", icon: "pricetags-outline", onOpen: () => populateSkillRenameForm() },
+  backup: { title: "Backup to S3", icon: "cloud-upload-outline" },
+  deleted: { title: "Recently Deleted", icon: "trash-outline", onOpen: () => renderDeletedItems() },
+};
+
+function openAdminToolModal(key) {
+  const meta = ADMIN_TOOL_MODAL_META[key];
+  const modal = document.getElementById("admin-tool-modal");
+  if (!meta || !modal) return;
+  document.getElementById("admin-tools-popup").style.display = "none";
+  document.getElementById("admin-tool-modal-title").textContent = meta.title;
+  document.getElementById("admin-tool-modal-icon")?.setAttribute("name", meta.icon);
+  document.querySelectorAll(".admin-tool-modal-page").forEach((page) => {
+    page.hidden = page.id !== `admin-tool-page-${key}`;
+  });
+  modal.classList.add("active");
+  modal.setAttribute("aria-hidden", "false");
+  meta.onOpen?.();
+}
+
+function closeAdminToolModal() {
+  const modal = document.getElementById("admin-tool-modal");
+  if (!modal) return;
+  modal.classList.remove("active");
+  modal.setAttribute("aria-hidden", "true");
 }
 
 /* ===== Profile quick-facts "See what I'm up to" link ===== */
@@ -3341,13 +3383,7 @@ function initProfileQuickFacts() {
 }
 
 function initDeletedItems() {
-  const toggle = document.getElementById("deleted-items-toggle");
-  const panel = document.getElementById("deleted-items-panel");
-  if (!toggle || !panel) return;
-  toggle.addEventListener("click", () => {
-    panel.style.display = panel.style.display === "none" ? "" : "none";
-    renderDeletedItems();
-  });
+  // Rendering is triggered by openAdminToolModal("deleted") via ADMIN_TOOL_MODAL_META.
 }
 
 /* ===== Auto-save admin draft (localStorage) ===== */
@@ -3789,7 +3825,7 @@ function renderActivityLog() {
   if (!container) return;
   const log = JSON.parse(localStorage.getItem(ACTIVITY_LOG_KEY) || "[]");
   if (log.length === 0) {
-    container.innerHTML = '<p class="text-ink-muted text-sm">No activity recorded yet.</p>';
+    container.innerHTML = '<p class="text-ink-muted text-sm">Nothing yet — creating, editing, deleting, reordering, or importing/backing up content from this browser will show up here.</p>';
     return;
   }
   container.innerHTML = log.map((entry) => {
@@ -3800,14 +3836,6 @@ function renderActivityLog() {
 }
 
 function initActivityLog() {
-  const btn = document.getElementById("activity-log-toggle");
-  const panel = document.getElementById("activity-log-panel");
-  if (!btn || !panel) return;
-  btn.addEventListener("click", () => {
-    const visible = panel.style.display !== "none";
-    panel.style.display = visible ? "none" : "block";
-    if (!visible) renderActivityLog();
-  });
   const clearBtn = document.getElementById("activity-log-clear");
   if (clearBtn) {
     clearBtn.addEventListener("click", () => {
@@ -4804,49 +4832,78 @@ async function loadHitCount() {
 
 /* ===== Admin Stats Dashboard ===== */
 function initAdminStats() {
-  const btn = document.getElementById("admin-stats-toggle");
-  const panel = document.getElementById("admin-stats-panel");
-  if (!btn || !panel) return;
-  btn.addEventListener("click", () => {
-    const visible = panel.style.display !== "none";
-    panel.style.display = visible ? "none" : "block";
-    if (!visible) renderAdminStats();
-  });
+  // Rendering is triggered by openAdminToolModal("stats") via ADMIN_TOOL_MODAL_META.
+}
+
+function statsBlock(icon, title, rows) {
+  if (!rows.length) return "";
+  return `<div class="stats-block">
+    <h5 class="stats-block-title"><ion-icon aria-hidden="true" name="${icon}"></ion-icon>${escapeHtml(title)}</h5>
+    ${rows.map(([label, val]) => `<div class="stat-row"><span class="stat-label">${escapeHtml(String(label))}</span><span class="stat-value">${escapeHtml(String(val))}</span></div>`).join("")}
+  </div>`;
 }
 
 function renderAdminStats() {
   const container = document.getElementById("admin-stats-content");
   if (!container) return;
+  const allItems = [...state.projects, ...state.experiences];
   const projCats = {};
   state.projects.forEach((p) => { const c = p.category || "Uncategorised"; projCats[c] = (projCats[c] || 0) + 1; });
   const expCats = {};
   state.experiences.forEach((e) => { const c = e.category || "Uncategorised"; expCats[c] = (expCats[c] || 0) + 1; });
   const skillUsage = {};
-  [...state.projects, ...state.experiences].forEach((item) => {
+  allItems.forEach((item) => {
     parseSkills(item.skills).forEach((s) => { skillUsage[s] = (skillUsage[s] || 0) + 1; });
   });
   const topSkills = Object.entries(skillUsage).sort((a, b) => b[1] - a[1]).slice(0, 10);
+  const draftCount = allItems.filter((i) => i.is_draft).length;
+  const pinnedCount = allItems.filter((i) => i.is_pinned).length;
+  const staleCount = allItems.filter((i) => i.updated_at && (Date.now() - new Date(i.updated_at).getTime()) / 86400000 > 90).length;
+  const missingImage = allItems.filter((i) => !i.image_path).length;
 
-  let html = `<div class="stats-section">
-    <div class="stat-row"><span class="stat-label">Total Projects</span><span class="stat-value">${state.projects.length}</span></div>
-    <div class="stat-row"><span class="stat-label">Total Experiences</span><span class="stat-value">${state.experiences.length}</span></div>
-    <div class="stat-row"><span class="stat-label">Resume Items</span><span class="stat-value">${state.resume.length}</span></div>
-    <div class="stat-row"><span class="stat-label">Skills Defined</span><span class="stat-value">${state.skills.length}</span></div>
-  </div>`;
+  let html = `<div id="admin-traffic-stats">${statsBlock("eye-outline", "Traffic", [["Loading…", ""]])}</div>`;
 
-  html += `<h5 class="text-xs font-semibold text-ink-muted mt-3 mb-1">Projects by Category</h5>`;
-  html += Object.entries(projCats).sort().map(([c, n]) => `<div class="stat-row"><span class="stat-label">${c}</span><span class="stat-value">${n}</span></div>`).join("");
+  html += statsBlock("layers-outline", "Content", [
+    ["Total Projects", state.projects.length],
+    ["Total Experiences", state.experiences.length],
+    ["Resume Items", state.resume.length],
+    ["Skills Defined", state.skills.length],
+  ]);
 
-  html += `<h5 class="text-xs font-semibold text-ink-muted mt-3 mb-1">Experiences by Category</h5>`;
-  html += Object.entries(expCats).sort().map(([c, n]) => `<div class="stat-row"><span class="stat-label">${c}</span><span class="stat-value">${n}</span></div>`).join("");
+  html += statsBlock("construct-outline", "Housekeeping", [
+    ["Drafts (hidden from public)", draftCount],
+    ["Featured / pinned", pinnedCount],
+    ["Stale (90+ days untouched)", staleCount],
+    ["Missing a cover image", missingImage],
+  ]);
 
-  if (topSkills.length > 0) {
-    html += `<h5 class="text-xs font-semibold text-ink-muted mt-3 mb-1">Top Skills</h5>`;
-    html += topSkills.map(([s, n]) => `<div class="stat-row"><span class="stat-label">${s}</span><span class="stat-value">${n}</span></div>`).join("");
-  }
-  html += `<div id="admin-analytics-extra"><div class="stat-row"><span class="stat-label">Loading analytics...</span></div></div>`;
+  html += statsBlock("folder-outline", "Projects by Category", Object.entries(projCats).sort());
+  html += statsBlock("briefcase-outline", "Experiences by Category", Object.entries(expCats).sort());
+  html += statsBlock("pricetags-outline", "Top Skills", topSkills);
+
+  html += `<div id="admin-analytics-extra">${statsBlock("bar-chart-outline", "Analytics", [["Loading…", ""]])}</div>`;
   container.innerHTML = html;
+  loadTrafficStats();
   loadAdminAnalytics();
+}
+
+async function loadTrafficStats() {
+  const el = document.getElementById("admin-traffic-stats");
+  if (!el) return;
+  try {
+    const res = await fetch("/api/hit-count");
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    const publicCount = data.count || 0;
+    const adminCount = data.admin_count || 0;
+    el.innerHTML = statsBlock("eye-outline", "Traffic", [
+      ["Public visits", publicCount.toLocaleString()],
+      ["Your visits (admin)", adminCount.toLocaleString()],
+      ["Total page loads", (publicCount + adminCount).toLocaleString()],
+    ]);
+  } catch {
+    el.innerHTML = statsBlock("eye-outline", "Traffic", [["Couldn't load visit counts", ""]]);
+  }
 }
 
 async function loadAdminAnalytics() {
@@ -4859,23 +4916,22 @@ async function loadAdminAnalytics() {
     let html = "";
 
     if (data.top_projects?.length) {
-      html += `<h5 class="text-xs font-semibold text-ink-muted mt-3 mb-1">Most Viewed Projects</h5>`;
-      html += data.top_projects.map((p) => `<div class="stat-row"><span class="stat-label">${escapeHtml(p.title)}</span><span class="stat-value">${p.view_count}</span></div>`).join("");
+      html += statsBlock("flame-outline", "Most Viewed Projects", data.top_projects.map((p) => [p.title, p.view_count]));
     }
     if (data.top_experiences?.length) {
-      html += `<h5 class="text-xs font-semibold text-ink-muted mt-3 mb-1">Most Viewed Experiences</h5>`;
-      html += data.top_experiences.map((p) => `<div class="stat-row"><span class="stat-label">${escapeHtml(p.title)}</span><span class="stat-value">${p.view_count}</span></div>`).join("");
+      html += statsBlock("flame-outline", "Most Viewed Experiences", data.top_experiences.map((p) => [p.title, p.view_count]));
     }
     if (data.referrers?.length) {
-      html += `<h5 class="text-xs font-semibold text-ink-muted mt-3 mb-1">Top Referrers</h5>`;
-      html += data.referrers.map((r) => `<div class="stat-row"><span class="stat-label">${escapeHtml(r.host)}</span><span class="stat-value">${r.count}</span></div>`).join("");
+      html += statsBlock("link-outline", "Top Referrers", data.referrers.map((r) => [r.host, r.count]));
     }
     if (data.recent_chat_questions?.length) {
-      html += `<div class="stats-subheader-row">
-        <h5 class="text-xs font-semibold text-ink-muted mt-3 mb-1">Recent Chat Questions</h5>
-        <button type="button" class="stats-clear-btn" id="admin-clear-chatlog-btn">Clear</button>
+      html += `<div class="stats-block">
+        <div class="stats-subheader-row">
+          <h5 class="stats-block-title"><ion-icon aria-hidden="true" name="chatbubbles-outline"></ion-icon>Recent Chat Questions</h5>
+          <button type="button" class="stats-clear-btn" id="admin-clear-chatlog-btn">Clear</button>
+        </div>
+        ${data.recent_chat_questions.map((q) => `<div class="stat-row stat-row--stacked"><span class="stat-label">${escapeHtml(q.question)}</span><span class="stat-time">${escapeHtml(timeAgo(q.created_at))}</span></div>`).join("")}
       </div>`;
-      html += data.recent_chat_questions.map((q) => `<div class="stat-row stat-row--stacked"><span class="stat-label">${escapeHtml(q.question)}</span><span class="stat-time">${escapeHtml(timeAgo(q.created_at))}</span></div>`).join("");
     }
     el.innerHTML = html || `<div class="stat-row"><span class="stat-label">No analytics yet</span></div>`;
     document.getElementById("admin-clear-chatlog-btn")?.addEventListener("click", async () => {
@@ -4895,26 +4951,28 @@ async function loadAdminAnalytics() {
 
 /* ===== Admin Backup ===== */
 function initAdminBackup() {
-  const btn = document.getElementById("admin-backup-btn");
-  if (!btn) return;
-  btn.addEventListener("click", async () => {
+  const confirmBtn = document.getElementById("admin-backup-confirm-btn");
+  if (!confirmBtn) return;
+  confirmBtn.addEventListener("click", async () => {
     if (!state.isAdmin) return;
-    btn.textContent = "Backing up...";
-    btn.disabled = true;
+    const originalHtml = confirmBtn.innerHTML;
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = '<ion-icon name="hourglass-outline"></ion-icon> Backing up&hellip;';
     try {
       const res = await fetch("/api/admin/backup", { method: "POST" });
       const data = await res.json();
       if (res.ok) {
         showToast(data.message || "Backup complete.", "success");
-        logActivity("Backup", "Exported all tables to S3");
+        logActivity("Backup", data.message || "Exported all tables to S3");
+        closeAdminToolModal();
       } else {
         showToast(data.error || "Backup failed.", "error");
       }
     } catch {
       showToast("Backup failed.", "error");
     }
-    btn.innerHTML = '<ion-icon name="cloud-upload-outline" class="align-middle mr-1"></ion-icon>Backup to S3';
-    btn.disabled = false;
+    confirmBtn.disabled = false;
+    confirmBtn.innerHTML = originalHtml;
   });
 }
 
@@ -4949,60 +5007,72 @@ function initAdminAnalyticsExport() {
 }
 
 /* ===== Broken Link Checker ===== */
+let linkCheckInProgress = false;
+
 function initLinkChecker() {
-  const btn = document.getElementById("admin-link-checker-btn");
-  const panel = document.getElementById("link-checker-panel");
+  // Triggered by openAdminToolModal("links") via ADMIN_TOOL_MODAL_META.
+}
+
+async function runLinkCheck() {
   const content = document.getElementById("link-checker-content");
-  if (!btn || !panel || !content) return;
-  btn.addEventListener("click", async () => {
-    if (!state.isAdmin) return;
-    const visible = panel.style.display !== "none";
-    if (visible) { panel.style.display = "none"; return; }
-    panel.style.display = "block";
-    content.innerHTML = `<div class="stat-row"><span class="stat-label">Checking links&hellip;</span></div>`;
-    try {
-      const res = await fetch("/api/admin/check-links", { method: "POST" });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      if (!data.broken.length) {
-        content.innerHTML = `<div class="stat-row"><span class="stat-label">All ${data.checked} link(s) OK &check;</span></div>`;
-      } else {
-        content.innerHTML = data.broken.map((b) => `
-          <div class="stat-row stat-row--stacked">
-            <span class="stat-label" style="color:#ef4444">${escapeHtml(b.title)} &mdash; ${b.field === "credential_url" ? "credential" : "link"}</span>
-            <span class="stat-time">${escapeHtml(b.url)}</span>
-          </div>`).join("") + `<div class="stat-row"><span class="stat-label">${data.broken.length} of ${data.checked} link(s) unreachable</span></div>`;
-      }
-    } catch {
-      content.innerHTML = `<div class="stat-row"><span class="stat-label">Failed to check links.</span></div>`;
+  if (!content) return;
+  if (linkCheckInProgress) { showToast("Already checking links — hang tight.", "info"); return; }
+  linkCheckInProgress = true;
+  content.innerHTML = `<div class="stat-row"><span class="stat-label">Checking links&hellip;</span></div>`;
+  try {
+    const res = await fetch("/api/admin/check-links", { method: "POST" });
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    if (!data.broken.length) {
+      content.innerHTML = `<div class="stat-row"><span class="stat-label">All ${data.checked} link(s) OK &check;</span></div>`;
+    } else {
+      content.innerHTML = data.broken.map((b) => `
+        <div class="stat-row stat-row--stacked">
+          <span class="stat-label" style="color:#ef4444">${escapeHtml(b.title)} &mdash; ${b.field === "credential_url" ? "credential" : "link"}</span>
+          <span class="stat-time">${escapeHtml(b.url)}</span>
+        </div>`).join("") + `<div class="stat-row"><span class="stat-label">${data.broken.length} of ${data.checked} link(s) unreachable</span></div>`;
     }
-  });
+  } catch {
+    content.innerHTML = `<div class="stat-row"><span class="stat-label">Failed to check links.</span></div>`;
+  }
+  linkCheckInProgress = false;
 }
 
 /* ===== Bulk Skill Rename / Merge ===== */
+function populateSkillRenameForm() {
+  const select = document.getElementById("rename-skill-from");
+  const input = document.getElementById("rename-skill-to");
+  const feedback = document.getElementById("rename-skill-feedback");
+  if (!select) return;
+  const allSkills = [...new Set([...state.projects, ...state.experiences].flatMap((i) => parseSkills(i.skills)))].sort();
+  if (input) input.value = "";
+  if (feedback) feedback.textContent = "";
+  select.innerHTML = allSkills.length
+    ? allSkills.map((s) => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join("")
+    : `<option value="">No skill tags found</option>`;
+  select.disabled = !allSkills.length;
+}
+
 function initSkillRename() {
-  const btn = document.getElementById("admin-skill-rename-btn");
-  if (!btn) return;
-  btn.addEventListener("click", async () => {
+  const submitBtn = document.getElementById("rename-skill-submit");
+  if (!submitBtn) return;
+  submitBtn.addEventListener("click", async () => {
     if (!state.isAdmin) return;
-    const allSkills = [...new Set([...state.projects, ...state.experiences].flatMap((i) => parseSkills(i.skills)))].sort();
-    if (!allSkills.length) { showToast("No skill tags found.", "info"); return; }
-    const from = window.prompt(`Rename or merge which skill tag?\n\nExisting tags:\n${allSkills.join(", ")}`);
-    if (!from || !allSkills.includes(from)) {
-      if (from) showToast("That tag doesn't exist on any item.", "error");
-      return;
-    }
-    const to = window.prompt(`Rename "${from}" to:\n\n(If the new name already exists, the two tags will be merged.)`);
-    if (!to || !to.trim() || to.trim() === from) return;
-    const newName = to.trim();
+    const from = document.getElementById("rename-skill-from")?.value;
+    const to = document.getElementById("rename-skill-to")?.value.trim();
+    const feedback = document.getElementById("rename-skill-feedback");
+    if (!from) { if (feedback) feedback.textContent = "No skill tag selected."; return; }
+    if (!to) { if (feedback) feedback.textContent = "Enter a new name."; return; }
+    if (to === from) { if (feedback) feedback.textContent = "That's already the current name."; return; }
 
     const affected = [...state.projects, ...state.experiences].filter((i) => parseSkills(i.skills).includes(from));
-    const confirmed = await showConfirm("Rename Skill Tag", `Rename "${from}" to "${newName}" across ${affected.length} item(s)?`);
+    const confirmed = await showConfirm("Rename Skill Tag", `Rename "${from}" to "${to}" across ${affected.length} item(s)?`);
     if (!confirmed) return;
 
+    submitBtn.disabled = true;
     let ok = 0, fail = 0;
     for (const item of affected) {
-      const newSkills = [...new Set(parseSkills(item.skills).map((s) => (s === from ? newName : s)))].join(", ");
+      const newSkills = [...new Set(parseSkills(item.skills).map((s) => (s === from ? to : s)))].join(", ");
       const fd = new FormData();
       fd.append("skills", newSkills);
       try {
@@ -5014,6 +5084,8 @@ function initSkillRename() {
     await fetchData();
     wireProjectControls();
     showToast(`Updated ${ok} item(s)${fail ? `, ${fail} failed` : ""}.`, fail ? "error" : "success");
+    submitBtn.disabled = false;
+    closeAdminToolModal();
   });
 }
 
