@@ -168,6 +168,7 @@
       <nav class="activity-bar" role="tablist" aria-label="Site sections">
         <button class="tab-btn active" data-tab="about" role="tab" aria-selected="true" aria-controls="about" id="tab-about" title="About" aria-label="About"><ion-icon aria-hidden="true" name="person-outline"></ion-icon></button>
         <button class="tab-btn" data-tab="chat" role="tab" aria-selected="false" aria-controls="chat" id="tab-chat" title="Ask AI" aria-label="Ask AI"><ion-icon aria-hidden="true" name="sparkles-outline"></ion-icon></button>
+        <button class="tab-btn" data-tab="scm" role="tab" aria-selected="false" aria-controls="scm" id="tab-scm" title="Build &amp; Deploy" aria-label="Build and Deploy"><ion-icon aria-hidden="true" name="git-network-outline"></ion-icon></button>
         <button class="tab-btn" data-tab="contact" role="tab" aria-selected="false" aria-controls="contact" id="tab-contact" title="Contact" aria-label="Contact"><ion-icon aria-hidden="true" name="mail-outline"></ion-icon></button>
         <button class="tab-btn" data-tab="experiences" role="tab" aria-selected="false" aria-controls="experiences" id="tab-experiences" title="Experiences" aria-label="Experiences"><ion-icon aria-hidden="true" name="briefcase-outline"></ion-icon><span class="tab-count-badge" id="tab-count-experiences" aria-hidden="true"></span></button>
         <button type="button" class="tab-btn activity-bar-profile-btn" data-tab="profile" role="tab" aria-selected="false" aria-controls="profile" id="tab-profile" title="Profile" aria-label="Profile">
@@ -176,7 +177,6 @@
         <button class="tab-btn" data-tab="projects" role="tab" aria-selected="false" aria-controls="projects" id="tab-projects" title="Projects" aria-label="Projects"><ion-icon aria-hidden="true" name="folder-outline"></ion-icon><span class="tab-count-badge" id="tab-count-projects" aria-hidden="true"></span></button>
         <button class="tab-btn" data-tab="resume" role="tab" aria-selected="false" aria-controls="resume" id="tab-resume" title="Resume" aria-label="Resume"><ion-icon aria-hidden="true" name="document-text-outline"></ion-icon></button>
         <button type="button" class="tab-btn activity-bar-settings-btn" data-tab="settings" role="tab" aria-selected="false" aria-controls="settings" id="tab-settings" title="Settings" aria-label="Settings"><ion-icon aria-hidden="true" name="settings-outline"></ion-icon></button>
-        <button class="tab-btn" data-tab="scm" role="tab" aria-selected="false" aria-controls="scm" id="tab-scm" title="Source Control" aria-label="Source Control"><ion-icon aria-hidden="true" name="git-compare-outline"></ion-icon></button>
         <button class="tab-btn" data-tab="stack" role="tab" aria-selected="false" aria-controls="stack" id="tab-stack" title="Stack" aria-label="Stack"><ion-icon aria-hidden="true" name="extension-puzzle-outline"></ion-icon></button>
       </nav>
 
@@ -209,7 +209,7 @@
         </div>
 
         <div class="file-tree-section" data-tree-section="scm">
-          <div class="file-tree-item" data-tab="scm"><span class="fdot diff"></span> changes.diff</div>
+          <div class="file-tree-item" data-tab="scm"><span class="fdot yml"></span> build.yml</div>
         </div>
 
         <div class="file-tree-section" data-tree-section="stack">
@@ -334,7 +334,12 @@
         <header class="panel-head mb-6">
           <div class="panel-head-top flex items-center justify-between gap-3">
             <h2 class="font-display text-3xl font-bold text-white tracking-tight">Projects</h2>
-            <button type="button" id="create-project-btn" class="admin-inline-btn admin-only" hidden>Create New Project</button>
+            <div class="flex items-center gap-2">
+              <a href="/feed.xml" class="export-btn" title="Subscribe to project &amp; experience updates">
+                <ion-icon aria-hidden="true" name="logo-rss"></ion-icon> RSS Feed
+              </a>
+              <button type="button" id="create-project-btn" class="admin-inline-btn admin-only" hidden>Create New Project</button>
+            </div>
           </div>
           <p class="mt-2 text-ink-muted">Latest projects first. Filter and sort to explore the full build history.</p>
         </header>
@@ -616,26 +621,91 @@
         </section>
       </article>
 
-      <!-- Source Control -->
+      <!-- Build & Deploy (formerly Source Control) -->
       <article id="scm" class="tab-panel animate-fade-up" role="tabpanel" aria-labelledby="tab-scm" tabindex="0">
         <header class="panel-head mb-6">
           <div class="panel-head-top flex items-center justify-between gap-3">
-            <h2 class="font-display text-3xl font-bold text-white tracking-tight">Source Control</h2>
-            <a href="/feed.xml" class="export-btn" title="Subscribe to project &amp; experience updates">
-              <ion-icon aria-hidden="true" name="logo-rss"></ion-icon> RSS Feed
+            <h2 class="font-display text-3xl font-bold text-white tracking-tight">Build &amp; Deploy</h2>
+            <a href="https://github.com/Jayyy419/CtrlAltJay/actions" target="_blank" rel="noopener noreferrer" class="export-btn" title="View all workflow runs on GitHub">
+              <ion-icon aria-hidden="true" name="logo-github"></ion-icon> View on GitHub
             </a>
           </div>
-          <p class="mt-2 text-ink-muted">A live look at what's actually changed recently across projects and experiences.</p>
+          <p class="mt-2 text-ink-muted">Live CI status for this repo's own GitHub Actions runs, straight from the GitHub API.</p>
         </header>
-        <div class="scm-commit-box">
-          <textarea class="scm-commit-input" placeholder="Message (Ctrl+Enter to commit)" disabled rows="2"></textarea>
-          <button type="button" class="scm-commit-btn" disabled><ion-icon aria-hidden="true" name="checkmark-outline"></ion-icon> Commit</button>
+
+        <div class="build-status-header">
+          <span>Recent Workflow Runs</span>
         </div>
-        <div class="scm-changes-header">
-          <span>Changes</span>
-          <span class="scm-changes-count" id="scm-changes-count">0</span>
+        <div id="build-status-panel" class="build-status-panel">
+          <div class="scm-empty">Loading build status&hellip;</div>
         </div>
-        <div id="scm-changes-list" class="scm-changes-list"></div>
+
+        <section class="mt-10">
+          <h3 class="font-display text-xl font-semibold text-white mb-4"><ion-icon aria-hidden="true" name="git-network-outline" class="align-middle mr-2"></ion-icon>Architecture</h3>
+          <p class="text-sm text-ink-muted mb-5">How a request actually flows through this site, end to end.</p>
+          <div class="arch-diagram">
+            <div class="arch-row">
+              <div class="arch-box arch-box--client">
+                <ion-icon aria-hidden="true" name="desktop-outline"></ion-icon>
+                <span class="arch-box-title">Browser</span>
+                <span class="arch-box-sub">Vanilla JS + Tailwind</span>
+              </div>
+            </div>
+            <div class="arch-arrow"><span>HTTPS</span></div>
+            <div class="arch-row">
+              <div class="arch-box arch-box--server">
+                <ion-icon aria-hidden="true" name="server-outline"></ion-icon>
+                <span class="arch-box-title">Flask + Gunicorn</span>
+                <span class="arch-box-sub">AWS Elastic Beanstalk</span>
+              </div>
+            </div>
+            <div class="arch-arrow"><span>reads / writes</span></div>
+            <div class="arch-row arch-row--branch">
+              <div class="arch-box arch-box--service">
+                <ion-icon aria-hidden="true" name="server-outline"></ion-icon>
+                <span class="arch-box-title">DynamoDB</span>
+                <span class="arch-box-sub">items, resume, skills</span>
+              </div>
+              <div class="arch-box arch-box--service">
+                <ion-icon aria-hidden="true" name="cube-outline"></ion-icon>
+                <span class="arch-box-title">S3</span>
+                <span class="arch-box-sub">uploads &amp; backups</span>
+              </div>
+              <div class="arch-box arch-box--service">
+                <ion-icon aria-hidden="true" name="sparkles-outline"></ion-icon>
+                <span class="arch-box-title">Anthropic API</span>
+                <span class="arch-box-sub">chat &amp; smart search</span>
+              </div>
+            </div>
+            <div class="arch-deploy-note">
+              <ion-icon aria-hidden="true" name="rocket-outline"></ion-icon>
+              GitHub Actions builds and deploys straight to Elastic Beanstalk on every push to <code>main</code>.
+            </div>
+          </div>
+        </section>
+
+        <section class="mt-10">
+          <h3 class="font-display text-xl font-semibold text-white mb-4"><ion-icon aria-hidden="true" name="bulb-outline" class="align-middle mr-2"></ion-icon>Why These Choices</h3>
+          <p class="text-sm text-ink-muted mb-5">A short tour of the more deliberate decisions behind this stack.</p>
+          <div class="decision-list">
+            <div class="decision-item">
+              <h4><ion-icon aria-hidden="true" name="server-outline"></ion-icon>Server-rendered Flask, not a SPA framework</h4>
+              <p>No build step, no bundler, no hydration mismatch — view-source shows exactly what shipped. For a portfolio's scale, a React/Vue toolchain would be solving problems this site doesn't have.</p>
+            </div>
+            <div class="decision-item">
+              <h4><ion-icon aria-hidden="true" name="layers-outline"></ion-icon>DynamoDB over a relational database</h4>
+              <p>Pay-per-request billing and zero connection-pool management fit a low-traffic personal site better than running (and paying for) an always-on Postgres instance.</p>
+            </div>
+            <div class="decision-item">
+              <h4><ion-icon aria-hidden="true" name="code-slash-outline"></ion-icon>Vanilla JavaScript, not a frontend framework</h4>
+              <p>Everything on screen — the tab system, the command palette, the drag-and-drop — is plain DOM manipulation. It keeps the whole client inspectable in one file and forces real discipline about what actually needs to ship.</p>
+            </div>
+            <div class="decision-item">
+              <h4><ion-icon aria-hidden="true" name="sparkles-outline"></ion-icon>Prompt context over a RAG pipeline</h4>
+              <p>The Ask AI and Smart Search features pass the site's real content straight into the prompt instead of standing up a vector database. The whole corpus is small enough to fit in context, so embeddings and retrieval infra would be over-engineering for the data volume.</p>
+            </div>
+          </div>
+        </section>
       </article>
 
       <!-- Profile -->
