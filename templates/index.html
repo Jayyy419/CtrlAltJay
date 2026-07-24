@@ -224,9 +224,9 @@
       <section class="ide-shell">
       <nav class="activity-bar" role="tablist" aria-label="Site sections">
         <button class="tab-btn active" data-tab="about" role="tab" aria-selected="true" aria-controls="about" id="tab-about" title="About" aria-label="About"><ion-icon aria-hidden="true" name="person-outline"></ion-icon></button>
-        <button class="tab-btn" data-tab="chat" role="tab" aria-selected="false" aria-controls="chat" id="tab-chat" title="Ask AI" aria-label="Ask AI"><ion-icon aria-hidden="true" name="sparkles-outline"></ion-icon></button>
         <button class="tab-btn" data-tab="scm" role="tab" aria-selected="false" aria-controls="scm" id="tab-scm" title="Build &amp; Deploy" aria-label="Build and Deploy"><ion-icon aria-hidden="true" name="git-network-outline"></ion-icon></button>
         <button class="tab-btn" data-tab="contact" role="tab" aria-selected="false" aria-controls="contact" id="tab-contact" title="Contact" aria-label="Contact"><ion-icon aria-hidden="true" name="mail-outline"></ion-icon></button>
+        <button class="tab-btn" data-tab="chat" role="tab" aria-selected="false" aria-controls="chat" id="tab-chat" title="Ctrl+Alt+AI — chat with an AI trained on this site" aria-label="Ctrl+Alt+AI"><ion-icon aria-hidden="true" name="sparkles-outline"></ion-icon></button>
         <button class="tab-btn" data-tab="experiences" role="tab" aria-selected="false" aria-controls="experiences" id="tab-experiences" title="Experiences" aria-label="Experiences"><ion-icon aria-hidden="true" name="briefcase-outline"></ion-icon><span class="tab-count-badge" id="tab-count-experiences" aria-hidden="true"></span></button>
         <button type="button" class="tab-btn activity-bar-profile-btn" data-tab="profile" role="tab" aria-selected="false" aria-controls="profile" id="tab-profile" title="Profile" aria-label="Profile">
           <img src="../static/images/Portrait_ZoomedIn.JPG" alt="" class="activity-bar-avatar">
@@ -279,7 +279,7 @@
           <div class="file-tree-children">
             <div class="file-tree-item" data-tab="credly"><span class="fdot md"></span> credly.md</div>
             <div class="file-tree-item" data-tab="linkedin"><span class="fdot md"></span> linkedin.md</div>
-            <div class="file-tree-item" data-tab="now"><span class="fdot md"></span> now.md</div>
+            <div class="file-tree-item" data-tab="now"><span class="fdot md"></span> happening-now.md</div>
             <div class="file-tree-item" data-tab="testimonials"><span class="fdot md"></span> testimonials.md</div>
             <div class="file-tree-item" data-tab="timeline"><span class="fdot md"></span> timeline.md</div>
             <div class="file-tree-item" data-tab="uses"><span class="fdot json"></span> uses.json</div>
@@ -365,14 +365,24 @@
       <!-- Ask AI -->
       <article id="chat" class="tab-panel animate-fade-up" role="tabpanel" aria-labelledby="tab-chat" tabindex="0">
         <header class="panel-head mb-6">
-          <h2 class="font-display text-3xl font-bold text-white tracking-tight"><ion-icon aria-hidden="true" name="sparkles-outline" class="align-middle mr-2"></ion-icon>Ask AI</h2>
+          <h2 class="font-display text-3xl font-bold text-white tracking-tight"><ion-icon aria-hidden="true" name="sparkles-outline" class="align-middle mr-2"></ion-icon>Ctrl+Alt+AI</h2>
           <p class="mt-2 text-ink-muted">Ask about my projects, experience, or skills — answered using the real content on this site.</p>
         </header>
 
         <div class="chat-window">
+          <div class="chat-header">
+            <span class="chat-header-avatar"><ion-icon aria-hidden="true" name="sparkles"></ion-icon></span>
+            <div class="chat-header-text">
+              <span class="chat-header-name">Ctrl+Alt+AI</span>
+              <span class="chat-header-status"><span class="chat-status-dot"></span>Online &mdash; trained on this site's real content</span>
+            </div>
+          </div>
           <div class="chat-messages" id="chat-messages">
             <div class="chat-message chat-message--assistant">
-              <div class="chat-bubble">Hi! Ask me anything about the projects, experience, resume, or skills on this site — I'll answer from what's actually here.</div>
+              <span class="chat-avatar chat-avatar--assistant"><ion-icon aria-hidden="true" name="sparkles"></ion-icon></span>
+              <div class="chat-bubble-col">
+                <div class="chat-bubble">Hi! Ask me anything about the projects, experience, resume, or skills on this site — I'll answer from what's actually here.</div>
+              </div>
             </div>
           </div>
           <form id="chat-form" class="chat-input-row">
@@ -380,7 +390,7 @@
             <button type="button" class="chat-mic-btn" id="chat-mic-btn" title="Ask by voice" aria-label="Ask by voice" hidden>
               <ion-icon aria-hidden="true" name="mic-outline"></ion-icon>
             </button>
-            <button type="submit" class="contact-submit-btn" id="chat-send-btn">Ask</button>
+            <button type="submit" class="contact-submit-btn" id="chat-send-btn" aria-label="Send message"><ion-icon aria-hidden="true" name="send"></ion-icon></button>
           </form>
           <p class="form-note">AI-generated from real site content — may not be fully accurate. For anything important, use the Contact tab.</p>
         </div>
@@ -662,15 +672,36 @@
           <p class="text-sm text-ink-muted mb-4">Public notes, reviewed before they go live — say hello, leave feedback, or just sign the guestbook.</p>
 
           <form id="guestbook-form" class="guestbook-form">
-            <input type="text" name="name" placeholder="Your name" required minlength="2" maxlength="60" class="ide-control">
-            <textarea name="message" placeholder="Say something..." required minlength="3" maxlength="500" rows="3" class="ide-control"></textarea>
-            <div class="hp-field" aria-hidden="true" tabindex="-1">
-              <input type="text" name="website" tabindex="-1" autocomplete="off">
+            <div class="contact-form-card">
+              <div class="contact-form-card-header">
+                <span class="traffic-dots"><span class="traffic-dot traffic-dot--red"></span><span class="traffic-dot traffic-dot--yellow"></span><span class="traffic-dot traffic-dot--green"></span></span>
+                <ion-icon aria-hidden="true" name="chatbubbles-outline"></ion-icon>
+                <span class="filename">guestbook.log</span>
+              </div>
+              <div class="contact-form-card-body">
+                <div class="field-group">
+                  <label for="guestbook-name" class="field-label">Your name</label>
+                  <div class="field-icon-input">
+                    <ion-icon aria-hidden="true" name="person-outline"></ion-icon>
+                    <input type="text" id="guestbook-name" name="name" placeholder="Ada Lovelace" required minlength="2" maxlength="60" class="ide-control">
+                  </div>
+                </div>
+                <div class="field-group mt-3">
+                  <label for="guestbook-message" class="field-label">Message</label>
+                  <textarea id="guestbook-message" name="message" placeholder="Say something..." required minlength="3" maxlength="500" rows="3" class="ide-control"></textarea>
+                </div>
+                <div class="hp-field" aria-hidden="true" tabindex="-1">
+                  <input type="text" name="website" tabindex="-1" autocomplete="off">
+                </div>
+                <div class="contact-form-footer">
+                  <button type="submit" class="contact-submit-btn"><ion-icon aria-hidden="true" name="send-outline"></ion-icon>Post Note</button>
+                  <p id="guestbook-feedback" class="form-note" aria-live="polite"></p>
+                </div>
+              </div>
             </div>
-            <button type="submit" class="contact-submit-btn">Post Note</button>
-            <p id="guestbook-feedback" class="form-note" aria-live="polite"></p>
           </form>
 
+          <div class="guestbook-list-header"><ion-icon aria-hidden="true" name="list-outline"></ion-icon>Public entries</div>
           <div id="guestbook-list" class="guestbook-list">
             <div class="guestbook-loading">// loading notes...</div>
           </div>
@@ -785,6 +816,14 @@
         <blockquote class="profile-tagline">{{ profile.tagline }}</blockquote>
         {% endif %}
 
+        {% if profile.traits %}
+        <div class="profile-values">
+          {% for trait in profile.traits %}
+          <span class="profile-value-pill">{{ trait }}</span>
+          {% endfor %}
+        </div>
+        {% endif %}
+
         <div class="contact-cluster">
           <a href="mailto:{{ profile.email }}" class="profile-chip">
             <ion-icon aria-hidden="true" name="mail-outline"></ion-icon>
@@ -804,20 +843,34 @@
           </a>
         </div>
 
-        {% if profile.now_building %}
         <div class="profile-quickfacts">
-          <div class="profile-quickfact">
-            <span class="qf-label"><ion-icon aria-hidden="true" name="hammer-outline"></ion-icon>Currently building</span>
-            <span class="qf-value">{{ profile.now_building[0].title }}</span>
-          </div>
           <div class="profile-quickfact">
             <span class="qf-label"><ion-icon aria-hidden="true" name="pulse-outline"></ion-icon>Status</span>
             <span class="qf-value">{{ profile.availability.label }}</span>
           </div>
-          <button type="button" class="profile-quickfact-link" data-tab="now">
-            See what I'm up to <ion-icon aria-hidden="true" name="arrow-forward-outline"></ion-icon>
-          </button>
+          {% if profile.now_building %}
+          <div class="profile-quickfact">
+            <span class="qf-label"><ion-icon aria-hidden="true" name="layers-outline"></ion-icon>In motion</span>
+            <span class="qf-value">{{ profile.now_building|length }} active thread{{ 's' if profile.now_building|length != 1 else '' }}</span>
+          </div>
+          {% endif %}
         </div>
+
+        {% if profile.now_building %}
+        <section class="profile-section">
+          <h3 class="profile-section-title"><ion-icon aria-hidden="true" name="hammer-outline"></ion-icon>Currently Building</h3>
+          <div class="profile-building-list">
+            {% for item in profile.now_building %}
+            <div class="now-card">
+              <h4 class="now-card-title">{{ item.title }}</h4>
+              <p class="now-card-desc">{{ item.description }}</p>
+            </div>
+            {% endfor %}
+          </div>
+          <button type="button" class="profile-quickfact-link profile-section-link" data-tab="now">
+            Full now-page &amp; update history <ion-icon aria-hidden="true" name="arrow-forward-outline"></ion-icon>
+          </button>
+        </section>
         {% endif %}
 
         <button type="button" id="admin-logout-btn" class="admin-link admin-logout profile-logout-btn" hidden>Exit Admin Mode</button>
@@ -1090,118 +1143,146 @@
       <button class="modal-close" data-close-admin-item aria-label="Close item editor">
         <ion-icon aria-hidden="true" name="close-outline"></ion-icon>
       </button>
-      <h3 id="admin-item-title" class="text-xl font-bold mb-4">Create Item</h3>
-      <form id="admin-item-form" class="admin-item-form grid gap-3">
+      <div class="admin-item-modal-header">
+        <ion-icon aria-hidden="true" name="folder-open-outline"></ion-icon>
+        <h3 id="admin-item-title" class="text-xl font-bold">Create Item</h3>
+      </div>
+      <form id="admin-item-form" class="admin-item-form grid gap-4">
         <input type="hidden" id="admin-item-id" name="id">
-        <div class="field-grid grid grid-cols-2 gap-3 max-sm:grid-cols-1" id="section-field-group">
-          <div>
-            <label for="admin-item-section" class="admin-label">Section <span class="required-star text-red-400 font-bold">*</span></label>
-            <select id="admin-item-section" name="section" required class="ide-control w-full mt-1">
-              <option value="">Select an option</option>
-              <option value="project">Project</option>
-              <option value="experience">Experience</option>
-            </select>
+
+        <fieldset class="admin-form-section">
+          <legend><ion-icon aria-hidden="true" name="bookmark-outline"></ion-icon>Basics</legend>
+          <div class="field-grid grid grid-cols-2 gap-3 max-sm:grid-cols-1" id="section-field-group">
+            <div>
+              <label for="admin-item-section" class="admin-label">Section <span class="required-star text-red-400 font-bold">*</span></label>
+              <select id="admin-item-section" name="section" required class="ide-control w-full mt-1">
+                <option value="">Select an option</option>
+                <option value="project">Project</option>
+                <option value="experience">Experience</option>
+              </select>
+            </div>
+            <div>
+              <label for="admin-item-category" class="admin-label">Category <span class="required-star text-red-400 font-bold">*</span></label>
+              <select id="admin-item-category" name="category" required class="ide-control w-full mt-1">
+                <option value="">Select section first</option>
+              </select>
+            </div>
           </div>
-          <div>
-            <label for="admin-item-category" class="admin-label">Category <span class="required-star text-red-400 font-bold">*</span></label>
-            <select id="admin-item-category" name="category" required class="ide-control w-full mt-1">
-              <option value="">Select section first</option>
-            </select>
+          <div class="mt-3">
+            <label for="admin-item-title-input" class="admin-label">Title <span class="required-star text-red-400 font-bold">*</span></label>
+            <input id="admin-item-title-input" type="text" name="title" required class="ide-control w-full mt-1">
           </div>
-        </div>
-        <div>
-          <label for="admin-item-title-input" class="admin-label">Title <span class="required-star text-red-400 font-bold">*</span></label>
-          <input id="admin-item-title-input" type="text" name="title" required class="ide-control w-full mt-1">
-        </div>
-        <div>
-          <label for="admin-item-summary" class="admin-label">Summary</label>
-          <textarea id="admin-item-summary" name="summary" rows="2" class="ide-control w-full mt-1 resize-y"></textarea>
-        </div>
-        <div>
-          <label for="admin-item-description" class="admin-label">Description</label>
-          <textarea id="admin-item-description" name="description" rows="4" class="ide-control w-full mt-1 resize-y"></textarea>
-        </div>
-        <div class="field-grid grid grid-cols-2 gap-3 max-sm:grid-cols-1">
+        </fieldset>
+
+        <fieldset class="admin-form-section">
+          <legend><ion-icon aria-hidden="true" name="document-text-outline"></ion-icon>Content</legend>
           <div>
-            <label for="admin-item-date-label" class="admin-label">Date Label</label>
-            <select id="admin-item-date-label" name="date_label" class="ide-control w-full mt-1">
+            <label for="admin-item-summary" class="admin-label">Summary</label>
+            <textarea id="admin-item-summary" name="summary" rows="2" class="ide-control w-full mt-1 resize-y"></textarea>
+          </div>
+          <div class="mt-3">
+            <label for="admin-item-description" class="admin-label">Description</label>
+            <textarea id="admin-item-description" name="description" rows="4" class="ide-control w-full mt-1 resize-y"></textarea>
+          </div>
+          <div class="mt-3">
+            <label for="admin-item-deliverables" class="admin-label">Deliverables</label>
+            <textarea id="admin-item-deliverables" name="deliverables" rows="2" class="ide-control w-full mt-1 resize-y"></textarea>
+          </div>
+          <div class="mt-3">
+            <label for="admin-item-challenges" class="admin-label">Challenges</label>
+            <textarea id="admin-item-challenges" name="challenges" rows="2" class="ide-control w-full mt-1 resize-y"></textarea>
+          </div>
+          <div class="mt-3">
+            <label for="admin-item-future" class="admin-label">Future Improvements</label>
+            <textarea id="admin-item-future" name="future_improvements" rows="2" class="ide-control w-full mt-1 resize-y"></textarea>
+          </div>
+          <div class="mt-3">
+            <label for="admin-item-extra" class="admin-label">Extra Notes</label>
+            <textarea id="admin-item-extra" name="extra_notes" rows="2" class="ide-control w-full mt-1 resize-y"></textarea>
+          </div>
+        </fieldset>
+
+        <fieldset class="admin-form-section">
+          <legend><ion-icon aria-hidden="true" name="calendar-outline"></ion-icon>Timeline &amp; Status</legend>
+          <div class="field-grid grid grid-cols-2 gap-3 max-sm:grid-cols-1">
+            <div>
+              <label for="admin-item-date-label" class="admin-label">Date Label</label>
+              <select id="admin-item-date-label" name="date_label" class="ide-control w-full mt-1">
+                <option value="">None</option>
+                <option value="Released">Released</option>
+                <option value="Work in Progress">Work in Progress</option>
+                <option value="Completed">Completed</option>
+                <option value="Ongoing">Ongoing</option>
+              </select>
+            </div>
+            <div>
+              <label for="admin-item-date-value" class="admin-label">Date Value</label>
+              <input id="admin-item-date-value" type="date" name="date_value" class="ide-control w-full mt-1">
+            </div>
+          </div>
+          <div class="mt-3">
+            <label for="admin-item-status" class="admin-label">Status</label>
+            <select id="admin-item-status" name="status" class="ide-control w-full mt-1">
               <option value="">None</option>
-              <option value="Released">Released</option>
-              <option value="Work in Progress">Work in Progress</option>
+              <option value="Active">Active</option>
+              <option value="Archived">Archived</option>
               <option value="Completed">Completed</option>
-              <option value="Ongoing">Ongoing</option>
+              <option value="In Progress">In Progress</option>
             </select>
           </div>
-          <div>
-            <label for="admin-item-date-value" class="admin-label">Date Value</label>
-            <input id="admin-item-date-value" type="date" name="date_value" class="ide-control w-full mt-1">
+        </fieldset>
+
+        <fieldset class="admin-form-section">
+          <legend><ion-icon aria-hidden="true" name="image-outline"></ion-icon>Media</legend>
+          <div class="field-grid grid grid-cols-2 gap-3 max-sm:grid-cols-1">
+            <div>
+              <label for="admin-item-image" class="admin-label">Cover Image</label>
+              <input id="admin-item-image" type="file" name="image" accept="image/*" class="admin-file-input w-full mt-1 text-sm file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:cursor-pointer">
+              <input type="hidden" id="admin-item-image-path" name="image_path">
+              <p id="admin-item-image-info" class="text-xs mt-1 truncate" style="color:var(--ide-text-dim)"></p>
+              <img id="admin-item-image-preview" class="hidden mt-2 rounded-lg max-h-32 object-cover" alt="Preview">
+            </div>
+            <div>
+              <label for="admin-item-additional-images" class="admin-label">Additional Images</label>
+              <input id="admin-item-additional-images" type="file" name="additional_images" accept="image/*" multiple class="admin-file-input w-full mt-1 text-sm file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:cursor-pointer">
+              <input type="hidden" id="admin-item-existing-additional" name="existing_additional_images">
+              <div id="admin-item-additional-preview" class="flex gap-2 mt-2 flex-wrap"></div>
+            </div>
           </div>
-        </div>
-        <div>
-          <label for="admin-item-status" class="admin-label">Status</label>
-          <select id="admin-item-status" name="status" class="ide-control w-full mt-1">
-            <option value="">None</option>
-            <option value="Active">Active</option>
-            <option value="Archived">Archived</option>
-            <option value="Completed">Completed</option>
-            <option value="In Progress">In Progress</option>
-          </select>
-        </div>
-        <div>
-          <label for="admin-item-deliverables" class="admin-label">Deliverables</label>
-          <textarea id="admin-item-deliverables" name="deliverables" rows="2" class="ide-control w-full mt-1 resize-y"></textarea>
-        </div>
-        <div>
-          <label for="admin-item-challenges" class="admin-label">Challenges</label>
-          <textarea id="admin-item-challenges" name="challenges" rows="2" class="ide-control w-full mt-1 resize-y"></textarea>
-        </div>
-        <div>
-          <label for="admin-item-future" class="admin-label">Future Improvements</label>
-          <textarea id="admin-item-future" name="future_improvements" rows="2" class="ide-control w-full mt-1 resize-y"></textarea>
-        </div>
-        <div>
-          <label for="admin-item-extra" class="admin-label">Extra Notes</label>
-          <textarea id="admin-item-extra" name="extra_notes" rows="2" class="ide-control w-full mt-1 resize-y"></textarea>
-        </div>
-        <div class="field-grid grid grid-cols-2 gap-3 max-sm:grid-cols-1">
-          <div>
-            <label for="admin-item-image" class="admin-label">Image</label>
-            <input id="admin-item-image" type="file" name="image" accept="image/*" class="admin-file-input w-full mt-1 text-sm file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:cursor-pointer">
-            <input type="hidden" id="admin-item-image-path" name="image_path">
-            <p id="admin-item-image-info" class="text-xs mt-1 truncate" style="color:var(--ide-text-dim)"></p>
-            <img id="admin-item-image-preview" class="hidden mt-2 rounded-lg max-h-32 object-cover" alt="Preview">
-          </div>
+        </fieldset>
+
+        <fieldset class="admin-form-section">
+          <legend><ion-icon aria-hidden="true" name="link-outline"></ion-icon>Links &amp; Skills</legend>
           <div>
             <label for="admin-item-link" class="admin-label">External Link</label>
             <input id="admin-item-link" type="url" name="external_link" placeholder="https://..." class="ide-control w-full mt-1">
           </div>
-        </div>
-        <div>
-          <label for="admin-item-credential-url" class="admin-label">Credential / Verification URL</label>
-          <input id="admin-item-credential-url" type="url" name="credential_url" placeholder="https://www.credly.com/badges/..." class="ide-control w-full mt-1">
-        </div>
-        <div class="admin-checkbox-row">
-          <label class="admin-checkbox-label">
-            <input type="checkbox" id="admin-item-pinned" name="is_pinned">
-            <ion-icon aria-hidden="true" name="star-outline"></ion-icon> Featured (pin to top)
-          </label>
-          <label class="admin-checkbox-label">
-            <input type="checkbox" id="admin-item-draft" name="is_draft">
-            <ion-icon aria-hidden="true" name="eye-off-outline"></ion-icon> Draft (hidden from visitors)
-          </label>
-        </div>
-        <div>
-          <label for="admin-item-additional-images" class="admin-label">Additional Images</label>
-          <input id="admin-item-additional-images" type="file" name="additional_images" accept="image/*" multiple class="admin-file-input w-full mt-1 text-sm file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:cursor-pointer">
-          <input type="hidden" id="admin-item-existing-additional" name="existing_additional_images">
-          <div id="admin-item-additional-preview" class="flex gap-2 mt-2 flex-wrap"></div>
-        </div>
-        <div>
-          <label class="admin-label">Skills</label>
-          <div id="admin-item-skills-picker" class="skills-picker mt-1"></div>
-          <input type="hidden" id="admin-item-skills" name="skills">
-        </div>
-        <div class="admin-item-actions flex justify-end gap-3 mt-4">
+          <div class="mt-3">
+            <label for="admin-item-credential-url" class="admin-label">Credential / Verification URL</label>
+            <input id="admin-item-credential-url" type="url" name="credential_url" placeholder="https://www.credly.com/badges/..." class="ide-control w-full mt-1">
+          </div>
+          <div class="mt-3">
+            <label class="admin-label">Skills</label>
+            <div id="admin-item-skills-picker" class="skills-picker mt-1"></div>
+            <input type="hidden" id="admin-item-skills" name="skills">
+          </div>
+        </fieldset>
+
+        <fieldset class="admin-form-section">
+          <legend><ion-icon aria-hidden="true" name="eye-outline"></ion-icon>Visibility</legend>
+          <div class="admin-checkbox-row">
+            <label class="admin-checkbox-label">
+              <input type="checkbox" id="admin-item-pinned" name="is_pinned">
+              <ion-icon aria-hidden="true" name="star-outline"></ion-icon> Featured (pin to top)
+            </label>
+            <label class="admin-checkbox-label">
+              <input type="checkbox" id="admin-item-draft" name="is_draft">
+              <ion-icon aria-hidden="true" name="eye-off-outline"></ion-icon> Draft (hidden from visitors)
+            </label>
+          </div>
+        </fieldset>
+
+        <div class="admin-item-actions flex justify-end gap-3 mt-1">
           <button type="submit" class="contact-submit-btn" id="admin-item-submit">Save Item</button>
         </div>
       </form>
