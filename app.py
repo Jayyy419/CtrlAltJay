@@ -1303,6 +1303,103 @@ def admin_note_item(note_id):
     return jsonify({"message": f"Note {status}."})
 
 
+# ─── Testimonials: shareable request link, admin-moderated ─────────────────
+# Same "__"-prefixed-id trick as the guestbook above, in its own namespace.
+
+TESTIMONIAL_PREFIX = "__testimonial_"
+MAX_TESTIMONIAL_ATTEMPTS = 5
+TESTIMONIAL_RATE_WINDOW_SECONDS = 600
+MAX_TESTIMONIALS_RETURNED = 50
+
+
+@app.route("/api/testimonials", methods=["GET", "POST"])
+def testimonials():
+    if request.method == "GET":
+        rows = scan_all(table_items, filter_expression=Attr("id").begins_with(TESTIMONIAL_PREFIX))
+        approved = [
+            {
+                "id": r["id"],
+                "name": r.get("name", ""),
+                "role": r.get("role", ""),
+                "quote": r.get("quote", ""),
+                "created_at": r.get("created_at", ""),
+            }
+            for r in rows
+            if r.get("status") == "approved"
+        ]
+        approved.sort(key=lambda r: r["created_at"], reverse=True)
+        return jsonify(approved[:MAX_TESTIMONIALS_RETURNED])
+
+    ip = _client_ip()
+    remaining_lock = _rate_limit_locked_seconds("testimonials", ip)
+    if remaining_lock > 0:
+        return jsonify({"error": "Too many testimonials submitted recently. Please wait a bit before trying again.", "retry_in": remaining_lock}), 429
+    _record_rate_limit_failure("testimonials", ip, MAX_TESTIMONIAL_ATTEMPTS, TESTIMONIAL_RATE_WINDOW_SECONDS)
+
+    payload = request.get_json(silent=True) or request.form
+
+    # Honeypot — silently pretend success for bot submissions
+    if (payload.get("website") or "").strip():
+        return jsonify({"message": "Thank you — it'll appear once reviewed."}), 201
+
+    name = (payload.get("name") or "").strip()
+    role = (payload.get("role") or "").strip()[:100]
+    quote = (payload.get("quote") or "").strip()
+
+    if not (2 <= len(name) <= 60):
+        return jsonify({"error": "Name should be between 2 and 60 characters."}), 400
+    if not (10 <= len(quote) <= 800):
+        return jsonify({"error": "Testimonial should be between 10 and 800 characters."}), 400
+
+    now = now_iso()
+    table_items.put_item(Item={
+        "id": f"{TESTIMONIAL_PREFIX}{uuid.uuid4()}",
+        "name": name,
+        "role": role,
+        "quote": quote,
+        "status": "pending",
+        "created_at": now,
+        "updated_at": now,
+    })
+    return jsonify({"message": "Thank you — it'll appear once reviewed."}), 201
+
+
+@app.route("/api/admin/testimonials", methods=["GET"])
+def admin_testimonials():
+    unauthorized = unauthorized_admin_response()
+    if unauthorized:
+        return unauthorized
+    rows = scan_all(table_items, filter_expression=Attr("id").begins_with(TESTIMONIAL_PREFIX))
+    rows.sort(key=lambda r: r.get("created_at", ""), reverse=True)
+    return jsonify([dynamo_to_dict(r) for r in rows])
+
+
+@app.route("/api/admin/testimonials/<testimonial_id>", methods=["PATCH", "DELETE"])
+def admin_testimonial_item(testimonial_id):
+    unauthorized = unauthorized_admin_response()
+    if unauthorized:
+        return unauthorized
+    full_id = testimonial_id if testimonial_id.startswith(TESTIMONIAL_PREFIX) else f"{TESTIMONIAL_PREFIX}{testimonial_id}"
+    existing = table_items.get_item(Key={"id": full_id}).get("Item")
+    if not existing:
+        return jsonify({"error": "Testimonial not found."}), 404
+
+    if request.method == "DELETE":
+        table_items.delete_item(Key={"id": full_id})
+        return jsonify({"message": "Testimonial deleted."})
+
+    status = (request.get_json(silent=True) or {}).get("status", "").strip()
+    if status not in {"approved", "rejected", "pending"}:
+        return jsonify({"error": "status must be approved, rejected, or pending."}), 400
+    table_items.update_item(
+        Key={"id": full_id},
+        UpdateExpression="SET #s = :s, updated_at = :u",
+        ExpressionAttributeNames={"#s": "status"},
+        ExpressionAttributeValues={":s": status, ":u": now_iso()},
+    )
+    return jsonify({"message": f"Testimonial {status}."})
+
+
 # ─── AI Chat Assistant ───────────────────────────────────────────────────────
 # Answers questions using the site's own real content as context (profile,
 # projects, experiences, resume, skills) rather than a vector DB — the whole

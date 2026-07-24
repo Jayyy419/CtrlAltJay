@@ -638,12 +638,36 @@
 
       <!-- Testimonials -->
       <article id="testimonials" class="tab-panel animate-fade-up" role="tabpanel" tabindex="0">
-        <h2 class="font-display text-2xl font-bold text-white tracking-tight">Testimonials</h2>
-        <div class="modal-tag">Recommendations</div>
-        <div class="modal-body">
-          <div class="modal-row">No testimonials added yet — check back soon.</div>
+        <div class="flex items-center justify-between gap-3 flex-wrap">
+          <h2 class="font-display text-2xl font-bold text-white tracking-tight">Testimonials</h2>
+          <button type="button" id="copy-testimonial-link-btn" class="export-btn admin-only" hidden title="Copy a shareable request link">
+            <ion-icon aria-hidden="true" name="link-outline"></ion-icon> Copy Request Link
+          </button>
         </div>
-        <a href="{{ profile.linkedin }}" target="_blank" rel="noopener noreferrer" class="modal-link inline-block mt-4 text-accent font-bold no-underline hover:text-accent-light transition-colors">View recommendations on LinkedIn</a>
+        <div class="modal-tag">Recommendations</div>
+
+        <div id="testimonials-list" class="testimonials-list mb-6">
+          <div class="guestbook-loading">// loading testimonials...</div>
+        </div>
+
+        <a href="{{ profile.linkedin }}" target="_blank" rel="noopener noreferrer" class="modal-link inline-block mb-6 text-accent font-bold no-underline hover:text-accent-light transition-colors">View recommendations on LinkedIn</a>
+
+        <section class="testimonial-form-section">
+          <h3 class="font-display text-lg font-semibold text-white mb-2"><ion-icon aria-hidden="true" name="ribbon-outline" class="align-middle mr-2"></ion-icon>Leave a Testimonial</h3>
+          <p class="text-sm text-ink-muted mb-4">Worked with me before? A short recommendation goes a long way — reviewed before it's shown.</p>
+          <form id="testimonial-form" class="guestbook-form">
+            <div class="field-grid">
+              <input type="text" name="name" placeholder="Your name" required minlength="2" maxlength="60" class="ide-control">
+              <input type="text" name="role" placeholder="Role / Company (optional)" maxlength="100" class="ide-control">
+            </div>
+            <textarea name="quote" placeholder="Share a short recommendation..." required minlength="10" maxlength="800" rows="4" class="ide-control"></textarea>
+            <div class="hp-field" aria-hidden="true" tabindex="-1">
+              <input type="text" name="website" tabindex="-1" autocomplete="off">
+            </div>
+            <button type="submit" class="contact-submit-btn">Submit Testimonial</button>
+            <p id="testimonial-feedback" class="form-note" aria-live="polite"></p>
+          </form>
+        </section>
       </article>
 
       <!-- Timeline -->
