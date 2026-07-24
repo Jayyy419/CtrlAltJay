@@ -1173,6 +1173,80 @@ def hit_count():
     return jsonify({"count": count})
 
 
+# ─── Lightweight analytics: per-item views, referrer hosts ──────────────────
+# Same low-stakes, no-rate-limit posture as the hit counter above — these are
+# analytics counters, not anything security-sensitive.
+
+REFERRER_PREFIX = "__referrer_"
+CHATLOG_PREFIX = "__chatlog_"
+MAX_CHATLOG_RETURNED = 20
+
+
+@app.route("/api/track-view", methods=["POST"])
+def track_view():
+    item_id = (request.get_json(silent=True) or {}).get("item_id", "").strip()
+    if not item_id or item_id.startswith("__"):
+        return jsonify({"ok": False}), 400
+    try:
+        table_items.update_item(
+            Key={"id": item_id},
+            UpdateExpression="SET view_count = if_not_exists(view_count, :zero) + :inc",
+            ExpressionAttributeValues={":inc": Decimal("1"), ":zero": Decimal("0")},
+        )
+    except Exception:
+        pass
+    return jsonify({"ok": True})
+
+
+@app.route("/api/track-referrer", methods=["POST"])
+def track_referrer():
+    host = (request.get_json(silent=True) or {}).get("host", "").strip().lower()[:100]
+    if not host:
+        return jsonify({"ok": False}), 400
+    try:
+        table_items.update_item(
+            Key={"id": f"{REFERRER_PREFIX}{host}"},
+            UpdateExpression="SET #c = if_not_exists(#c, :zero) + :inc, host = :host",
+            ExpressionAttributeNames={"#c": "count"},
+            ExpressionAttributeValues={":inc": Decimal("1"), ":zero": Decimal("0"), ":host": host},
+        )
+    except Exception:
+        pass
+    return jsonify({"ok": True})
+
+
+@app.route("/api/admin/analytics", methods=["GET"])
+def admin_analytics():
+    unauthorized = unauthorized_admin_response()
+    if unauthorized:
+        return unauthorized
+
+    all_items = [dynamo_to_dict(i) for i in scan_all(table_items) if not i.get("id", "").startswith("__") and not i.get("deleted_at")]
+    projects = [i for i in all_items if i.get("section") == "project"]
+    experiences = [i for i in all_items if i.get("section") == "experience"]
+    top_projects = sorted(projects, key=lambda x: x.get("view_count", 0), reverse=True)[:5]
+    top_experiences = sorted(experiences, key=lambda x: x.get("view_count", 0), reverse=True)[:5]
+
+    referrer_rows = scan_all(table_items, filter_expression=Attr("id").begins_with(REFERRER_PREFIX))
+    referrers = sorted(
+        [{"host": r.get("host", ""), "count": int(r.get("count", 0))} for r in referrer_rows],
+        key=lambda x: x["count"], reverse=True,
+    )[:10]
+
+    chatlog_rows = scan_all(table_items, filter_expression=Attr("id").begins_with(CHATLOG_PREFIX))
+    chatlog = sorted(
+        [{"question": r.get("question", ""), "created_at": r.get("created_at", "")} for r in chatlog_rows],
+        key=lambda x: x["created_at"], reverse=True,
+    )[:MAX_CHATLOG_RETURNED]
+
+    return jsonify({
+        "top_projects": [{"id": p["id"], "title": p.get("title", ""), "view_count": int(p.get("view_count", 0))} for p in top_projects],
+        "top_experiences": [{"id": e["id"], "title": e.get("title", ""), "view_count": int(e.get("view_count", 0))} for e in top_experiences],
+        "referrers": referrers,
+        "recent_chat_questions": chatlog,
+    })
+
+
 # ─── Live Visitor Presence ───────────────────────────────────────────────────
 # Heartbeat-based (no websockets): each open tab pings this every ~25s with a
 # per-tab session id, we upsert its last-seen time, then count rows seen
@@ -1511,6 +1585,15 @@ def api_chat():
     except Exception as e:
         print(f"WARNING: chat completion failed: {e}", flush=True)
         return jsonify({"error": "The assistant is temporarily unavailable. Please try again shortly."}), 502
+
+    try:
+        table_items.put_item(Item={
+            "id": f"{CHATLOG_PREFIX}{uuid.uuid4()}",
+            "question": message,
+            "created_at": now_iso(),
+        })
+    except Exception:
+        pass
 
     return jsonify({"reply": reply})
 
