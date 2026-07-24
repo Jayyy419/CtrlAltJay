@@ -104,11 +104,11 @@
                 <div id="admin-stats-content"></div>
               </div>
             </div>
-            <!-- Visitors -->
+            <!-- Visits -->
             <div class="admin-tool-card">
               <div class="admin-tool-btn admin-tool-static">
                 <ion-icon aria-hidden="true" name="eye-outline"></ion-icon>
-                <span>Visitors: <span id="hit-counter-display" class="text-accent font-bold">&mdash;</span></span>
+                <span>Visits: <span id="hit-counter-display" class="text-accent font-bold">&mdash;</span></span>
               </div>
             </div>
             <!-- Backup -->
@@ -580,6 +580,10 @@
           </div>
         </div>
 
+        {% if profile.tagline %}
+        <blockquote class="profile-tagline">{{ profile.tagline }}</blockquote>
+        {% endif %}
+
         <div class="contact-cluster">
           <a href="mailto:{{ profile.email }}" class="profile-chip">
             <ion-icon aria-hidden="true" name="mail-outline"></ion-icon>
@@ -599,10 +603,26 @@
           </a>
         </div>
 
+        {% if profile.now_building %}
+        <div class="profile-quickfacts">
+          <div class="profile-quickfact">
+            <span class="qf-label"><ion-icon aria-hidden="true" name="hammer-outline"></ion-icon>Currently building</span>
+            <span class="qf-value">{{ profile.now_building[0].title }}</span>
+          </div>
+          <div class="profile-quickfact">
+            <span class="qf-label"><ion-icon aria-hidden="true" name="pulse-outline"></ion-icon>Status</span>
+            <span class="qf-value">{{ profile.availability.label }}</span>
+          </div>
+          <button type="button" class="profile-quickfact-link" data-tab="now">
+            See what I'm up to <ion-icon aria-hidden="true" name="arrow-forward-outline"></ion-icon>
+          </button>
+        </div>
+        {% endif %}
+
         <button type="button" id="admin-logout-btn" class="admin-link admin-logout profile-logout-btn" hidden>Exit Admin Mode</button>
 
         <!-- Admin Tools Popup (Admin) -->
-        <div class="admin-only mt-3" hidden>
+        <div class="admin-only" hidden>
           <button type="button" id="admin-tools-toggle" class="admin-tools-open-btn">
             <ion-icon aria-hidden="true" name="settings-outline" class="align-middle mr-1"></ion-icon>Admin Tools
           </button>
@@ -842,7 +862,6 @@
   <footer class="max-w-[1440px] w-full mx-auto px-5 py-4 text-ink-muted text-xs flex justify-between items-center border-t border-white/[0.04] flex-col sm:flex-row gap-1 sm:gap-0">
     <p>&copy; <a href="/old" title="" style="color:inherit;text-decoration:none">{{ 2026 }}</a> CtrlAltJay</p>
     <p id="last-updated-ts" class="text-ink-muted/70"></p>
-    <p>Built with Flask, cloud-native thinking, and practical AI workflows.</p>
   </footer>
 
   <!-- Admin Login Modal -->
