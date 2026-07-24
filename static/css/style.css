@@ -1683,6 +1683,7 @@ body.zen-mode .ide-panel-scroll { padding: 48px max(32px, calc(50% - 380px)); }
 }
 @keyframes celebrationFadeIn { from { opacity: 0; } to { opacity: 1; } }
 .celebration-confetti { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.konami-overlay { position: fixed; inset: 0; z-index: 9998; pointer-events: none; }
 .confetti-piece {
   position: absolute;
   top: -20px;
@@ -1745,6 +1746,23 @@ body.zen-mode .ide-panel-scroll { padding: 48px max(32px, calc(50% - 380px)); }
 .celebration-cta:hover { transform: translateY(-1px); box-shadow: 0 8px 24px -8px rgba(245,158,11,0.6); }
 .celebration-dismiss { background: none; border: none; color: var(--ide-text-dim); font-size: 0.82rem; cursor: pointer; padding: 4px; }
 .celebration-dismiss:hover { color: var(--ide-text-bright); }
+.celebration-share {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: none;
+  border: 1px solid var(--ide-border-soft);
+  color: var(--ide-text);
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-family: 'Plex Mono', monospace;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.celebration-share:hover { border-color: var(--ide-accent); color: var(--ide-accent); }
 
 /* Skeleton loading cards */
 .skeleton-card {
