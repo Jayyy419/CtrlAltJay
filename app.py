@@ -4,10 +4,12 @@ import secrets
 import time
 import hmac
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
+from email.utils import format_datetime
 from functools import wraps
 from pathlib import Path
+from xml.sax.saxutils import escape as xml_escape
 
 import boto3
 from boto3.dynamodb.conditions import Attr
@@ -15,6 +17,7 @@ from boto3.dynamodb.conditions import Attr
 from dotenv import load_dotenv
 from flask import (
     Flask,
+    Response,
     flash,
     jsonify,
     redirect,
@@ -479,6 +482,61 @@ def api_public_data():
     _public_data_cache["payload"] = payload
     _public_data_cache["expires_at"] = now + PUBLIC_DATA_CACHE_SECONDS
     return jsonify(payload)
+
+
+def _rfc822(iso_str):
+    try:
+        dt = datetime.strptime(iso_str, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+    except (ValueError, TypeError):
+        dt = datetime.now(timezone.utc)
+    return format_datetime(dt)
+
+
+@app.route("/feed.xml")
+def rss_feed():
+    all_items = [dynamo_to_dict(i) for i in scan_all(table_items) if not i.get("id", "").startswith("__") and not i.get("deleted_at")]
+    items = [i for i in all_items if i.get("section") in {"project", "experience"}]
+    items.sort(key=lambda x: x.get("updated_at", ""), reverse=True)
+    items = items[:30]
+
+    site_url = request.host_url.rstrip("/")
+    profile = build_profile()
+
+    entries = []
+    for it in items:
+        link = f"{site_url}/#item/{it.get('id', '')}"
+        title = xml_escape(it.get("title") or "Untitled")
+        description = xml_escape((it.get("summary") or it.get("description") or "")[:500])
+        pub_date = _rfc822(it.get("updated_at") or it.get("created_at") or "")
+        category = xml_escape(it.get("section", ""))
+        entries.append(
+            "    <item>\n"
+            f"      <title>{title}</title>\n"
+            f"      <link>{xml_escape(link)}</link>\n"
+            f"      <guid isPermaLink=\"false\">{xml_escape(it.get('id', ''))}</guid>\n"
+            f"      <pubDate>{pub_date}</pubDate>\n"
+            f"      <category>{category}</category>\n"
+            f"      <description>{description}</description>\n"
+            "    </item>"
+        )
+
+    channel_title = xml_escape(f"{profile['name']} — Projects & Experiences")
+    channel_description = xml_escape(f"Recent project and experience updates from {profile['name']}'s portfolio.")
+
+    xml_doc = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<rss version="2.0">\n'
+        "  <channel>\n"
+        f"    <title>{channel_title}</title>\n"
+        f"    <link>{xml_escape(site_url)}/</link>\n"
+        f"    <description>{channel_description}</description>\n"
+        "    <language>en-us</language>\n"
+        f"    <lastBuildDate>{format_datetime(datetime.now(timezone.utc))}</lastBuildDate>\n"
+        + "\n".join(entries) +
+        "\n  </channel>\n"
+        "</rss>\n"
+    )
+    return Response(xml_doc, mimetype="application/rss+xml")
 
 
 @app.route("/api/admin/auth-status", methods=["GET"])
