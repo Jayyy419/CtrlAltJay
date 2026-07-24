@@ -4,6 +4,8 @@ import secrets
 import time
 import hmac
 import uuid
+import urllib.error
+import urllib.request
 from datetime import datetime, timezone
 from decimal import Decimal
 from email.utils import format_datetime
@@ -132,8 +134,8 @@ PORTFOLIO_ITEM_FIELDS = [
     "additional_images", "byline", "category", "challenges",
     "credential_url", "date_label", "date_value", "deliverables",
     "description", "external_link", "extra_notes", "future_improvements",
-    "image_path", "section", "skills", "status", "subsection", "summary",
-    "tag", "title",
+    "image_path", "is_draft", "is_pinned", "section", "skills", "status",
+    "subsection", "summary", "tag", "title",
 ]
 
 
@@ -443,26 +445,31 @@ def legacy_index():
     return render_template("legacy_index.html", profile=profile)
 
 
-_public_data_cache = {"payload": None, "expires_at": 0.0}
+_public_data_cache = {}
 PUBLIC_DATA_CACHE_SECONDS = 30
 
 
 def invalidate_public_data_cache():
-    _public_data_cache["payload"] = None
-    _public_data_cache["expires_at"] = 0.0
+    _public_data_cache.clear()
 
 
 @app.route("/api/public-data")
 def api_public_data():
+    is_admin = bool(session.get("is_admin"))
     now = time.time()
-    cached = _public_data_cache["payload"]
-    if cached is not None and _public_data_cache["expires_at"] > now:
-        return jsonify(cached)
+    cache_key = "admin" if is_admin else "public"
+    cached = _public_data_cache.get(cache_key)
+    if cached is not None and cached["expires_at"] > now:
+        return jsonify(cached["payload"])
 
     all_items = [dynamo_to_dict(i) for i in scan_all(table_items) if not i.get("id", "").startswith("__") and not i.get("deleted_at")]
+    if not is_admin:
+        all_items = [i for i in all_items if not i.get("is_draft")]
 
     projects = [i for i in all_items if i.get("section") == "project"]
     experiences = [i for i in all_items if i.get("section") == "experience"]
+    projects.sort(key=lambda x: not x.get("is_pinned"))
+    experiences.sort(key=lambda x: not x.get("is_pinned"))
 
     resume_items = sorted(
         [dynamo_to_dict(i) for i in scan_all(table_resume)],
@@ -480,8 +487,7 @@ def api_public_data():
         "resume": resume_items,
         "skills": skills,
     }
-    _public_data_cache["payload"] = payload
-    _public_data_cache["expires_at"] = now + PUBLIC_DATA_CACHE_SECONDS
+    _public_data_cache[cache_key] = {"payload": payload, "expires_at": now + PUBLIC_DATA_CACHE_SECONDS}
     return jsonify(payload)
 
 
@@ -496,7 +502,7 @@ def _rfc822(iso_str):
 @app.route("/feed.xml")
 def rss_feed():
     all_items = [dynamo_to_dict(i) for i in scan_all(table_items) if not i.get("id", "").startswith("__") and not i.get("deleted_at")]
-    items = [i for i in all_items if i.get("section") in {"project", "experience"}]
+    items = [i for i in all_items if i.get("section") in {"project", "experience"} and not i.get("is_draft")]
     items.sort(key=lambda x: x.get("updated_at", ""), reverse=True)
     items = items[:30]
 
@@ -634,6 +640,8 @@ def api_admin_items():
         "skills": request.form.get("skills", "").strip(),
         "status": request.form.get("status", "").strip(),
         "credential_url": request.form.get("credential_url", "").strip(),
+        "is_draft": request.form.get("is_draft") == "on",
+        "is_pinned": request.form.get("is_pinned") == "on",
     }
 
     # Additional images
@@ -701,6 +709,8 @@ def api_admin_item(item_id):
         "skills": form.get("skills", existing.get("skills", "")).strip(),
         "status": form.get("status", existing.get("status", "")).strip(),
         "credential_url": form.get("credential_url", existing.get("credential_url", "")).strip(),
+        "is_draft": form.get("is_draft") == "on",
+        "is_pinned": form.get("is_pinned") == "on",
     }
 
     # Additional images
@@ -736,6 +746,48 @@ def api_admin_item_clear_image(item_id):
     )
     invalidate_public_data_cache()
     return jsonify({"message": "Image cleared."})
+
+
+@app.route("/api/admin/items/<item_id>/skills", methods=["PATCH"])
+def api_admin_item_skills(item_id):
+    unauthorized = unauthorized_admin_response()
+    if unauthorized:
+        return unauthorized
+
+    response = table_items.get_item(Key={"id": item_id})
+    existing = response.get("Item")
+    if not existing:
+        return jsonify({"error": "Item not found."}), 404
+
+    skills = request.form.get("skills", "").strip()
+    table_items.update_item(
+        Key={"id": item_id},
+        UpdateExpression="SET skills = :s, updated_at = :ts",
+        ExpressionAttributeValues={":s": skills, ":ts": now_iso()},
+    )
+    invalidate_public_data_cache()
+    return jsonify({"message": "Skills updated."})
+
+
+@app.route("/api/admin/items/<item_id>/toggle-pin", methods=["PATCH"])
+def api_admin_item_toggle_pin(item_id):
+    unauthorized = unauthorized_admin_response()
+    if unauthorized:
+        return unauthorized
+
+    response = table_items.get_item(Key={"id": item_id})
+    existing = response.get("Item")
+    if not existing:
+        return jsonify({"error": "Item not found."}), 404
+
+    new_value = not bool(existing.get("is_pinned"))
+    table_items.update_item(
+        Key={"id": item_id},
+        UpdateExpression="SET is_pinned = :v",
+        ExpressionAttributeValues={":v": new_value},
+    )
+    invalidate_public_data_cache()
+    return jsonify({"message": "Pin toggled.", "is_pinned": new_value})
 
 
 @app.route("/api/admin/deleted-items", methods=["GET"])
@@ -1214,6 +1266,50 @@ def track_referrer():
     except Exception:
         pass
     return jsonify({"ok": True})
+
+
+def _url_is_reachable(url, timeout=4):
+    headers = {"User-Agent": "Mozilla/5.0 (compatible; CtrlAltJayLinkChecker/1.0)"}
+    for method in ("HEAD", "GET"):
+        try:
+            req = urllib.request.Request(url, method=method, headers=headers)
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return resp.status < 400
+        except urllib.error.HTTPError as e:
+            if e.code == 405 and method == "HEAD":
+                continue
+            return False
+        except Exception:
+            return False
+    return False
+
+
+MAX_LINKS_CHECKED = 60
+
+
+@app.route("/api/admin/check-links", methods=["POST"])
+def api_admin_check_links():
+    unauthorized = unauthorized_admin_response()
+    if unauthorized:
+        return unauthorized
+
+    all_items = [dynamo_to_dict(i) for i in scan_all(table_items) if not i.get("id", "").startswith("__") and not i.get("deleted_at")]
+    checked = 0
+    broken = []
+    for item in all_items:
+        for field in ("external_link", "credential_url"):
+            url = (item.get(field) or "").strip()
+            if not url or not url.startswith(("http://", "https://")):
+                continue
+            if checked >= MAX_LINKS_CHECKED:
+                break
+            checked += 1
+            if not _url_is_reachable(url):
+                broken.append({"id": item.get("id", ""), "title": item.get("title", "Untitled"), "field": field, "url": url})
+        if checked >= MAX_LINKS_CHECKED:
+            break
+
+    return jsonify({"checked": checked, "broken": broken})
 
 
 @app.route("/api/admin/analytics", methods=["GET"])

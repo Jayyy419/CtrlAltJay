@@ -111,6 +111,30 @@
                 <span>Visits: <span id="hit-counter-display" class="text-accent font-bold">&mdash;</span></span>
               </div>
             </div>
+            <!-- Export Analytics -->
+            <div class="admin-tool-card">
+              <button type="button" id="admin-export-analytics-btn" class="admin-tool-btn">
+                <ion-icon aria-hidden="true" name="download-outline"></ion-icon>
+                <span>Export Analytics</span>
+              </button>
+            </div>
+            <!-- Broken Link Checker -->
+            <div class="admin-tool-card">
+              <button type="button" id="admin-link-checker-btn" class="admin-tool-btn">
+                <ion-icon aria-hidden="true" name="link-outline"></ion-icon>
+                <span>Check for Broken Links</span>
+              </button>
+              <div id="link-checker-panel" class="activity-log-panel mt-2" style="display:none">
+                <div id="link-checker-content"></div>
+              </div>
+            </div>
+            <!-- Bulk Skill Rename/Merge -->
+            <div class="admin-tool-card">
+              <button type="button" id="admin-skill-rename-btn" class="admin-tool-btn">
+                <ion-icon aria-hidden="true" name="pricetags-outline"></ion-icon>
+                <span>Rename / Merge Skill Tag</span>
+              </button>
+            </div>
             <!-- Backup -->
             <div class="admin-tool-card">
               <button type="button" id="admin-backup-btn" class="admin-tool-btn">
@@ -1023,6 +1047,16 @@
         <div>
           <label for="admin-item-credential-url" class="admin-label">Credential / Verification URL</label>
           <input id="admin-item-credential-url" type="url" name="credential_url" placeholder="https://www.credly.com/badges/..." class="ide-control w-full mt-1">
+        </div>
+        <div class="admin-checkbox-row">
+          <label class="admin-checkbox-label">
+            <input type="checkbox" id="admin-item-pinned" name="is_pinned">
+            <ion-icon aria-hidden="true" name="star-outline"></ion-icon> Featured (pin to top)
+          </label>
+          <label class="admin-checkbox-label">
+            <input type="checkbox" id="admin-item-draft" name="is_draft">
+            <ion-icon aria-hidden="true" name="eye-off-outline"></ion-icon> Draft (hidden from visitors)
+          </label>
         </div>
         <div>
           <label for="admin-item-additional-images" class="admin-label">Additional Images</label>
