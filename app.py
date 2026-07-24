@@ -1211,10 +1211,11 @@ def internal_error(e):
 @app.route("/api/hit-count", methods=["GET", "POST"])
 def hit_count():
     if request.method == "POST":
+        field = "admin_hit_count" if session.get("is_admin") else "hit_count"
         try:
             table_items.update_item(
                 Key={"id": SETTINGS_ID},
-                UpdateExpression="SET hit_count = if_not_exists(hit_count, :zero) + :inc",
+                UpdateExpression=f"SET {field} = if_not_exists({field}, :zero) + :inc",
                 ExpressionAttributeValues={":inc": Decimal("1"), ":zero": Decimal("0")},
             )
         except Exception:
@@ -1223,7 +1224,8 @@ def hit_count():
     resp = table_items.get_item(Key={"id": SETTINGS_ID})
     item = resp.get("Item", {})
     count = int(item.get("hit_count", 0))
-    return jsonify({"count": count})
+    admin_count = int(item.get("admin_hit_count", 0))
+    return jsonify({"count": count, "admin_count": admin_count})
 
 
 # ─── Lightweight analytics: per-item views, referrer hosts ──────────────────

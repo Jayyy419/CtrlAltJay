@@ -84,83 +84,140 @@
           </div>
           <div class="admin-tools-grid">
             <!-- Activity Log -->
-            <div class="admin-tool-card">
-              <button type="button" id="activity-log-toggle" class="admin-tool-btn">
-                <ion-icon aria-hidden="true" name="document-text-outline"></ion-icon>
-                <span>Activity Log</span>
-              </button>
-              <div id="activity-log-panel" class="activity-log-panel mt-2" style="display:none">
-                <div id="activity-log-list" class="activity-log-list"></div>
-                <button type="button" id="activity-log-clear" class="text-xs text-red-400 mt-2 cursor-pointer bg-transparent border-0 hover:text-red-300">Clear Log</button>
-              </div>
-            </div>
+            <button type="button" id="activity-log-toggle" class="admin-tool-btn" data-tool-modal="activity">
+              <ion-icon aria-hidden="true" name="document-text-outline"></ion-icon>
+              <span class="admin-tool-btn-text">
+                <span class="admin-tool-btn-title">Activity Log</span>
+                <span class="admin-tool-btn-desc">Recent admin edits on this site</span>
+              </span>
+              <ion-icon aria-hidden="true" name="chevron-forward-outline" class="admin-tool-btn-chevron"></ion-icon>
+            </button>
             <!-- Stats Dashboard -->
-            <div class="admin-tool-card">
-              <button type="button" id="admin-stats-toggle" class="admin-tool-btn">
-                <ion-icon aria-hidden="true" name="bar-chart-outline"></ion-icon>
-                <span>Stats Dashboard</span>
-              </button>
-              <div id="admin-stats-panel" class="activity-log-panel mt-2" style="display:none">
-                <div id="admin-stats-content"></div>
-              </div>
-            </div>
-            <!-- Visits -->
-            <div class="admin-tool-card">
-              <div class="admin-tool-btn admin-tool-static">
-                <ion-icon aria-hidden="true" name="eye-outline"></ion-icon>
-                <span>Visits: <span id="hit-counter-display" class="text-accent font-bold">&mdash;</span></span>
-              </div>
-            </div>
+            <button type="button" id="admin-stats-toggle" class="admin-tool-btn" data-tool-modal="stats">
+              <ion-icon aria-hidden="true" name="bar-chart-outline"></ion-icon>
+              <span class="admin-tool-btn-text">
+                <span class="admin-tool-btn-title">Stats Dashboard</span>
+                <span class="admin-tool-btn-desc">Content, traffic &amp; engagement at a glance</span>
+              </span>
+              <ion-icon aria-hidden="true" name="chevron-forward-outline" class="admin-tool-btn-chevron"></ion-icon>
+            </button>
             <!-- Export Analytics -->
-            <div class="admin-tool-card">
-              <button type="button" id="admin-export-analytics-btn" class="admin-tool-btn">
-                <ion-icon aria-hidden="true" name="download-outline"></ion-icon>
-                <span>Export Analytics</span>
-              </button>
-            </div>
+            <button type="button" id="admin-export-analytics-btn" class="admin-tool-btn">
+              <ion-icon aria-hidden="true" name="download-outline"></ion-icon>
+              <span class="admin-tool-btn-text">
+                <span class="admin-tool-btn-title">Export Analytics</span>
+                <span class="admin-tool-btn-desc">Download the stats above as JSON</span>
+              </span>
+            </button>
             <!-- Broken Link Checker -->
-            <div class="admin-tool-card">
-              <button type="button" id="admin-link-checker-btn" class="admin-tool-btn">
-                <ion-icon aria-hidden="true" name="link-outline"></ion-icon>
-                <span>Check for Broken Links</span>
-              </button>
-              <div id="link-checker-panel" class="activity-log-panel mt-2" style="display:none">
-                <div id="link-checker-content"></div>
-              </div>
-            </div>
+            <button type="button" id="admin-link-checker-btn" class="admin-tool-btn" data-tool-modal="links">
+              <ion-icon aria-hidden="true" name="link-outline"></ion-icon>
+              <span class="admin-tool-btn-text">
+                <span class="admin-tool-btn-title">Check for Broken Links</span>
+                <span class="admin-tool-btn-desc">Test every project/experience URL</span>
+              </span>
+              <ion-icon aria-hidden="true" name="chevron-forward-outline" class="admin-tool-btn-chevron"></ion-icon>
+            </button>
             <!-- Bulk Skill Rename/Merge -->
-            <div class="admin-tool-card">
-              <button type="button" id="admin-skill-rename-btn" class="admin-tool-btn">
-                <ion-icon aria-hidden="true" name="pricetags-outline"></ion-icon>
-                <span>Rename / Merge Skill Tag</span>
-              </button>
-            </div>
+            <button type="button" id="admin-skill-rename-btn" class="admin-tool-btn" data-tool-modal="rename-skill">
+              <ion-icon aria-hidden="true" name="pricetags-outline"></ion-icon>
+              <span class="admin-tool-btn-text">
+                <span class="admin-tool-btn-title">Rename / Merge Skill Tag</span>
+                <span class="admin-tool-btn-desc">Fix a tag across every item at once</span>
+              </span>
+              <ion-icon aria-hidden="true" name="chevron-forward-outline" class="admin-tool-btn-chevron"></ion-icon>
+            </button>
             <!-- Backup -->
-            <div class="admin-tool-card">
-              <button type="button" id="admin-backup-btn" class="admin-tool-btn">
-                <ion-icon aria-hidden="true" name="cloud-upload-outline"></ion-icon>
-                <span>Backup to S3</span>
-              </button>
-            </div>
+            <button type="button" id="admin-backup-btn" class="admin-tool-btn" data-tool-modal="backup">
+              <ion-icon aria-hidden="true" name="cloud-upload-outline"></ion-icon>
+              <span class="admin-tool-btn-text">
+                <span class="admin-tool-btn-title">Backup to S3</span>
+                <span class="admin-tool-btn-desc">Snapshot all content to cloud storage</span>
+              </span>
+              <ion-icon aria-hidden="true" name="chevron-forward-outline" class="admin-tool-btn-chevron"></ion-icon>
+            </button>
             <!-- Import JSON -->
-            <div class="admin-tool-card">
-              <button type="button" id="admin-import-btn" class="admin-tool-btn">
-                <ion-icon aria-hidden="true" name="cloud-download-outline"></ion-icon>
-                <span>Import JSON</span>
-              </button>
-            </div>
+            <button type="button" id="admin-import-btn" class="admin-tool-btn">
+              <ion-icon aria-hidden="true" name="cloud-download-outline"></ion-icon>
+              <span class="admin-tool-btn-text">
+                <span class="admin-tool-btn-title">Import JSON</span>
+                <span class="admin-tool-btn-desc">Bulk-load projects/experiences from a file</span>
+              </span>
+            </button>
             <!-- Recently Deleted -->
-            <div class="admin-tool-card">
-              <button type="button" id="deleted-items-toggle" class="admin-tool-btn">
-                <ion-icon aria-hidden="true" name="trash-outline"></ion-icon>
-                <span>Recently Deleted <span id="deleted-count-badge" class="deleted-badge" style="display:none">0</span></span>
-              </button>
-              <div id="deleted-items-panel" class="deleted-panel mt-2" style="display:none">
-                <div id="deleted-items-list"></div>
-              </div>
-            </div>
+            <button type="button" id="deleted-items-toggle" class="admin-tool-btn" data-tool-modal="deleted">
+              <ion-icon aria-hidden="true" name="trash-outline"></ion-icon>
+              <span class="admin-tool-btn-text">
+                <span class="admin-tool-btn-title">Recently Deleted <span id="deleted-count-badge" class="deleted-badge" style="display:none">0</span></span>
+                <span class="admin-tool-btn-desc">Restore or permanently erase items</span>
+              </span>
+              <ion-icon aria-hidden="true" name="chevron-forward-outline" class="admin-tool-btn-chevron"></ion-icon>
+            </button>
           </div>
         </div>
+      </div>
+
+      <!-- Admin Tool Detail Modal: repurposed per-tool by openAdminToolModal() -->
+      <div class="modal-shell" id="admin-tool-modal" aria-hidden="true">
+        <div class="modal-backdrop" data-close-admin-tool></div>
+        <section class="modal-card admin-tool-modal-card" role="dialog" aria-modal="true" aria-labelledby="admin-tool-modal-title">
+          <button class="modal-close" data-close-admin-tool aria-label="Close">
+            <ion-icon aria-hidden="true" name="close-outline"></ion-icon>
+          </button>
+          <div class="admin-tool-modal-header">
+            <ion-icon aria-hidden="true" id="admin-tool-modal-icon"></ion-icon>
+            <h3 id="admin-tool-modal-title"></h3>
+          </div>
+
+          <div class="admin-tool-modal-page" id="admin-tool-page-activity" hidden>
+            <p class="admin-tool-modal-intro">A running history of content edits made from this browser — create, edit, delete, reorder, import, and backup actions. It's stored locally, so it won't show actions taken from a different browser or device.</p>
+            <div id="activity-log-list" class="activity-log-list"></div>
+            <button type="button" id="activity-log-clear" class="admin-tool-modal-danger-link">Clear Log</button>
+          </div>
+
+          <div class="admin-tool-modal-page" id="admin-tool-page-stats" hidden>
+            <div id="admin-stats-content"></div>
+          </div>
+
+          <div class="admin-tool-modal-page" id="admin-tool-page-links" hidden>
+            <p class="admin-tool-modal-intro">Checks every project and experience's external link and credential URL for a live response, run server-side to avoid browser CORS restrictions.</p>
+            <div id="link-checker-content"></div>
+          </div>
+
+          <div class="admin-tool-modal-page" id="admin-tool-page-rename-skill" hidden>
+            <p class="admin-tool-modal-intro">Rename a skill tag everywhere it's used, or merge it into an existing tag by typing that tag's name as the target.</p>
+            <div class="field-group">
+              <label for="rename-skill-from" class="field-label">Existing tag</label>
+              <select id="rename-skill-from" class="ide-control w-full"></select>
+            </div>
+            <div class="field-group mt-3">
+              <label for="rename-skill-to" class="field-label">New name</label>
+              <input type="text" id="rename-skill-to" class="ide-control w-full" placeholder="e.g. Python3" maxlength="60">
+            </div>
+            <p id="rename-skill-feedback" class="form-note mt-2" aria-live="polite"></p>
+            <div class="admin-tool-modal-actions">
+              <button type="button" id="rename-skill-submit" class="contact-submit-btn">Rename Tag</button>
+            </div>
+          </div>
+
+          <div class="admin-tool-modal-page" id="admin-tool-page-backup" hidden>
+            <p class="admin-tool-modal-intro">This exports everything currently in the database as JSON:</p>
+            <ul class="admin-tool-modal-list">
+              <li><ion-icon aria-hidden="true" name="folder-outline"></ion-icon>Projects &amp; experiences (<code>portfolio-items</code>)</li>
+              <li><ion-icon aria-hidden="true" name="document-text-outline"></ion-icon>Resume timeline entries (<code>resume-items</code>)</li>
+              <li><ion-icon aria-hidden="true" name="extension-puzzle-outline"></ion-icon>Skills (<code>skills</code>)</li>
+            </ul>
+            <p class="admin-tool-modal-intro">Saved to your configured S3 bucket under <code>backups/&lt;timestamp&gt;/</code>. This does not overwrite older backups.</p>
+            <div class="admin-tool-modal-actions">
+              <button type="button" id="admin-backup-confirm-btn" class="contact-submit-btn"><ion-icon aria-hidden="true" name="cloud-upload-outline"></ion-icon>Confirm &amp; Back Up</button>
+            </div>
+          </div>
+
+          <div class="admin-tool-modal-page" id="admin-tool-page-deleted" hidden>
+            <p class="admin-tool-modal-intro">Items deleted from Projects or Experiences land here first, so nothing is lost by accident. Restore them or erase them for good.</p>
+            <div id="deleted-items-list" class="deleted-panel"></div>
+          </div>
+        </section>
       </div>
 
       <!-- Content: IDE-style shell -->
@@ -583,7 +640,6 @@
                     <option value="question">General Question</option>
                     <option value="other">Other</option>
                   </select>
-                  <ion-icon aria-hidden="true" name="chevron-down-outline" class="field-select-chevron"></ion-icon>
                 </div>
               </div>
               <div class="field-group">
