@@ -2354,6 +2354,7 @@ async function bootstrap() {
   initKeyboardNav();
   initAutoSaveDraft();
   initExportJSON();
+  initResumeExport();
   initResumeKey();
   initDblClickEdit();
   initThemeToggle();
@@ -2407,6 +2408,8 @@ async function bootstrap() {
   initAnimatedCounters();
   initGithubActivity();
   initReferrerEasterEgg();
+  initKonamiCode();
+  initVimScroll();
   registerServiceWorker();
 
   // Smooth page load transition
@@ -2894,7 +2897,11 @@ function initKeyboardNav() {
   document.addEventListener("keydown", (e) => {
     // Only if a card grid is visible and no modal is open
     if (document.querySelector(".modal-shell.active") || document.querySelector(".lightbox-overlay") || document.querySelector(".confirm-overlay")) return;
-    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft" && e.key !== "Enter") return;
+    const tag = e.target.tagName;
+    const isTyping = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || e.target.isContentEditable;
+    const isNext = e.key === "ArrowRight" || (!isTyping && e.key === "j");
+    const isPrev = e.key === "ArrowLeft" || (!isTyping && e.key === "k");
+    if (!isNext && !isPrev && e.key !== "Enter") return;
 
     const activePanel = document.querySelector(".tab-panel.active");
     if (!activePanel) return;
@@ -2907,11 +2914,11 @@ function initKeyboardNav() {
     const focusedCard = document.activeElement?.closest(".card");
     let idx = focusedCard ? cards.indexOf(focusedCard) : -1;
 
-    if (e.key === "ArrowRight") {
+    if (isNext) {
       e.preventDefault();
       idx = Math.min(idx + 1, cards.length - 1);
       cards[idx].focus();
-    } else if (e.key === "ArrowLeft") {
+    } else if (isPrev) {
       e.preventDefault();
       idx = Math.max(idx - 1, 0);
       cards[idx].focus();
@@ -3134,6 +3141,46 @@ function initExportJSON() {
     } catch {
       showToast("Export failed.", "error");
     }
+  });
+}
+
+/* ===== Public resume export (JSON / Markdown) ===== */
+function downloadBlob(content, filename, mime) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function buildResumeMarkdown(entries) {
+  const lanes = [["education", "Education"], ["work", "Work"]];
+  const lines = ["# Resume", ""];
+  lanes.forEach(([laneKey, laneLabel]) => {
+    const items = entries.filter((e) => (e.lane === "education" ? "education" : "work") === laneKey)
+      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+    if (!items.length) return;
+    lines.push(`## ${laneLabel}`, "");
+    items.forEach((e) => {
+      lines.push(`### ${e.title}${e.subtitle ? ` — ${e.subtitle}` : ""}`);
+      if (e.period) lines.push(`*${e.period}*`);
+      if (e.description) lines.push("", e.description);
+      lines.push("");
+    });
+  });
+  return lines.join("\n");
+}
+
+function initResumeExport() {
+  document.getElementById("export-resume-json-btn")?.addEventListener("click", () => {
+    downloadBlob(JSON.stringify(state.resume, null, 2), "resume.json", "application/json");
+    showToast("Resume exported as JSON.", "success");
+  });
+  document.getElementById("export-resume-md-btn")?.addEventListener("click", () => {
+    downloadBlob(buildResumeMarkdown(state.resume), "resume.md", "text/markdown");
+    showToast("Resume exported as Markdown.", "success");
   });
 }
 
@@ -3880,6 +3927,74 @@ function animateCounter(id, target) {
   requestAnimationFrame(step);
 }
 
+/* ===== Vim-style scroll (gg/G) — j/k card navigation lives in initKeyboardNav() ===== */
+let lastGPressAt = 0;
+
+function initVimScroll() {
+  document.addEventListener("keydown", (e) => {
+    const tag = e.target.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || e.target.isContentEditable) return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key !== "g" && e.key !== "G") return;
+    if (document.querySelector(".modal-shell.active") || document.getElementById("command-palette-overlay")) return;
+
+    const scrollContainer = document.getElementById("ide-panel-scroll");
+    if (!scrollContainer) return;
+
+    if (e.key === "g") {
+      const now = Date.now();
+      if (now - lastGPressAt < 500) {
+        scrollContainer.scrollTo({ top: 0, behavior: "smooth" });
+        lastGPressAt = 0;
+      } else {
+        lastGPressAt = now;
+      }
+    } else {
+      scrollContainer.scrollTo({ top: scrollContainer.scrollHeight, behavior: "smooth" });
+    }
+  });
+}
+
+/* ===== Konami code easter egg ===== */
+const KONAMI_SEQUENCE = ["ArrowUp", "ArrowUp", "ArrowDown", "ArrowDown", "ArrowLeft", "ArrowRight", "ArrowLeft", "ArrowRight", "KeyB", "KeyA"];
+let konamiProgress = 0;
+
+function initKonamiCode() {
+  document.addEventListener("keydown", (e) => {
+    const expected = KONAMI_SEQUENCE[konamiProgress];
+    if (e.code === expected) {
+      konamiProgress++;
+      if (konamiProgress === KONAMI_SEQUENCE.length) {
+        konamiProgress = 0;
+        triggerKonamiEasterEgg();
+      }
+    } else {
+      konamiProgress = e.code === KONAMI_SEQUENCE[0] ? 1 : 0;
+    }
+  });
+}
+
+function triggerKonamiEasterEgg() {
+  if (document.getElementById("konami-overlay")) return;
+  const colors = ["#f59e0b", "#3b82f6", "#22c55e", "#ec4899", "#8b5cf6", "#ef4444"];
+  const piecesHtml = Array.from({ length: 40 }).map((_, i) => {
+    const color = colors[i % colors.length];
+    const left = Math.round((i / 40) * 100);
+    const delay = (i % 10) * 0.08;
+    const duration = (1.4 + (i % 6) * 0.25).toFixed(2);
+    return `<span class="confetti-piece" style="left:${left}%;background:${color};animation-delay:${delay}s;animation-duration:${duration}s"></span>`;
+  }).join("");
+
+  const overlay = document.createElement("div");
+  overlay.id = "konami-overlay";
+  overlay.className = "konami-overlay";
+  overlay.innerHTML = `<div class="celebration-confetti">${piecesHtml}</div>`;
+  document.body.appendChild(overlay);
+
+  showToast("Konami code unlocked. This portfolio has secrets.", "success");
+  setTimeout(() => overlay.remove(), 2600);
+}
+
 /* ===== Referrer-triggered easter egg ===== */
 const REFERRER_GREETINGS = [
   { hosts: ["linkedin.com"], message: "Coming from LinkedIn? Small world — take a look around, and let's actually connect." },
@@ -4173,6 +4288,7 @@ function showExplorationCelebration() {
       <p class="celebration-message">You've now seen everything this portfolio has to offer. If something here resonated — a project to build together, a business idea worth exploring, or a role you're looking to fill — I'd love to hear from you.</p>
       <div class="celebration-actions">
         <button type="button" class="celebration-cta" id="celebration-cta">Get in Touch</button>
+        <button type="button" class="celebration-share" id="celebration-share"><ion-icon name="share-social-outline" aria-hidden="true"></ion-icon> Share Badge</button>
         <button type="button" class="celebration-dismiss" id="celebration-dismiss">Maybe later</button>
       </div>
     </div>
@@ -4187,6 +4303,77 @@ function showExplorationCelebration() {
     close();
     openIdeTabByName("contact");
   });
+  overlay.querySelector("#celebration-share").addEventListener("click", () => shareAchievementBadge());
+}
+
+function generateAchievementBadgeCanvas() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1200;
+  canvas.height = 630;
+  const ctx = canvas.getContext("2d");
+
+  const bgGrad = ctx.createLinearGradient(0, 0, 1200, 630);
+  bgGrad.addColorStop(0, "#1e1e1e");
+  bgGrad.addColorStop(1, "#252526");
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, 1200, 630);
+
+  ctx.fillStyle = "#3794ff";
+  ctx.fillRect(0, 0, 14, 630);
+
+  ctx.font = "96px sans-serif";
+  ctx.fillText("\u{1F3C6}", 90, 220);
+
+  const name = document.querySelector(".profile-head h1")?.textContent.trim() || "this portfolio";
+
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 64px 'Courier New', monospace";
+  ctx.fillText("100% Explored", 90, 320);
+
+  ctx.fillStyle = "#cccccc";
+  ctx.font = "30px 'Courier New', monospace";
+  wrapCanvasText(ctx, `I explored every corner of ${name}'s portfolio.`, 90, 380, 1000, 40);
+
+  ctx.fillStyle = "#3794ff";
+  ctx.font = "26px 'Courier New', monospace";
+  ctx.fillText(window.location.hostname || "ctrlaltjay.dev", 90, 570);
+
+  return canvas;
+}
+
+function wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight) {
+  const words = text.split(" ");
+  let line = "";
+  let curY = y;
+  words.forEach((word) => {
+    const testLine = line ? `${line} ${word}` : word;
+    if (ctx.measureText(testLine).width > maxWidth && line) {
+      ctx.fillText(line, x, curY);
+      line = word;
+      curY += lineHeight;
+    } else {
+      line = testLine;
+    }
+  });
+  if (line) ctx.fillText(line, x, curY);
+}
+
+function shareAchievementBadge() {
+  const canvas = generateAchievementBadgeCanvas();
+  canvas.toBlob(async (blob) => {
+    if (!blob) return;
+    const file = new File([blob], "explored-100.png", { type: "image/png" });
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: "100% Explored", text: "I explored 100% of this portfolio!" });
+        return;
+      } catch (_) {
+        // user cancelled or share failed — fall through to a plain download
+      }
+    }
+    downloadBlob(blob, "explored-100.png", "image/png");
+    showToast("Badge downloaded.", "success");
+  }, "image/png");
 }
 
 function initExplorationProgress() {
@@ -4497,8 +4684,10 @@ function toggleShortcutsOverlay() {
         <div class="shortcut-item"><kbd>\u2318</kbd>/<kbd>Ctrl</kbd>+<kbd>K</kbd><span>Command palette</span></div>
         <div class="shortcut-item"><kbd>\`</kbd><span>Toggle terminal</span></div>
         <div class="shortcut-item"><kbd>?</kbd><span>Toggle this guide</span></div>
-        <div class="shortcut-item"><kbd>\u2190</kbd> <kbd>\u2192</kbd><span>Navigate cards</span></div>
+        <div class="shortcut-item"><kbd>\u2190</kbd> <kbd>\u2192</kbd> / <kbd>j</kbd> <kbd>k</kbd><span>Navigate cards</span></div>
         <div class="shortcut-item"><kbd>Enter</kbd><span>Open focused card</span></div>
+        <div class="shortcut-item"><kbd>g</kbd><kbd>g</kbd><span>Scroll to top</span></div>
+        <div class="shortcut-item"><kbd>Shift</kbd>+<kbd>G</kbd><span>Scroll to bottom</span></div>
         <div class="shortcut-item"><kbd>Esc</kbd><span>Close modal / overlay</span></div>
         <div class="shortcut-item"><kbd>T</kbd><span>Toggle dark / light theme</span></div>
         <div class="shortcut-item"><kbd>Z</kbd><span>Toggle Zen mode</span></div>
