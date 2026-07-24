@@ -2466,6 +2466,51 @@ body.zen-mode .ide-panel-scroll { padding: 48px max(32px, calc(50% - 380px)); }
   flex-shrink: 0;
 }
 
+/* Smart (semantic) search */
+.smart-search-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border: 1px solid var(--ide-border-soft);
+  border-radius: 6px;
+  background: var(--ide-editor-bg-soft);
+  color: var(--ide-accent);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.smart-search-btn:hover { background: rgba(55,148,255,0.1); border-color: var(--ide-accent); }
+.smart-search-btn:disabled { opacity: 0.6; cursor: wait; }
+.smart-search-banner {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: var(--ide-editor-bg-soft);
+  border: 1px solid var(--ide-border-soft);
+  color: var(--ide-accent);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+.smart-search-clear {
+  margin-left: auto;
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--ide-border-soft);
+  background: transparent;
+  color: var(--ide-text-dim);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.smart-search-clear:hover { border-color: var(--ide-accent); color: var(--ide-accent); }
+
 /* Projects/Experiences controls: search + sort inputs */
 .ide-control {
   background: var(--ide-editor-bg-soft);
