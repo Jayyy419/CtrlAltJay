@@ -4437,8 +4437,11 @@ function describeGithubEvent(event) {
   const repo = event.repo?.name || "unknown/repo";
   switch (event.type) {
     case "PushEvent": {
-      const n = event.payload?.size ?? event.payload?.distinct_size ?? event.payload?.commits?.length ?? 0;
-      return { icon: "arrow-up-circle-outline", text: `pushed ${n} commit${n === 1 ? "" : "s"} to` , repo };
+      // GitHub's public events payload no longer includes a commit count
+      // (no `size`/`distinct_size`/`commits` field) — showing a fabricated
+      // number here would just be wrong, so we don't claim one.
+      const branch = (event.payload?.ref || "").replace("refs/heads/", "");
+      return { icon: "arrow-up-circle-outline", text: branch ? `pushed to ${branch} in` : "pushed to", repo };
     }
     case "CreateEvent":
       return { icon: "add-circle-outline", text: `created a ${event.payload?.ref_type || "ref"} in`, repo };
