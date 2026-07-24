@@ -1285,6 +1285,60 @@ def presence_heartbeat():
     return jsonify({"count": max(active, 1)})
 
 
+# ─── Live Multiplayer Cursors ────────────────────────────────────────────────
+# Same heartbeat-polling trick as presence above, but on a much shorter TTL —
+# cursor positions go stale in seconds, not minutes, so a much tighter window
+# keeps ghost cursors from lingering after someone moves on or closes the tab.
+
+CURSOR_PREFIX = "__cursor_"
+CURSOR_ACTIVE_SECONDS = 8
+CURSOR_STALE_SECONDS = 30
+
+
+@app.route("/api/cursor", methods=["POST"])
+def cursor_update():
+    payload = request.get_json(silent=True) or {}
+    session_id = str(payload.get("session_id", "")).strip()[:64]
+    if not session_id:
+        return jsonify({"cursors": []})
+    try:
+        x = max(0.0, min(1.0, float(payload.get("x", 0))))
+        y = max(0.0, min(1.0, float(payload.get("y", 0))))
+    except (TypeError, ValueError):
+        return jsonify({"error": "x and y must be numbers."}), 400
+
+    now = int(time.time())
+    own_id = f"{CURSOR_PREFIX}{session_id}"
+    cursors = []
+    try:
+        table_items.put_item(Item={
+            "id": own_id,
+            "x": Decimal(str(round(x, 4))),
+            "y": Decimal(str(round(y, 4))),
+            "last_seen": Decimal(now),
+        })
+        rows = scan_all(table_items, filter_expression=Attr("id").begins_with(CURSOR_PREFIX))
+        for row in rows:
+            last_seen = int(row.get("last_seen", 0))
+            if now - last_seen > CURSOR_STALE_SECONDS:
+                try:
+                    table_items.delete_item(Key={"id": row["id"]})
+                except Exception:
+                    pass
+                continue
+            if row["id"] == own_id or now - last_seen > CURSOR_ACTIVE_SECONDS:
+                continue
+            cursors.append({
+                "session_id": row["id"][len(CURSOR_PREFIX):],
+                "x": float(row.get("x", 0)),
+                "y": float(row.get("y", 0)),
+            })
+    except Exception:
+        pass
+
+    return jsonify({"cursors": cursors})
+
+
 # ─── Guestbook: public "leave a note" board, admin-moderated ────────────────
 # Notes are stored in the shared items table under a "__note_" id prefix —
 # same trick as presence rows above — so they're automatically excluded from
