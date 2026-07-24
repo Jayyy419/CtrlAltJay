@@ -29,7 +29,7 @@ const IDE_TAB_META = {
   resume: { label: "resume.pdf", icon: "md" },
   stack: { label: "stack.json", icon: "json" },
   contact: { label: "contact.md", icon: "md" },
-  scm: { label: "changes.diff", icon: "diff" },
+  scm: { label: "build.yml", icon: "yml" },
   profile: { label: "profile.md", icon: "md" },
   now: { label: "now.md", icon: "md" },
   uses: { label: "uses.json", icon: "json" },
@@ -4257,7 +4257,7 @@ function triggerKonamiEasterEgg() {
 /* ===== Referrer-triggered easter egg ===== */
 const REFERRER_GREETINGS = [
   { hosts: ["linkedin.com"], message: "Coming from LinkedIn? Small world — take a look around, and let's actually connect." },
-  { hosts: ["github.com"], message: "Found this via GitHub — the source for this whole site is one tab away in Source Control." },
+  { hosts: ["github.com"], message: "Found this via GitHub — check out the live build status and architecture in Build & Deploy." },
   { hosts: ["indeed.com", "glassdoor.com", "myworkdayjobs.com", "lever.co", "greenhouse.io", "workable.com"], message: "Looks like you might be hiring — my Resume tab has the full story, and Contact is right there when you're ready." },
   { hosts: ["news.ycombinator.com"], message: "Hey Hacker News — thanks for stopping by. Built solo, top to bottom." },
   { hosts: ["reddit.com"], message: "Welcome from Reddit! Poke around — everything here is real and self-hosted." },
@@ -4430,7 +4430,7 @@ function buildSettingsSnapshot() {
       zen_mode: true,
       command_palette: true,
       live_visitor_presence: true,
-      source_control_panel: true,
+      build_deploy_panel: true,
       exploration_progress: true,
     },
     keyboard_shortcuts: {
@@ -4459,41 +4459,48 @@ function renderSettingsPanel() {
   el.innerHTML = highlightJSON(buildSettingsSnapshot());
 }
 
-/* ===== Source Control Panel ===== */
+/* ===== Build & Deploy Panel ===== */
 function renderSourceControlPanel() {
-  const listEl = document.getElementById("scm-changes-list");
-  const countEl = document.getElementById("scm-changes-count");
-  if (!listEl || !countEl) return;
+  loadBuildStatus();
+}
 
-  const items = [...state.projects, ...state.experiences]
-    .filter((it) => it.created_at)
-    .sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at));
-
-  countEl.textContent = String(items.length);
-  if (!items.length) {
-    listEl.innerHTML = `<div class="scm-empty">No tracked changes yet.</div>`;
+async function loadBuildStatus() {
+  const panel = document.getElementById("build-status-panel");
+  if (!panel) return;
+  const link = document.querySelector('a[href*="github.com"]');
+  const match = link?.href.match(/github\.com\/([^/?#]+)/i);
+  const username = match?.[1];
+  if (!username) {
+    panel.innerHTML = `<div class="scm-empty">GitHub username unavailable.</div>`;
     return;
   }
+  panel.innerHTML = `<div class="scm-empty">Loading build status&hellip;</div>`;
+  try {
+    const res = await fetch(`https://api.github.com/repos/${encodeURIComponent(username)}/CtrlAltJay/actions/runs?per_page=8`);
+    if (!res.ok) throw new Error(`GitHub API ${res.status}`);
+    const data = await res.json();
+    renderBuildStatus(panel, data.workflow_runs || []);
+  } catch {
+    panel.innerHTML = `<div class="scm-empty">// couldn't load build status right now</div>`;
+  }
+}
 
-  listEl.innerHTML = "";
-  items.forEach((item) => {
-    const sectionTab = item.section === "experience" ? "experiences" : "projects";
-    const isModified = item.updated_at && item.updated_at !== item.created_at;
-    const status = isModified ? "M" : "A";
-    const ext = sectionTab === "projects" ? "py" : "md";
-    const row = document.createElement("div");
-    row.className = "scm-row";
-    row.tabIndex = 0;
-    row.innerHTML = `
-      <span class="scm-status scm-status--${status}" title="${status === "M" ? "Modified" : "Added"}">${status}</span>
-      <span class="scm-filename">${escapeHtml(slugifyTitle(item.title))}.${ext}</span>
-      <span class="scm-path">${escapeHtml(sectionTab)}/</span>
-      <span class="scm-time">${escapeHtml(timeAgo(item.updated_at || item.created_at))}</span>
-    `;
-    row.addEventListener("click", () => openItemTab(item, sectionTab));
-    row.addEventListener("keydown", (e) => { if (e.key === "Enter") openItemTab(item, sectionTab); });
-    listEl.appendChild(row);
-  });
+function renderBuildStatus(panel, runs) {
+  if (!runs.length) {
+    panel.innerHTML = `<div class="scm-empty">No workflow runs found for this repo.</div>`;
+    return;
+  }
+  panel.innerHTML = runs.map((run) => {
+    const conclusion = run.conclusion || run.status;
+    const icon = conclusion === "success" ? "checkmark-circle" : conclusion === "failure" ? "close-circle" : "time-outline";
+    const cls = conclusion === "success" ? "build-status--success" : conclusion === "failure" ? "build-status--failure" : "build-status--pending";
+    return `<a href="${escapeHtml(run.html_url || "#")}" target="_blank" rel="noopener noreferrer" class="build-run-row ${cls}">
+      <ion-icon aria-hidden="true" name="${icon}"></ion-icon>
+      <span class="build-run-name">${escapeHtml(run.name || run.display_title || "workflow")}</span>
+      <span class="build-run-branch">${escapeHtml(run.head_branch || "")}</span>
+      <span class="build-run-time">${escapeHtml(timeAgo(run.created_at || ""))}</span>
+    </a>`;
+  }).join("");
 }
 
 /* ===== Achievements: exploration progress ===== */
@@ -5224,7 +5231,7 @@ function getCommandPaletteItems() {
     { icon: "document-text-outline", label: "Resume", hint: "resume.pdf", action: () => openIdeTabByName("resume") },
     { icon: "extension-puzzle-outline", label: "Stack", hint: "stack.json", action: () => openIdeTabByName("stack") },
     { icon: "mail-outline", label: "Contact", hint: "contact.md", action: () => openIdeTabByName("contact") },
-    { icon: "git-compare-outline", label: "Source Control", hint: "changes.diff", action: () => openIdeTabByName("scm") },
+    { icon: "git-network-outline", label: "Build & Deploy", hint: "build.yml", action: () => openIdeTabByName("scm") },
     { icon: "person-circle-outline", label: "Profile", hint: "profile.md", action: () => openIdeTabByName("profile") },
     { icon: "flash-outline", label: "Now", hint: "now.md", action: () => openIdeTabByName("now") },
     { icon: "construct-outline", label: "Uses", hint: "uses.json", action: () => openIdeTabByName("uses") },
@@ -5701,7 +5708,7 @@ function initMobileSwipe() {
   let touchStartY = 0;
   const content = document.querySelector(".content");
   if (!content) return;
-  const tabOrder = ["about", "chat", "contact", "experiences", "profile", "projects", "resume", "scm", "stack"];
+  const tabOrder = ["about", "chat", "scm", "contact", "experiences", "profile", "projects", "resume", "stack"];
   content.addEventListener("touchstart", (e) => {
     touchStartX = e.changedTouches[0].screenX;
     touchStartY = e.changedTouches[0].screenY;
