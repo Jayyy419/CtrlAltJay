@@ -1169,6 +1169,10 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
   .ide-sidebar { display: none; }
   .ide-minimap { display: none; }
 
+  /* The desktop editor padding (28px/32px) is a lot of dead space to give
+     up on a phone-width screen — claw most of it back for content. */
+  .ide-panel-scroll { padding: 16px 14px 28px; }
+
   /* Mobile nav: activity bar + file tree become a slide-in drawer,
      triggered by a hamburger button in a small top bar. */
   .mobile-topbar {
@@ -1308,6 +1312,8 @@ body.zen-mode .ide-panel-scroll { padding: 48px max(32px, calc(50% - 380px)); }
   font-weight: 500;
   font-size: 0.78rem;
   font-family: 'Plex Mono', monospace;
+  white-space: nowrap;
+  flex-shrink: 0;
   transition: all 0.2s ease;
 }
 .subsection-btn:hover { border-color: var(--ide-accent); color: var(--ide-text); }
@@ -2679,8 +2685,12 @@ body.zen-mode .ide-panel-scroll { padding: 48px max(32px, calc(50% - 380px)); }
   border-color: rgba(55,148,255,0.5);
 }
 
-/* Sticky subsection nav */
+/* Sticky subsection nav — single line, horizontal-scrolls if it overflows
+   (edge fade via .h-scroll-wrap, scrollbar hidden) rather than wrapping or
+   clipping ungracefully. */
 .subsection-nav {
+  display: flex;
+  align-items: center;
   position: sticky;
   top: 0;
   z-index: 20;
@@ -2690,10 +2700,17 @@ body.zen-mode .ide-panel-scroll { padding: 48px max(32px, calc(50% - 380px)); }
   margin-right: -8px;
   padding-left: 8px;
   padding-right: 8px;
-  flex-wrap: wrap;
-  row-gap: 8px;
-  overflow: visible;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
 }
+.subsection-nav::-webkit-scrollbar { display: none; }
+/* .h-scroll-wrap sets position:relative generically — this bar needs to stay sticky. */
+.subsection-nav.h-scroll-wrap { position: sticky; }
+.subsection-nav.h-scroll-wrap::before { background: linear-gradient(90deg, var(--ide-editor-bg-soft), transparent); }
+.subsection-nav.h-scroll-wrap::after { background: linear-gradient(270deg, var(--ide-editor-bg-soft), transparent); }
+.subsection-nav.h-scroll-wrap::before, .subsection-nav.h-scroll-wrap::after { bottom: 0; }
 
 /* Card skill chips */
 .card-skills {

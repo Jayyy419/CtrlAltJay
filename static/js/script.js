@@ -1330,6 +1330,8 @@ function renderSubsectionNav(navId, categories, items) {
     favBtn.textContent = `★ Favourites (${favCount})`;
     nav.insertBefore(favBtn, nav.children[1]);
   }
+
+  initHScrollFade(nav);
 }
 
 const PAGE_SIZE = 12;
