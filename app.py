@@ -395,6 +395,7 @@ def build_profile():
             "status": "open",
             "label": "Open to new opportunities",
         },
+        "traits": ["Curiosity", "Ownership", "Continuous improvement"],
     }
 
 

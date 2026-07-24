@@ -31,7 +31,7 @@ const IDE_TAB_META = {
   contact: { label: "contact.md", icon: "md" },
   scm: { label: "build.yml", icon: "yml" },
   profile: { label: "profile.md", icon: "md" },
-  now: { label: "now.md", icon: "md" },
+  now: { label: "happening-now.md", icon: "md" },
   uses: { label: "uses.json", icon: "json" },
   testimonials: { label: "testimonials.md", icon: "md" },
   timeline: { label: "timeline.md", icon: "md" },
@@ -2597,10 +2597,39 @@ function appendChatMessage(role, text, isTyping, isError) {
   if (!container) return null;
   const wrap = document.createElement("div");
   wrap.className = `chat-message chat-message--${role}`;
+
+  const avatar = document.createElement("span");
+  avatar.className = `chat-avatar chat-avatar--${role}`;
+  avatar.innerHTML = role === "assistant"
+    ? '<ion-icon aria-hidden="true" name="sparkles"></ion-icon>'
+    : '<ion-icon aria-hidden="true" name="person"></ion-icon>';
+
+  const col = document.createElement("div");
+  col.className = "chat-bubble-col";
+
   const bubble = document.createElement("div");
   bubble.className = `chat-bubble${isTyping ? " chat-bubble--typing" : ""}${isError ? " chat-bubble--error" : ""}`;
-  bubble.textContent = text;
-  wrap.appendChild(bubble);
+  if (isTyping) {
+    bubble.innerHTML = '<span class="chat-typing-dots"><span></span><span></span><span></span></span>';
+  } else {
+    bubble.textContent = text;
+  }
+  col.appendChild(bubble);
+
+  if (!isTyping) {
+    const time = document.createElement("span");
+    time.className = "chat-bubble-time";
+    time.textContent = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    col.appendChild(time);
+  }
+
+  if (role === "user") {
+    wrap.appendChild(col);
+    wrap.appendChild(avatar);
+  } else {
+    wrap.appendChild(avatar);
+    wrap.appendChild(col);
+  }
   container.appendChild(wrap);
   container.scrollTop = container.scrollHeight;
   return wrap;
@@ -5297,7 +5326,7 @@ function fuzzyScore(query, target) {
 function getCommandPaletteItems() {
   const items = [
     { icon: "person-outline", label: "About Me", hint: "bio.md", action: () => openIdeTabByName("about") },
-    { icon: "sparkles-outline", label: "Ask AI", hint: "assistant.ts", action: () => openIdeTabByName("chat") },
+    { icon: "sparkles-outline", label: "Ctrl+Alt+AI", hint: "assistant.ts", action: () => openIdeTabByName("chat") },
     { icon: "folder-outline", label: "Projects", hint: "projects/", action: () => openIdeTabByName("projects") },
     { icon: "briefcase-outline", label: "Experiences", hint: "experiences/", action: () => openIdeTabByName("experiences") },
     { icon: "document-text-outline", label: "Resume", hint: "resume.pdf", action: () => openIdeTabByName("resume") },
@@ -5305,7 +5334,7 @@ function getCommandPaletteItems() {
     { icon: "mail-outline", label: "Contact", hint: "contact.md", action: () => openIdeTabByName("contact") },
     { icon: "git-network-outline", label: "Build & Deploy", hint: "build.yml", action: () => openIdeTabByName("scm") },
     { icon: "person-circle-outline", label: "Profile", hint: "profile.md", action: () => openIdeTabByName("profile") },
-    { icon: "flash-outline", label: "Now", hint: "now.md", action: () => openIdeTabByName("now") },
+    { icon: "flash-outline", label: "Now", hint: "happening-now.md", action: () => openIdeTabByName("now") },
     { icon: "construct-outline", label: "Uses", hint: "uses.json", action: () => openIdeTabByName("uses") },
     { icon: "chatbox-ellipses-outline", label: "Testimonials", hint: "testimonials.md", action: () => openIdeTabByName("testimonials") },
     { icon: "time-outline", label: "Timeline", hint: "timeline.md", action: () => openIdeTabByName("timeline") },
@@ -5780,7 +5809,7 @@ function initMobileSwipe() {
   let touchStartY = 0;
   const content = document.querySelector(".content");
   if (!content) return;
-  const tabOrder = ["about", "chat", "scm", "contact", "experiences", "profile", "projects", "resume", "stack"];
+  const tabOrder = ["about", "scm", "contact", "chat", "experiences", "profile", "projects", "resume", "stack"];
   content.addEventListener("touchstart", (e) => {
     touchStartX = e.changedTouches[0].screenX;
     touchStartY = e.changedTouches[0].screenY;
