@@ -1002,6 +1002,30 @@ function buildCard(item, highlightQuery = "") {
     content.appendChild(badge);
   }
 
+  // Pinned / draft / freshness badges
+  if (item.is_pinned) {
+    const pin = document.createElement("span");
+    pin.className = "card-featured-badge";
+    pin.innerHTML = '<ion-icon aria-hidden="true" name="star"></ion-icon>Featured';
+    card.appendChild(pin);
+  }
+  if (state.isAdmin && item.is_draft) {
+    const draft = document.createElement("span");
+    draft.className = "card-draft-badge";
+    draft.textContent = "Draft";
+    card.appendChild(draft);
+  }
+  if (state.isAdmin && item.updated_at) {
+    const days = (Date.now() - new Date(item.updated_at).getTime()) / 86400000;
+    if (days > 90) {
+      const stale = document.createElement("span");
+      stale.className = "card-stale-badge";
+      stale.title = `Not updated in ${Math.floor(days)} days`;
+      stale.innerHTML = '<ion-icon aria-hidden="true" name="hourglass-outline"></ion-icon>Stale';
+      content.appendChild(stale);
+    }
+  }
+
   // Skill tags
   const itemSkills = parseSkills(item.skills);
   if (itemSkills.length > 0) {
@@ -1342,6 +1366,7 @@ function appendShowMore(target, filtered, currentLimit, searchQuery, targetGridI
     observeCards(target);
     if (state.isAdmin) {
       addBulkCheckboxes(target);
+      addSpotlightToggles(target);
       addFavoriteButtons();
     }
     if (countEl) {
@@ -1946,6 +1971,8 @@ function openAdminItemModal(item = null, section = "project") {
     }
   }
   document.getElementById("admin-item-link").value = item?.external_link || "";
+  document.getElementById("admin-item-pinned").checked = Boolean(item?.is_pinned);
+  document.getElementById("admin-item-draft").checked = Boolean(item?.is_draft);
 
   // New fields
   document.getElementById("admin-item-status").value = item?.status || "";
@@ -2201,15 +2228,17 @@ function wireProjectControls() {
     const activeSkill = document.querySelector("#projects-skills-filter .skill-filter-btn.active")?.dataset.skill || "all";
     renderSection(state.projects, null, "projects-sort", "projects-grid", activeSubsection, "projects-search", "projects-search-field", activeSkill);
     addBulkCheckboxes(document.getElementById("projects-grid"));
+    addSpotlightToggles(document.getElementById("projects-grid"));
     addFavoriteButtons();
     enableCardDragging(document.getElementById("projects-grid"));
   };
-  
+
   state.rerenderExperiences = () => {
     const activeSubsection = document.querySelector("#experiences-subsection-nav .subsection-btn.active")?.dataset.subsection || "all";
     const activeSkill = document.querySelector("#experiences-skills-filter .skill-filter-btn.active")?.dataset.skill || "all";
     renderSection(state.experiences, null, "experiences-sort", "experiences-grid", activeSubsection, "experiences-search", "experiences-search-field", activeSkill);
     addBulkCheckboxes(document.getElementById("experiences-grid"));
+    addSpotlightToggles(document.getElementById("experiences-grid"));
     addFavoriteButtons();
     enableCardDragging(document.getElementById("experiences-grid"));
   };
@@ -2337,6 +2366,9 @@ async function bootstrap() {
   initCompareViewer();
   initAdminStats();
   initAdminBackup();
+  initAdminAnalyticsExport();
+  initLinkChecker();
+  initSkillRename();
   initFocusTrap();
   initKeyboardShortcuts();
   initCommandPalette();
@@ -3136,6 +3168,31 @@ function addBulkCheckboxes(container) {
       updateBulkBar();
     });
     card.appendChild(cb);
+  });
+}
+
+function addSpotlightToggles(container) {
+  if (!state.isAdmin) return;
+  container.querySelectorAll(".card").forEach((card) => {
+    if (card.querySelector(".card-pin-toggle")) return;
+    const item = [...state.projects, ...state.experiences].find((it) => it.id === card.dataset.itemId);
+    if (!item) return;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "card-pin-toggle" + (item.is_pinned ? " active" : "");
+    btn.title = item.is_pinned ? "Unpin from top" : "Pin to top (Spotlight)";
+    btn.innerHTML = `<ion-icon aria-hidden="true" name="${item.is_pinned ? "star" : "star-outline"}"></ion-icon>`;
+    btn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      try {
+        const res = await fetch(`/api/admin/items/${item.id}/toggle-pin`, { method: "PATCH" });
+        if (!res.ok) throw new Error();
+        showToast(item.is_pinned ? "Removed from spotlight." : "Pinned to spotlight.", "success");
+        await fetchData();
+        wireProjectControls();
+      } catch { showToast("Failed to toggle pin.", "error"); }
+    });
+    card.appendChild(btn);
   });
 }
 
@@ -4794,6 +4851,105 @@ function initAdminBackup() {
     }
     btn.innerHTML = '<ion-icon name="cloud-upload-outline" class="align-middle mr-1"></ion-icon>Backup to S3';
     btn.disabled = false;
+  });
+}
+
+/* ===== Analytics Export ===== */
+function initAdminAnalyticsExport() {
+  const btn = document.getElementById("admin-export-analytics-btn");
+  if (!btn) return;
+  btn.addEventListener("click", async () => {
+    if (!state.isAdmin) return;
+    btn.disabled = true;
+    try {
+      const res = await fetch("/api/admin/analytics");
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      const exportData = {
+        exported_at: new Date().toISOString(),
+        content_totals: {
+          projects: state.projects.length,
+          experiences: state.experiences.length,
+          resume_items: state.resume.length,
+          skills: state.skills.length,
+        },
+        ...data,
+      };
+      downloadBlob(JSON.stringify(exportData, null, 2), `analytics-export-${new Date().toISOString().slice(0, 10)}.json`, "application/json");
+      showToast("Analytics exported.", "success");
+    } catch {
+      showToast("Failed to export analytics.", "error");
+    }
+    btn.disabled = false;
+  });
+}
+
+/* ===== Broken Link Checker ===== */
+function initLinkChecker() {
+  const btn = document.getElementById("admin-link-checker-btn");
+  const panel = document.getElementById("link-checker-panel");
+  const content = document.getElementById("link-checker-content");
+  if (!btn || !panel || !content) return;
+  btn.addEventListener("click", async () => {
+    if (!state.isAdmin) return;
+    const visible = panel.style.display !== "none";
+    if (visible) { panel.style.display = "none"; return; }
+    panel.style.display = "block";
+    content.innerHTML = `<div class="stat-row"><span class="stat-label">Checking links&hellip;</span></div>`;
+    try {
+      const res = await fetch("/api/admin/check-links", { method: "POST" });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      if (!data.broken.length) {
+        content.innerHTML = `<div class="stat-row"><span class="stat-label">All ${data.checked} link(s) OK &check;</span></div>`;
+      } else {
+        content.innerHTML = data.broken.map((b) => `
+          <div class="stat-row stat-row--stacked">
+            <span class="stat-label" style="color:#ef4444">${escapeHtml(b.title)} &mdash; ${b.field === "credential_url" ? "credential" : "link"}</span>
+            <span class="stat-time">${escapeHtml(b.url)}</span>
+          </div>`).join("") + `<div class="stat-row"><span class="stat-label">${data.broken.length} of ${data.checked} link(s) unreachable</span></div>`;
+      }
+    } catch {
+      content.innerHTML = `<div class="stat-row"><span class="stat-label">Failed to check links.</span></div>`;
+    }
+  });
+}
+
+/* ===== Bulk Skill Rename / Merge ===== */
+function initSkillRename() {
+  const btn = document.getElementById("admin-skill-rename-btn");
+  if (!btn) return;
+  btn.addEventListener("click", async () => {
+    if (!state.isAdmin) return;
+    const allSkills = [...new Set([...state.projects, ...state.experiences].flatMap((i) => parseSkills(i.skills)))].sort();
+    if (!allSkills.length) { showToast("No skill tags found.", "info"); return; }
+    const from = window.prompt(`Rename or merge which skill tag?\n\nExisting tags:\n${allSkills.join(", ")}`);
+    if (!from || !allSkills.includes(from)) {
+      if (from) showToast("That tag doesn't exist on any item.", "error");
+      return;
+    }
+    const to = window.prompt(`Rename "${from}" to:\n\n(If the new name already exists, the two tags will be merged.)`);
+    if (!to || !to.trim() || to.trim() === from) return;
+    const newName = to.trim();
+
+    const affected = [...state.projects, ...state.experiences].filter((i) => parseSkills(i.skills).includes(from));
+    const confirmed = await showConfirm("Rename Skill Tag", `Rename "${from}" to "${newName}" across ${affected.length} item(s)?`);
+    if (!confirmed) return;
+
+    let ok = 0, fail = 0;
+    for (const item of affected) {
+      const newSkills = [...new Set(parseSkills(item.skills).map((s) => (s === from ? newName : s)))].join(", ");
+      const fd = new FormData();
+      fd.append("skills", newSkills);
+      try {
+        const res = await fetch(`/api/admin/items/${item.id}/skills`, { method: "PATCH", body: fd });
+        if (!res.ok) throw new Error();
+        ok++;
+      } catch { fail++; }
+    }
+    await fetchData();
+    wireProjectControls();
+    showToast(`Updated ${ok} item(s)${fail ? `, ${fail} failed` : ""}.`, fail ? "error" : "success");
   });
 }
 

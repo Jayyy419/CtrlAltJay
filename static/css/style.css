@@ -1700,7 +1700,7 @@ body.zen-mode .ide-panel-scroll { padding: 48px max(32px, calc(50% - 380px)); }
   position: fixed;
   bottom: 24px;
   right: 24px;
-  z-index: 300;
+  z-index: 10060;
   display: flex;
   flex-direction: column-reverse;
   gap: 8px;
@@ -1859,7 +1859,7 @@ body.zen-mode .ide-panel-scroll { padding: 48px max(32px, calc(50% - 380px)); }
 .confirm-overlay {
   position: fixed;
   inset: 0;
-  z-index: 250;
+  z-index: 10050;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2138,6 +2138,80 @@ body.zen-mode .ide-panel-scroll { padding: 48px max(32px, calc(50% - 380px)); }
   background: rgba(255,255,255,0.9);
   border-color: rgba(0,0,0,0.2);
 }
+.card-pin-toggle {
+  position: absolute;
+  top: 84px;
+  right: 10px;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 5;
+  background: var(--ide-editor-bg-soft);
+  border: 1.5px solid var(--ide-border-soft);
+  border-radius: 50%;
+  color: var(--ide-text-dim);
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(4px);
+}
+.card-pin-toggle:hover { border-color: var(--ide-accent); color: var(--ide-accent); }
+.card-pin-toggle.active { color: #f5b942; border-color: rgba(245,185,66,0.5); }
+.card-featured-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(245,185,66,0.15);
+  border: 1px solid rgba(245,185,66,0.4);
+  color: #f5b942;
+  font-size: 0.68rem;
+  font-weight: 700;
+  backdrop-filter: blur(4px);
+}
+.card-draft-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 5;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(148,163,184,0.15);
+  border: 1px solid rgba(148,163,184,0.4);
+  color: #94a3b8;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+.card-featured-badge + .card-draft-badge { left: auto; right: 44px; }
+.card-stale-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(148,163,184,0.12);
+  color: #94a3b8;
+  font-size: 0.68rem;
+  font-weight: 600;
+  width: fit-content;
+}
+.admin-checkbox-row { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 4px; }
+.admin-checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: var(--ide-text);
+  cursor: pointer;
+}
+.admin-checkbox-label input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--ide-accent); cursor: pointer; }
 .card { position: relative; }
 
 /* Auto-save draft indicator */
