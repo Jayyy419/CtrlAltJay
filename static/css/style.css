@@ -1208,29 +1208,6 @@ body.zen-mode .ide-panel-scroll { padding: 48px max(32px, calc(50% - 380px)); }
 .multiselect-row { font-size: 0.82rem; color: var(--ide-text); }
 .multiselect-row strong { color: var(--ide-text-bright); }
 
-/* Git-blame-style hover tooltip on commit nodes */
-.blame-tooltip {
-  position: absolute;
-  z-index: 200;
-  max-width: 320px;
-  padding: 10px 14px;
-  background: var(--ide-statusbar-bg);
-  color: #fff;
-  border-radius: 6px;
-  font-size: 0.78rem;
-  line-height: 1.5;
-  box-shadow: 0 12px 30px -10px rgba(0,0,0,0.6);
-  pointer-events: none;
-  animation: blameTooltipIn 0.12s ease-out;
-}
-.blame-tooltip-author { display: flex; align-items: center; gap: 6px; font-family: 'Plex Mono', monospace; font-weight: 700; color: var(--ide-git-added); }
-.blame-tooltip-meta { font-family: 'Plex Mono', monospace; color: rgba(255,255,255,0.65); margin-top: 2px; font-size: 0.72rem; }
-.blame-tooltip-msg { margin-top: 4px; color: rgba(255,255,255,0.9); }
-@keyframes blameTooltipIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
 /* Skills: Extensions marketplace panel (JS-generated) */
 .ext-tier-heading {
   font-family: 'Plex Mono', monospace;
