@@ -641,6 +641,9 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
   min-width: 0;
   background: var(--ide-editor-bg);
 }
+.mobile-topbar { display: none; }
+.mobile-nav-backdrop { display: none; }
+
 .ide-tabbar-row { display: flex; align-items: stretch; flex-shrink: 0; }
 .ide-tabbar-wrap {
   position: relative;
@@ -1165,6 +1168,85 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
 @media (max-width: 900px) {
   .ide-sidebar { display: none; }
   .ide-minimap { display: none; }
+
+  /* Mobile nav: activity bar + file tree become a slide-in drawer,
+     triggered by a hamburger button in a small top bar. */
+  .mobile-topbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--ide-border-soft);
+    background: var(--ide-editor-bg);
+    flex-shrink: 0;
+  }
+  .mobile-nav-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+    background: var(--ide-editor-bg-soft);
+    border: 1px solid var(--ide-border-soft);
+    border-radius: 6px;
+    color: var(--ide-text);
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .mobile-nav-toggle:hover, .mobile-nav-toggle:active { border-color: var(--ide-accent); color: var(--ide-accent); }
+  .mobile-topbar-title {
+    font-family: 'Plex Mono', monospace;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--ide-text-bright);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .activity-bar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 400;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    box-shadow: 12px 0 30px rgba(0,0,0,0.35);
+  }
+  .ide-sidebar {
+    display: block !important;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 52px;
+    width: min(78vw, 280px);
+    z-index: 400;
+    transform: translateX(-120%);
+    transition: transform 0.25s ease;
+    box-shadow: 12px 0 30px rgba(0,0,0,0.35);
+  }
+  body.mobile-nav-open .activity-bar,
+  body.mobile-nav-open .ide-sidebar {
+    transform: translateX(0);
+  }
+  .mobile-nav-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 390;
+    background: rgba(0,0,0,0.5);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+  body.mobile-nav-open .mobile-nav-backdrop {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  body.mobile-nav-open { overflow: hidden; }
 }
 
 /* ===== Zen Mode ===== */
