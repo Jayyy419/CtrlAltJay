@@ -16,6 +16,31 @@ const state = {
   ideItemMeta: {},
 };
 
+/* ===== Site preferences (Settings tab) ===== */
+const SITE_PREFS_KEY = "ctrlaltjay-site-prefs";
+const SITE_PREFS_DEFAULTS = { reduceMotion: false, shareCursor: true, sharePresence: true, vimNav: true };
+
+function getSitePrefs() {
+  try {
+    return { ...SITE_PREFS_DEFAULTS, ...JSON.parse(localStorage.getItem(SITE_PREFS_KEY) || "{}") };
+  } catch {
+    return { ...SITE_PREFS_DEFAULTS };
+  }
+}
+
+function setSitePref(key, value) {
+  const prefs = getSitePrefs();
+  prefs[key] = value;
+  localStorage.setItem(SITE_PREFS_KEY, JSON.stringify(prefs));
+  applySitePrefs();
+}
+
+function applySitePrefs() {
+  const prefs = getSitePrefs();
+  document.documentElement.classList.toggle("reduce-motion", prefs.reduceMotion);
+  if (!prefs.shareCursor) document.getElementById("ghost-cursor-layer")?.remove();
+}
+
 /* Top-level activity-bar sections: switching to these just changes the active
    panel, they never get a tab in the tab bar — tabs are reserved for actual
    listing items (project/experience cards, resume entries, skills, etc.) */
@@ -309,7 +334,7 @@ function renderCategoryGroupedTree(items, containerId, sectionTab, ext) {
       return `<div class="file-tree-item" data-id="${escapeHtml(item.id)}" title="${escapeHtml(filename)}"><span class="fdot ${ext}"></span><span class="ftext">${escapeHtml(filename)}</span></div>`;
     }).join("");
     const catId = slugifyTitle(cat);
-    return `<div class="file-tree-subfolder" data-cat="${escapeHtml(catId)}"><span class="chev">▾</span> ${escapeHtml(cat)}<span class="fcount">${groupItems.length}</span></div>
+    return `<div class="file-tree-subfolder" data-cat="${escapeHtml(catId)}" title="${escapeHtml(cat)}"><span class="chev">▾</span><span class="ftname">${escapeHtml(cat)}</span><span class="fcount">${groupItems.length}</span></div>
       <div class="file-tree-subchildren" data-cat="${escapeHtml(catId)}">${itemsHtml}</div>`;
   }).join("");
 
@@ -877,11 +902,12 @@ function openIdeTabByName(name) {
 
 function closeIdeTab(name, activeTab) {
   const finishClose = () => {
+    const closedMeta = state.ideItemMeta?.[name];
     state.ideOpenTabs = state.ideOpenTabs.filter((t) => t !== name);
     if (state.ideItemMeta?.[name]) delete state.ideItemMeta[name];
     if (name === activeTab) {
       const next = state.ideOpenTabs[state.ideOpenTabs.length - 1];
-      openIdeTabByName(next || "about");
+      openIdeTabByName(next || closedMeta?.sectionTab || "about");
     } else {
       renderIdeTabbar(activeTab);
     }
@@ -2312,7 +2338,6 @@ function wireProjectControls() {
       btn.classList.add("active");
       shownCounts["projects-grid"] = PAGE_SIZE;
       state.rerenderProjects();
-      document.getElementById("projects-grid")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     });
 
     document.getElementById("experiences-subsection-nav").addEventListener("click", (e) => {
@@ -2322,7 +2347,6 @@ function wireProjectControls() {
       btn.classList.add("active");
       shownCounts["experiences-grid"] = PAGE_SIZE;
       state.rerenderExperiences();
-      document.getElementById("experiences-grid")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     });
 
     document.getElementById("projects-sort").addEventListener("change", (e) => {
@@ -2357,7 +2381,6 @@ function wireProjectControls() {
       btn.classList.add("active");
       shownCounts["projects-grid"] = PAGE_SIZE;
       state.rerenderProjects();
-      document.getElementById("projects-grid")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     });
     document.getElementById("experiences-skills-filter")?.addEventListener("click", (e) => {
       const btn = e.target.closest(".skill-filter-btn");
@@ -2366,7 +2389,6 @@ function wireProjectControls() {
       btn.classList.add("active");
       shownCounts["experiences-grid"] = PAGE_SIZE;
       state.rerenderExperiences();
-      document.getElementById("experiences-grid")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     });
 
     // Clear search buttons
@@ -2419,6 +2441,7 @@ async function bootstrap() {
   initResumeKey();
   initDblClickEdit();
   initThemeToggle();
+  applySitePrefs();
   initDragAndDrop();
   initBatchSkills();
   initActivityLog();
@@ -2468,6 +2491,7 @@ async function bootstrap() {
   updateTabBadges();
   updateFooterTimestamp();
   renderRecentlyViewed();
+  initRecentlyViewedClear();
   handleDeepLink();
   initHitCounter();
   initLivePresence();
@@ -3160,8 +3184,9 @@ function initKeyboardNav() {
     if (document.querySelector(".modal-shell.active") || document.querySelector(".lightbox-overlay") || document.querySelector(".confirm-overlay")) return;
     const tag = e.target.tagName;
     const isTyping = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || e.target.isContentEditable;
-    const isNext = e.key === "ArrowRight" || (!isTyping && e.key === "j");
-    const isPrev = e.key === "ArrowLeft" || (!isTyping && e.key === "k");
+    const vimOn = getSitePrefs().vimNav;
+    const isNext = e.key === "ArrowRight" || (!isTyping && vimOn && e.key === "j");
+    const isPrev = e.key === "ArrowLeft" || (!isTyping && vimOn && e.key === "k");
     if (!isNext && !isPrev && e.key !== "Enter") return;
 
     const activePanel = document.querySelector(".tab-panel.active");
@@ -3763,6 +3788,18 @@ function initHScrollFade(strip) {
   updateHScrollFade(strip);
 }
 
+function initRecentlyViewedClear() {
+  document.querySelectorAll("[data-clear-recent]").forEach((btn) => {
+    if (btn.dataset.recentClearBound) return;
+    btn.dataset.recentClearBound = "1";
+    btn.addEventListener("click", () => {
+      localStorage.removeItem(RECENT_KEY);
+      renderRecentlyViewed();
+      showToast("Recently viewed cleared.", "info");
+    });
+  });
+}
+
 function renderRecentlyViewed() {
   const recentIds = JSON.parse(localStorage.getItem(RECENT_KEY) || "[]");
   const allItems = [...state.projects, ...state.experiences];
@@ -4252,6 +4289,7 @@ function initVimScroll() {
     if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || e.target.isContentEditable) return;
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.key !== "g" && e.key !== "G") return;
+    if (!getSitePrefs().vimNav) return;
     if (document.querySelector(".modal-shell.active") || document.getElementById("command-palette-overlay")) return;
 
     const scrollContainer = document.getElementById("ide-panel-scroll");
@@ -4399,7 +4437,7 @@ function describeGithubEvent(event) {
   const repo = event.repo?.name || "unknown/repo";
   switch (event.type) {
     case "PushEvent": {
-      const n = event.payload?.commits?.length || 0;
+      const n = event.payload?.size ?? event.payload?.distinct_size ?? event.payload?.commits?.length ?? 0;
       return { icon: "arrow-up-circle-outline", text: `pushed ${n} commit${n === 1 ? "" : "s"} to` , repo };
     }
     case "CreateEvent":
@@ -4510,10 +4548,63 @@ function buildSettingsSnapshot() {
   };
 }
 
+function updateSettingsThemeButtons() {
+  const isLight = document.documentElement.classList.contains("light-theme");
+  document.querySelectorAll("#settings-theme-switch .settings-theme-btn").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.themeChoice === (isLight ? "light" : "dark"));
+  });
+}
+
+function setSettingsTheme(isLight) {
+  document.documentElement.classList.toggle("light-theme", isLight);
+  localStorage.setItem(THEME_KEY, isLight ? "light" : "dark");
+  const themeBtn = document.getElementById("theme-toggle");
+  if (themeBtn) updateThemeIcon(themeBtn);
+  updateSettingsThemeButtons();
+}
+
 function renderSettingsPanel() {
-  const el = document.getElementById("settings-json");
-  if (!el) return;
-  el.innerHTML = highlightJSON(buildSettingsSnapshot());
+  const jsonEl = document.getElementById("settings-json");
+  if (jsonEl) jsonEl.innerHTML = highlightJSON(buildSettingsSnapshot());
+
+  const prefs = getSitePrefs();
+  const reduceMotionEl = document.getElementById("setting-reduce-motion");
+  const shareCursorEl = document.getElementById("setting-share-cursor");
+  const sharePresenceEl = document.getElementById("setting-share-presence");
+  const vimNavEl = document.getElementById("setting-vim-nav");
+  if (reduceMotionEl) reduceMotionEl.checked = prefs.reduceMotion;
+  if (shareCursorEl) shareCursorEl.checked = prefs.shareCursor;
+  if (sharePresenceEl) sharePresenceEl.checked = prefs.sharePresence;
+  if (vimNavEl) vimNavEl.checked = prefs.vimNav;
+  updateSettingsThemeButtons();
+
+  if (state.settingsPanelBound) return;
+  state.settingsPanelBound = true;
+
+  reduceMotionEl?.addEventListener("change", (e) => setSitePref("reduceMotion", e.target.checked));
+  shareCursorEl?.addEventListener("change", (e) => setSitePref("shareCursor", e.target.checked));
+  sharePresenceEl?.addEventListener("change", (e) => setSitePref("sharePresence", e.target.checked));
+  vimNavEl?.addEventListener("change", (e) => setSitePref("vimNav", e.target.checked));
+
+  document.querySelectorAll("#settings-theme-switch .settings-theme-btn").forEach((btn) => {
+    btn.addEventListener("click", () => setSettingsTheme(btn.dataset.themeChoice === "light"));
+  });
+
+  document.getElementById("settings-reset-data-btn")?.addEventListener("click", async () => {
+    const confirmed = await showConfirm(
+      "Reset browsing history & progress?",
+      "This clears recently viewed items, achievement/exploration progress, sort filters, and your local activity log. Favorites and your settings above are kept.",
+      { confirmLabel: "Reset" }
+    );
+    if (!confirmed) return;
+    localStorage.removeItem(RECENT_KEY);
+    localStorage.removeItem(EXPLORE_STORAGE_KEY);
+    localStorage.removeItem(ACTIVITY_LOG_KEY);
+    localStorage.removeItem("ctrlaltjay-projects-sort");
+    localStorage.removeItem("ctrlaltjay-experiences-sort");
+    renderRecentlyViewed();
+    showToast("Local browsing history & progress cleared.", "info");
+  });
 }
 
 /* ===== Build & Deploy Panel ===== */
@@ -4760,8 +4851,9 @@ async function presenceHeartbeat(sessionId) {
 function initLivePresence() {
   if (!document.getElementById("presence-avatars")) return;
   const sessionId = getPresenceSessionId();
-  presenceHeartbeat(sessionId);
-  setInterval(() => presenceHeartbeat(sessionId), PRESENCE_HEARTBEAT_MS);
+  const tick = () => { if (getSitePrefs().sharePresence) presenceHeartbeat(sessionId); };
+  tick();
+  setInterval(tick, PRESENCE_HEARTBEAT_MS);
 }
 
 /* ===== Live multiplayer cursors ===== */
@@ -4841,7 +4933,7 @@ function initLiveCursors() {
     mouseHasMoved = true;
   }, { passive: true });
 
-  setInterval(() => sendCursorUpdate(sessionId), CURSOR_UPDATE_MS);
+  setInterval(() => { if (getSitePrefs().shareCursor) sendCursorUpdate(sessionId); }, CURSOR_UPDATE_MS);
 }
 
 /* ===== Visitor Hit Counter ===== */
