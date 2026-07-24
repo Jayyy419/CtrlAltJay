@@ -2160,6 +2160,7 @@ body.zen-mode .ide-panel-scroll { padding: 48px max(32px, calc(50% - 380px)); }
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
+  text-decoration: none;
   transition: all 0.3s ease;
 }
 .export-btn:hover { background: rgba(245,158,11,0.1); border-color: #f59e0b; }
