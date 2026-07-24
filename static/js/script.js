@@ -1317,13 +1317,14 @@ function renderSection(items, categoryId, sortId, targetGridId, subsectionFilter
     return;
   }
 
-  // Pin favorites to top
+  // Pin admin-spotlighted items first, then favorites, preserving sort order within each group
   const favIds = new Set(getFavorites());
-  if (favIds.size > 0) {
-    const pinned = filtered.filter((i) => favIds.has(i.id));
-    const rest = filtered.filter((i) => !favIds.has(i.id));
-    filtered = [...pinned, ...rest];
-  }
+  filtered = filtered.slice().sort((a, b) => {
+    const aPinned = a.is_pinned ? 1 : 0, bPinned = b.is_pinned ? 1 : 0;
+    if (aPinned !== bPinned) return bPinned - aPinned;
+    const aFav = favIds.has(a.id) ? 1 : 0, bFav = favIds.has(b.id) ? 1 : 0;
+    return bFav - aFav;
+  });
 
   // Pagination: show only first PAGE_SIZE (or previously expanded count)
   const limit = shownCounts[targetGridId] || PAGE_SIZE;
@@ -1866,6 +1867,60 @@ function initStackSearch() {
   });
 }
 
+/* ===== Smart (semantic) search ===== */
+function initSmartSearch(btnId, inputId, itemsGetter, targetGridId, rerenderFn) {
+  const btn = document.getElementById(btnId);
+  const input = document.getElementById(inputId);
+  const target = document.getElementById(targetGridId);
+  if (!btn || !input || !target) return;
+
+  btn.addEventListener("click", async () => {
+    const query = input.value.trim();
+    if (!query) { showToast("Type something to smart-search for first.", "info"); return; }
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<ion-icon name="hourglass-outline"></ion-icon> Searching&hellip;';
+    try {
+      const res = await fetch("/api/semantic-search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Smart search failed.");
+      const items = itemsGetter();
+      const byId = new Map(items.map((i) => [i.id, i]));
+      const ranked = data.results.map((id) => byId.get(id)).filter(Boolean);
+      renderSmartSearchResults(ranked, query, target, targetGridId, rerenderFn);
+    } catch (err) {
+      showToast(err.message || "Smart search failed.", "error");
+    }
+    btn.disabled = false;
+    btn.innerHTML = originalHtml;
+  });
+}
+
+function renderSmartSearchResults(items, query, target, targetGridId, rerenderFn) {
+  target.innerHTML = "";
+  const banner = document.createElement("div");
+  banner.className = "smart-search-banner";
+  banner.innerHTML = `<ion-icon aria-hidden="true" name="sparkles-outline"></ion-icon> Smart search results for &ldquo;${escapeHtml(query)}&rdquo; (${items.length})<button type="button" class="smart-search-clear">Clear</button>`;
+  banner.querySelector(".smart-search-clear").addEventListener("click", rerenderFn);
+  target.appendChild(banner);
+
+  if (!items.length) {
+    target.innerHTML += `<div class="empty-state" style="grid-column:1/-1"><ion-icon name="sparkles-outline"></ion-icon><p>No relevant matches found for &ldquo;${escapeHtml(query)}&rdquo;.</p></div>`;
+    return;
+  }
+  items.forEach((item) => target.appendChild(buildCard(item)));
+  observeCards(target);
+  if (state.isAdmin) {
+    addBulkCheckboxes(target);
+    addSpotlightToggles(target);
+    addFavoriteButtons();
+  }
+}
+
 async function fetchData() {
   try {
     const response = await fetch("/api/public-data");
@@ -2384,6 +2439,8 @@ async function bootstrap() {
   initSidebarResize();
   initMinimap();
   initStackSearch();
+  initSmartSearch("projects-smart-search-btn", "projects-search", () => state.projects, "projects-grid", () => state.rerenderProjects());
+  initSmartSearch("experiences-smart-search-btn", "experiences-search", () => state.experiences, "experiences-grid", () => state.rerenderExperiences());
   initTabbarScroll();
   initIdeStatusClock();
   renderIdeTabbar("about");

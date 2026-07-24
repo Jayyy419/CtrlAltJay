@@ -1764,6 +1764,82 @@ def api_chat():
     return jsonify({"reply": reply})
 
 
+# ─── Semantic Search ─────────────────────────────────────────────────────────
+# Lets a query like "something about cloud cost savings" match projects that
+# never use those exact words, by asking Claude to judge relevance against a
+# compact summary of every project/experience — reusing the same Anthropic
+# credentials already configured for the chat assistant.
+
+SEARCH_MAX_ATTEMPTS = 20
+SEARCH_RATE_WINDOW_SECONDS = 600
+SEARCH_MAX_ITEMS = 80
+
+
+@app.route("/api/semantic-search", methods=["POST"])
+def api_semantic_search():
+    ip = _client_ip()
+    remaining_lock = _rate_limit_locked_seconds("search", ip)
+    if remaining_lock > 0:
+        return jsonify({"error": "Too many searches — please wait a bit before trying again.", "retry_in": remaining_lock}), 429
+
+    api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
+    if not HAS_ANTHROPIC or not api_key:
+        return jsonify({"error": "Smart search isn't configured yet."}), 503
+
+    payload = request.get_json(silent=True) or {}
+    query = (payload.get("query") or "").strip()[:200]
+    if not query:
+        return jsonify({"error": "Query is required."}), 400
+
+    all_items = [
+        dynamo_to_dict(i) for i in scan_all(table_items)
+        if not i.get("id", "").startswith("__") and not i.get("deleted_at") and not i.get("is_draft")
+    ]
+    corpus = [
+        {
+            "id": i["id"],
+            "title": i.get("title", ""),
+            "section": i.get("section", ""),
+            "category": i.get("category", ""),
+            "summary": (i.get("summary") or i.get("description") or "")[:200],
+            "skills": i.get("skills", ""),
+        }
+        for i in all_items if i.get("section") in {"project", "experience"}
+    ][:SEARCH_MAX_ITEMS]
+
+    if not corpus:
+        return jsonify({"results": []})
+
+    _record_rate_limit_failure("search", ip, SEARCH_MAX_ATTEMPTS, SEARCH_RATE_WINDOW_SECONDS)
+
+    prompt = (
+        "You are a semantic search engine for a portfolio site. Given a user query and a JSON array of "
+        "items (projects/experiences), return a JSON array of the \"id\" values of items relevant to the "
+        "query, ranked most-relevant first. A query can match on meaning, not just exact words. Only "
+        "include items that are genuinely relevant to the query — return an empty array if nothing matches. "
+        "Respond with ONLY the JSON array of id strings, no other text.\n\n"
+        f"Query: {query}\n\nItems:\n{json.dumps(corpus)}"
+    )
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+        response = client.messages.create(
+            model=CHAT_MODEL,
+            max_tokens=300,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = "".join(block.text for block in response.content if getattr(block, "type", "") == "text").strip()
+        text = re.sub(r"^```(?:json)?|```$", "", text, flags=re.MULTILINE).strip()
+        parsed = json.loads(text)
+        ids = [str(x) for x in parsed] if isinstance(parsed, list) else []
+        valid_ids = {i["id"] for i in corpus}
+        ids = [i for i in ids if i in valid_ids]
+    except Exception as e:
+        print(f"WARNING: semantic search failed: {e}", flush=True)
+        return jsonify({"error": "Smart search is temporarily unavailable."}), 502
+
+    return jsonify({"results": ids})
+
+
 # ─── Auto-Backup to S3 ──────────────────────────────────────────────────────
 
 @app.route("/api/admin/backup", methods=["POST"])
