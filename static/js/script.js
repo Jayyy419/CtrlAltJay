@@ -2584,6 +2584,51 @@ function initChat() {
       input.focus();
     }
   });
+
+  initChatVoiceInput();
+}
+
+function initChatVoiceInput() {
+  const micBtn = document.getElementById("chat-mic-btn");
+  if (!micBtn) return;
+  const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognitionCtor) return;
+  micBtn.hidden = false;
+
+  const recognition = new SpeechRecognitionCtor();
+  recognition.lang = "en-US";
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+  let listening = false;
+
+  recognition.addEventListener("result", (e) => {
+    const transcript = Array.from(e.results).map((r) => r[0].transcript).join(" ");
+    const input = document.getElementById("chat-input");
+    if (input) input.value = transcript;
+  });
+  recognition.addEventListener("end", () => {
+    listening = false;
+    micBtn.classList.remove("chat-mic-btn--active");
+  });
+  recognition.addEventListener("error", () => {
+    listening = false;
+    micBtn.classList.remove("chat-mic-btn--active");
+    showToast("Couldn't hear that — try again.", "error");
+  });
+
+  micBtn.addEventListener("click", () => {
+    if (listening) {
+      recognition.stop();
+      return;
+    }
+    try {
+      recognition.start();
+      listening = true;
+      micBtn.classList.add("chat-mic-btn--active");
+    } catch (_) {
+      // recognition already running — ignore
+    }
+  });
 }
 
 /* ===== Guestbook: "Leave a Note" ===== */
