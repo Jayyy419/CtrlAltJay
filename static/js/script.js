@@ -169,6 +169,51 @@ function switchTab(tabName) {
   }
   if (panel) panel.classList.add("active");
   syncIdeChrome(tabName);
+  updateMobileTopbarTitle(panel);
+}
+
+function updateMobileTopbarTitle(panel) {
+  const titleEl = document.getElementById("mobile-topbar-title");
+  if (!titleEl || !panel) return;
+  const heading = panel.querySelector("h1, h2");
+  if (heading) {
+    titleEl.textContent = heading.textContent.trim();
+    return;
+  }
+  const activeBtn = document.querySelector(".tab-btn.active");
+  titleEl.textContent = activeBtn?.getAttribute("aria-label") || "";
+}
+
+function initMobileNav() {
+  const toggle = document.getElementById("mobile-nav-toggle");
+  const backdrop = document.getElementById("mobile-nav-backdrop");
+  if (!toggle) return;
+
+  const closeNav = () => {
+    document.body.classList.remove("mobile-nav-open");
+    toggle.setAttribute("aria-expanded", "false");
+  };
+  const openNav = () => {
+    document.body.classList.add("mobile-nav-open");
+    toggle.setAttribute("aria-expanded", "true");
+  };
+
+  toggle.addEventListener("click", () => {
+    document.body.classList.contains("mobile-nav-open") ? closeNav() : openNav();
+  });
+  backdrop?.addEventListener("click", closeNav);
+  document.querySelector(".activity-bar")?.addEventListener("click", (e) => {
+    if (e.target.closest(".tab-btn")) closeNav();
+  });
+  document.getElementById("file-tree")?.addEventListener("click", (e) => {
+    if (e.target.closest(".file-tree-item, .file-tree-subfolder")) closeNav();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && document.body.classList.contains("mobile-nav-open")) closeNav();
+  });
+  window.addEventListener("resize", () => {
+    if (window.innerWidth > 900) closeNav();
+  });
 }
 
 function initTabs() {
@@ -2442,6 +2487,7 @@ async function bootstrap() {
   initDblClickEdit();
   initThemeToggle();
   applySitePrefs();
+  initMobileNav();
   initDragAndDrop();
   initBatchSkills();
   initActivityLog();
@@ -5905,13 +5951,14 @@ function initSurpriseMe() {
 function initMobileSwipe() {
   let touchStartX = 0;
   let touchStartY = 0;
-  const content = document.querySelector(".content");
+  const content = document.getElementById("ide-panel-scroll");
   if (!content) return;
   content.addEventListener("touchstart", (e) => {
     touchStartX = e.changedTouches[0].screenX;
     touchStartY = e.changedTouches[0].screenY;
   }, { passive: true });
   content.addEventListener("touchend", (e) => {
+    if (document.body.classList.contains("mobile-nav-open")) return;
     const dx = e.changedTouches[0].screenX - touchStartX;
     const dy = e.changedTouches[0].screenY - touchStartY;
     if (Math.abs(dx) < 60 || Math.abs(dy) > Math.abs(dx)) return;
