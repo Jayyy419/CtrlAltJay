@@ -2417,6 +2417,7 @@ async function bootstrap() {
   handleDeepLink();
   initHitCounter();
   initLivePresence();
+  initLiveCursors();
   initExplorationProgress();
   initAnimatedCounters();
   initGithubActivity();
@@ -4616,6 +4617,86 @@ function initLivePresence() {
   const sessionId = getPresenceSessionId();
   presenceHeartbeat(sessionId);
   setInterval(() => presenceHeartbeat(sessionId), PRESENCE_HEARTBEAT_MS);
+}
+
+/* ===== Live multiplayer cursors ===== */
+const CURSOR_UPDATE_MS = 2500;
+let lastMouseX = null;
+let lastMouseY = null;
+let mouseHasMoved = false;
+
+function hashStringToIndex(str, mod) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash) % mod;
+}
+
+function getGhostCursorLayer() {
+  let layer = document.getElementById("ghost-cursor-layer");
+  if (!layer) {
+    layer = document.createElement("div");
+    layer.id = "ghost-cursor-layer";
+    layer.setAttribute("aria-hidden", "true");
+    document.body.appendChild(layer);
+  }
+  return layer;
+}
+
+function renderGhostCursors(cursors) {
+  const layer = getGhostCursorLayer();
+  const seen = new Set();
+  cursors.forEach((c) => {
+    seen.add(c.session_id);
+    let el = layer.querySelector(`[data-session="${c.session_id}"]`);
+    if (!el) {
+      const color = PRESENCE_AVATAR_COLORS[hashStringToIndex(c.session_id, PRESENCE_AVATAR_COLORS.length)];
+      el = document.createElement("div");
+      el.className = "ghost-cursor";
+      el.dataset.session = c.session_id;
+      el.innerHTML = `
+        <svg width="18" height="24" viewBox="0 0 18 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M1 1L1 19L6 15L9 22L12 20.5L9 13.5L16 13.5L1 1Z" fill="${color}" stroke="rgba(0,0,0,0.3)" stroke-width="1"/>
+        </svg>
+        <span class="ghost-cursor-label" style="background:${color}">Visitor</span>
+      `;
+      layer.appendChild(el);
+    }
+    el.style.left = `${c.x * 100}%`;
+    el.style.top = `${c.y * 100}%`;
+  });
+  layer.querySelectorAll(".ghost-cursor").forEach((el) => {
+    if (!seen.has(el.dataset.session)) el.remove();
+  });
+}
+
+async function sendCursorUpdate(sessionId) {
+  if (!mouseHasMoved || lastMouseX == null || lastMouseY == null) return;
+  try {
+    const res = await fetch("/api/cursor", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sessionId, x: lastMouseX, y: lastMouseY }),
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    renderGhostCursors(Array.isArray(data.cursors) ? data.cursors : []);
+  } catch (_) {
+    // decorative feature — fail silently
+  }
+}
+
+function initLiveCursors() {
+  const sessionId = getPresenceSessionId();
+  document.addEventListener("mousemove", (e) => {
+    lastMouseX = e.clientX / window.innerWidth;
+    lastMouseY = e.clientY / window.innerHeight;
+    mouseHasMoved = true;
+  }, { passive: true });
+
+  setInterval(() => sendCursorUpdate(sessionId), CURSOR_UPDATE_MS);
 }
 
 /* ===== Visitor Hit Counter ===== */
