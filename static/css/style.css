@@ -38,7 +38,7 @@
   --ide-editor-bg: #ffffff;
   --ide-editor-bg-soft: #f7f7f7;
   --ide-sidebar-bg: #f3f3f3;
-  --ide-activitybar-bg: #2c2c2c;
+  --ide-activitybar-bg: #e8e8e8;
   --ide-statusbar-bg: #007acc;
   --ide-tab-active-bg: #ffffff;
   --ide-tab-inactive-bg: #ececec;
@@ -159,8 +159,11 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
   position: absolute;
   left: 0; top: 8px; bottom: 8px;
   width: 2px;
-  background: var(--ide-text-bright);
+  background: var(--ide-accent);
 }
+.light-theme .activity-bar .tab-btn { color: #6e6e6e; }
+.light-theme .activity-bar .tab-btn:hover { color: #1e1e1e !important; }
+.light-theme .activity-bar .tab-btn.active { color: #1e1e1e !important; }
 .activity-bar .tab-btn:focus-visible { outline: 2px solid var(--ide-accent); outline-offset: -2px; }
 .tab-count-badge {
   position: absolute;
@@ -217,6 +220,18 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
   border: 2px solid var(--ide-accent);
 }
 .profile-portrait img { width: 100%; height: 100%; object-fit: cover; }
+.profile-tagline {
+  max-width: 480px;
+  margin: 0 0 20px;
+  padding: 12px 16px;
+  border-left: 3px solid var(--ide-accent);
+  background: var(--ide-editor-bg-soft);
+  border-radius: 0 6px 6px 0;
+  color: var(--ide-text);
+  font-size: 0.88rem;
+  font-style: italic;
+  line-height: 1.6;
+}
 .contact-cluster { display: grid; gap: 8px; max-width: 420px; }
 .profile-chip {
   display: flex;
@@ -234,6 +249,51 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
 }
 .profile-chip ion-icon { color: var(--ide-accent); font-size: 1.05rem; flex-shrink: 0; }
 .profile-chip:hover { border-color: var(--ide-accent); }
+.profile-quickfacts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 20px;
+  max-width: 480px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--ide-border-soft);
+}
+.profile-quickfact { display: flex; flex-direction: column; gap: 3px; }
+.profile-quickfact .qf-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ide-text-faint);
+}
+.profile-quickfact .qf-label ion-icon { color: var(--ide-accent); font-size: 0.9rem; }
+.profile-quickfact .qf-value {
+  font-family: 'Plex Mono', monospace;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ide-text-bright);
+}
+.profile-quickfact-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--ide-accent);
+  font-family: 'Plex Mono', monospace;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+.profile-quickfact-link ion-icon { font-size: 0.95rem; transition: transform 0.15s ease; }
+.profile-quickfact-link:hover { color: var(--ide-accent-strong); }
+.profile-quickfact-link:hover ion-icon { transform: translateX(2px); }
 .profile-logout-btn {
   width: 100%;
   max-width: 420px;
@@ -1384,12 +1444,10 @@ body.zen-mode .ide-panel-scroll { padding: 48px max(32px, calc(50% - 380px)); }
 }
 
 /* Extensions marketplace-style "install" animation on opening a skill */
-#skill-item-viewer { position: relative; }
 .skill-install-overlay {
-  position: absolute;
-  inset: 0;
+  position: fixed;
   background: var(--ide-editor-bg);
-  z-index: 5;
+  z-index: 50;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2176,13 +2234,16 @@ body.zen-mode .ide-panel-scroll { padding: 48px max(32px, calc(50% - 380px)); }
 /* "Admin Tools" popup-open button */
 .admin-tools-open-btn {
   width: 100%;
+  max-width: 420px;
   text-align: center;
+  margin-top: 16px;
   padding: 10px 16px;
   border: 1px solid var(--ide-border-soft);
   background: var(--ide-editor-bg-soft);
   color: var(--ide-text);
+  font-family: 'Plex Mono', monospace;
   border-radius: 6px;
-  font-size: 0.78rem;
+  font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -2894,6 +2955,20 @@ body.zen-mode .ide-panel-scroll { padding: 48px max(32px, calc(50% - 380px)); }
 .stat-label { color: var(--ide-text-dim); }
 .stat-value { color: var(--ide-accent); font-weight: 700; }
 .stat-time { color: var(--ide-text-faint); font-size: 0.68rem; }
+.stats-subheader-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.stats-subheader-row h5 { margin: 0; }
+.stats-clear-btn {
+  background: none;
+  border: 1px solid var(--ide-border-soft);
+  color: var(--ide-text-faint);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.stats-clear-btn:hover { border-color: #ef4444; color: #ef4444; }
 
 /* ===== Light theme additions ===== */
 .light-theme .share-btn { background: var(--bg-input); border-color: var(--border-color); }
