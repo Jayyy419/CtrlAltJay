@@ -5044,7 +5044,7 @@ function getCommandPaletteItems() {
       showToast("Email copied to clipboard", "success");
     } });
   }
-  return items;
+  return items.sort((a, b) => a.label.localeCompare(b.label));
 }
 
 function openCommandPalette() {
