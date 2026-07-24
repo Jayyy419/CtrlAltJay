@@ -2379,6 +2379,23 @@ body.zen-mode .ide-panel-scroll { padding: 48px max(32px, calc(50% - 380px)); }
 .chat-input-row { display: flex; gap: 10px; }
 .chat-input-row .ide-control { flex: 1; }
 .chat-input-row .contact-submit-btn { align-self: stretch; }
+.chat-mic-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  flex-shrink: 0;
+  background: var(--ide-editor-bg-soft);
+  border: 1px solid var(--ide-border-soft);
+  border-radius: 6px;
+  color: var(--ide-text-dim);
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.chat-mic-btn:hover { border-color: var(--ide-accent); color: var(--ide-accent); }
+.chat-mic-btn--active { border-color: #ef4444; color: #ef4444; background: rgba(239,68,68,0.1); animation: chatMicPulse 1.2s ease-in-out infinite; }
+@keyframes chatMicPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); } 50% { box-shadow: 0 0 0 6px rgba(239,68,68,0); } }
 
 /* ===== Guestbook: "Leave a Note" ===== */
 .guestbook-form { display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px; }
