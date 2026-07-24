@@ -2441,6 +2441,11 @@ body.zen-mode .ide-panel-scroll { padding: 48px max(32px, calc(50% - 380px)); }
 .guestbook-action-btn--approve:hover { border-color: var(--ide-git-added); color: var(--ide-git-added); }
 .guestbook-action-btn--reject:hover, .guestbook-action-btn--delete:hover { border-color: #ef4444; color: #ef4444; }
 
+/* ===== Testimonials ===== */
+.testimonials-list { display: flex; flex-direction: column; gap: 12px; }
+.testimonial-role { font-size: 0.76rem; color: var(--ide-text-faint); font-style: italic; }
+.testimonial-form-section { max-width: 620px; }
+
 /* ===== Light Theme ===== */
 .light-theme {
   --bg-surface: #f8fafc;
