@@ -552,6 +552,7 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
 .file-tree-item .fdot.json { background: #cbcb41; }
 .file-tree-item .fdot.pdf { background: #e06c75; }
 .file-tree-item .fdot.diff { background: #e2c08d; }
+.fdot.yml { background: #e91e63; }
 .file-tree-item .fdot.ts { background: #3178c6; }
 
 .ide-sidebar-resizer {
@@ -679,6 +680,7 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
 .ide-tab .fdot.json { background: #cbcb41; }
 .ide-tab .fdot.pdf { background: #e06c75; }
 .ide-tab .fdot.diff { background: #e2c08d; }
+.fdot.yml { background: #e91e63; }
 .ide-tab .fdot.ts { background: #3178c6; }
 .ide-tab .close { opacity: 0.55; font-size: 0.9rem; margin-left: 2px; padding: 0 2px; border-radius: 3px; }
 .ide-tab .close:hover { opacity: 1; background: var(--ide-border-soft); }
@@ -817,41 +819,9 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
   font-size: 0.8rem;
 }
 
-/* ===== Source Control Panel ===== */
-.scm-commit-box {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 20px;
-  padding: 10px;
-  background: var(--ide-editor-bg-soft);
-  border: 1px solid var(--ide-border-soft);
-  border-radius: 8px;
-}
-.scm-commit-input {
-  resize: none;
-  background: transparent;
-  border: none;
-  outline: none;
-  color: var(--ide-text-dim);
-  font-family: 'Plex Mono', monospace;
-  font-size: 0.82rem;
-}
-.scm-commit-btn {
-  align-self: flex-end;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
-  background: var(--ide-border-soft);
-  color: var(--ide-text-dim);
-  border: none;
-  border-radius: 5px;
-  font-size: 0.78rem;
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-.scm-changes-header {
+/* ===== Build & Deploy Panel ===== */
+.scm-empty { padding: 20px; color: var(--ide-text-dim); font-family: 'Plex Mono', monospace; font-size: 0.85rem; }
+.build-status-header {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -862,27 +832,100 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
   letter-spacing: 0.05em;
   margin-bottom: 6px;
 }
-.scm-changes-count { background: var(--ide-border-soft); color: var(--ide-text-bright); border-radius: 9px; padding: 0 7px; font-size: 0.7rem; }
-.scm-changes-list { display: flex; flex-direction: column; }
-.scm-row {
+.build-status-panel {
+  border: 1px solid var(--ide-border-soft);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.build-run-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 7px 4px;
+  padding: 10px 14px;
   font-family: 'Plex Mono', monospace;
   font-size: 0.82rem;
   color: var(--ide-text);
-  cursor: pointer;
-  border-radius: 4px;
+  text-decoration: none;
+  border-bottom: 1px solid var(--ide-border-soft);
+  transition: background 0.15s ease;
 }
-.scm-row:hover, .scm-row:focus-visible { background: var(--ide-editor-bg-soft); outline: none; }
-.scm-status { width: 16px; text-align: center; font-weight: 700; border-radius: 3px; font-size: 0.75rem; flex-shrink: 0; }
-.scm-status--A { color: var(--ide-git-added); }
-.scm-status--M { color: #e2c08d; }
-.scm-filename { color: var(--ide-text-bright); }
-.scm-path { color: var(--ide-text-dim); }
-.scm-time { margin-left: auto; color: var(--ide-text-faint); font-size: 0.74rem; white-space: nowrap; }
-.scm-empty { padding: 20px; color: var(--ide-text-dim); font-family: 'Plex Mono', monospace; font-size: 0.85rem; }
+.build-run-row:last-child { border-bottom: none; }
+.build-run-row:hover { background: var(--ide-editor-bg-soft); }
+.build-run-row ion-icon { font-size: 1.1rem; flex-shrink: 0; }
+.build-status--success ion-icon { color: var(--ide-git-added); }
+.build-status--failure ion-icon { color: #ef4444; }
+.build-status--pending ion-icon { color: var(--ide-text-faint); }
+.build-run-name { color: var(--ide-text-bright); }
+.build-run-branch { color: var(--ide-text-dim); }
+.build-run-time { margin-left: auto; color: var(--ide-text-faint); font-size: 0.74rem; white-space: nowrap; }
+
+/* Architecture diagram */
+.arch-diagram { display: flex; flex-direction: column; align-items: stretch; gap: 4px; width: 100%; max-width: 520px; }
+.arch-row { display: flex; gap: 16px; justify-content: center; width: 100%; }
+.arch-row--branch { flex-wrap: wrap; }
+.arch-box {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 16px 20px;
+  border-radius: 10px;
+  background: var(--ide-editor-bg-soft);
+  border: 1px solid var(--ide-border-soft);
+  min-width: 140px;
+  flex: 1;
+}
+.arch-box ion-icon { font-size: 1.4rem; color: var(--ide-accent); }
+.arch-box-title { font-weight: 700; color: var(--ide-text-bright); font-size: 0.85rem; }
+.arch-box-sub { font-size: 0.7rem; color: var(--ide-text-dim); text-align: center; }
+.arch-box--client { border-color: var(--ide-accent); }
+.arch-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ide-text-faint);
+  font-size: 0.68rem;
+  font-family: 'Plex Mono', monospace;
+  padding: 2px 0;
+}
+.arch-arrow::before, .arch-arrow::after { content: ''; width: 1px; height: 10px; background: var(--ide-border-soft); }
+.arch-arrow span { padding: 0 8px; white-space: nowrap; }
+.arch-deploy-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
+  padding: 12px 18px;
+  border-radius: 8px;
+  background: var(--ide-editor-bg-soft);
+  border: 1px dashed var(--ide-border-soft);
+  color: var(--ide-text-dim);
+  font-size: 0.8rem;
+  max-width: 100%;
+}
+.arch-deploy-note ion-icon { color: var(--ide-accent); font-size: 1.2rem; flex-shrink: 0; }
+.arch-deploy-note code { font-family: 'Plex Mono', monospace; color: var(--ide-text); background: var(--ide-border-soft); padding: 1px 6px; border-radius: 4px; }
+
+/* Why These Choices */
+.decision-list { display: flex; flex-direction: column; gap: 14px; max-width: 640px; }
+.decision-item {
+  padding: 14px 18px;
+  border-radius: 10px;
+  background: var(--ide-editor-bg-soft);
+  border: 1px solid var(--ide-border-soft);
+}
+.decision-item h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--ide-text-bright);
+}
+.decision-item h4 ion-icon { color: var(--ide-accent); font-size: 1.1rem; }
+.decision-item p { margin: 0; font-size: 0.83rem; line-height: 1.6; color: var(--ide-text-dim); }
 
 /* ===== Settings Panel ===== */
 .settings-json-viewer {
