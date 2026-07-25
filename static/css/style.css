@@ -2054,6 +2054,86 @@ body.zen-mode .ide-panel-scroll { padding: 48px max(32px, calc(50% - 380px)); }
 @keyframes toastIn { from { opacity: 0; transform: translateY(12px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @keyframes toastOut { from { opacity: 1; } to { opacity: 0; transform: translateY(-8px); } }
 
+/* Undo toast — stays up long enough (6s) to actually click Undo, unlike
+   the plain 3s auto-dismiss toasts above. */
+.toast--undo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--ide-text-bright);
+  animation: toastIn 0.3s ease-out, toastOut 0.3s ease-in 5.7s forwards;
+}
+.toast-undo-btn {
+  flex-shrink: 0;
+  padding: 5px 14px;
+  background: var(--ide-accent);
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  font-family: 'Plex Mono', monospace;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+.toast-undo-btn:hover { opacity: 0.85; }
+
+/* TL;DR summary toast — no auto-dismiss, since a 2-3 sentence summary
+   takes longer to read than a status message; closed explicitly instead. */
+.toast--tldr {
+  max-width: 320px;
+  animation: toastIn 0.3s ease-out forwards;
+}
+.toast-tldr-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ide-accent);
+  font-size: 0.78rem;
+}
+.toast-tldr-head strong { flex: 1; font-family: 'Plex Mono', monospace; }
+.toast-tldr-close {
+  background: none;
+  border: none;
+  color: var(--ide-text-faint);
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0;
+  display: flex;
+}
+.toast-tldr-close:hover { color: var(--ide-text-bright); }
+.toast-tldr-body {
+  margin: 8px 0 0;
+  font-weight: 400;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--ide-text);
+  white-space: normal;
+}
+
+/* TL;DR button, injected next to each main tab's <h2> */
+.tldr-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 12px;
+  padding: 4px 10px;
+  vertical-align: middle;
+  background: var(--ide-editor-bg-soft);
+  color: var(--ide-accent);
+  border: 1px solid rgba(55,148,255,0.35);
+  border-radius: 5px;
+  font-family: 'Plex Mono', monospace;
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.tldr-btn:hover { background: rgba(55,148,255,0.12); }
+.tldr-btn:disabled { opacity: 0.6; cursor: default; }
+.tldr-btn ion-icon { font-size: 0.9rem; }
+
 /* ===== Exploration Completion Celebration ===== */
 .celebration-overlay {
   position: fixed;
@@ -3237,6 +3317,32 @@ select.ide-control:hover { border-color: var(--ide-accent); }
 }
 .theme-toggle-btn:hover { background: rgba(55,148,255,0.12); border-color: var(--ide-accent); }
 
+/* ===== Recruiter Mode Toggle Button ===== */
+.recruiter-mode-btn {
+  position: fixed;
+  bottom: 140px;
+  right: 32px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--ide-editor-bg-soft);
+  border: 1.5px solid var(--ide-border-soft);
+  color: var(--ide-accent);
+  font-size: 1.3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 100;
+  backdrop-filter: blur(8px);
+}
+.recruiter-mode-btn:hover { background: rgba(55,148,255,0.12); border-color: var(--ide-accent); }
+.recruiter-mode-btn[aria-pressed="true"] { background: var(--ide-accent); color: #fff; border-color: var(--ide-accent); }
+@media (max-width: 640px) {
+  .recruiter-mode-btn { bottom: 128px; right: 20px; width: 44px; height: 44px; }
+}
+
 
 /* ===== Horizontal scroll strips (Recently Viewed, Related): hidden scrollbar + edge fade ===== */
 .h-scroll-wrap {
@@ -3924,13 +4030,33 @@ select.ide-control:hover { border-color: var(--ide-accent); }
 .command-palette-empty { padding: 20px; text-align: center; color: var(--ide-text-faint); font-family: 'Plex Mono', monospace; font-size: 0.85rem; }
 .light-theme .shortcuts-overlay { background: rgba(0,0,0,0.4); }
 
-/* Print-friendly resume */
+/* Print-friendly resume — this targets the current IDE-chrome layout
+   (.ide-shell/.ide-sidebar/.ide-tabbar-row/.ide-minimap/.ide-statusbar etc.),
+   which is fixed-height and clips overflow on screen; printing needs the
+   chrome hidden and the resume content allowed to flow to its natural
+   height instead of being cropped to one viewport. */
 @media print {
-  body { background: #fff !important; color: #222 !important; }
-  .layout { display: block !important; }
-  .activity-bar, .main-nav, footer, .toast-container, .back-to-top, .scroll-progress,
+  body { background: #fff !important; color: #222 !important; height: auto !important; overflow: visible !important; }
+  .layout { overflow: visible !important; }
+  .ide-shell {
+    height: auto !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background: #fff !important;
+  }
+  .ide-editor-area { height: auto !important; }
+  .ide-panel-scroll { height: auto !important; overflow: visible !important; padding: 0 !important; }
+  .activity-bar, .ide-sidebar, .ide-sidebar-resizer, .mobile-topbar, .mobile-nav-backdrop,
+  .ide-tabbar-row, .ide-minimap, .ide-statusbar,
+  .main-nav, footer, .toast-container, .back-to-top, .scroll-progress,
+  .theme-toggle-btn, .recruiter-mode-btn, .tldr-btn,
   .controls-row, .subsection-nav, .panel-head p, .bulk-bar,
-  #about, #projects, #experiences, #stack, #contact, #profile, #credly, #linkedin, .admin-only, .modal-shell { display: none !important; }
+  #about, #projects, #experiences, #stack, #contact, #profile, #credly, #linkedin,
+  #chat, #settings, #now, #uses, #testimonials, .admin-only, .modal-shell,
+  #export-json-btn, #print-resume-btn, #export-resume-json-btn, #export-resume-md-btn,
+  #resume-key-panel { display: none !important; }
   #resume { display: block !important; }
   .content { background: none !important; border: none !important; box-shadow: none !important; backdrop-filter: none !important; padding: 0 !important; }
   .tab-panel { page-break-inside: avoid; }
@@ -3954,6 +4080,84 @@ select.ide-control:hover { border-color: var(--ide-accent); }
 }
 
 /* (Mobile overrides for late-declared components — merged into main @media 640px block above) */
+
+/* ===== Recruiter Mode =====
+   A condensed, single-page view for visitors who just want to skim fast:
+   hides the IDE chrome (activity bar, file tree, tab bar, minimap, status
+   bar) and stacks the core content sections (About/Resume/Projects/
+   Experiences/Stack/Contact) into one scrollable page instead of one tab
+   at a time, with interactive filtering/admin affordances hidden since
+   they're not needed for a quick skim. Reuses the same "let the IDE shell
+   flow to its natural height instead of clipping to one viewport" recipe
+   already used for mobile and print. */
+body.recruiter-mode {
+  height: auto !important;
+  overflow: visible !important;
+}
+body.recruiter-mode .layout { overflow: visible !important; }
+body.recruiter-mode .ide-shell {
+  height: auto !important;
+  overflow: visible !important;
+  box-shadow: none !important;
+  max-width: 900px;
+  margin: 0 auto;
+}
+body.recruiter-mode .ide-editor-area { height: auto !important; }
+body.recruiter-mode .ide-panel-scroll {
+  height: auto !important;
+  overflow: visible !important;
+  padding: 40px clamp(20px, 5vw, 56px) !important;
+}
+
+body.recruiter-mode .activity-bar,
+body.recruiter-mode .ide-sidebar,
+body.recruiter-mode .ide-sidebar-resizer,
+body.recruiter-mode .mobile-topbar,
+body.recruiter-mode .mobile-nav-backdrop,
+body.recruiter-mode .ide-tabbar-row,
+body.recruiter-mode .ide-minimap,
+body.recruiter-mode .ide-statusbar,
+body.recruiter-mode .back-to-top,
+body.recruiter-mode .scroll-progress,
+body.recruiter-mode footer {
+  display: none !important;
+}
+
+/* Show the core sections stacked, in place of the one-tab-at-a-time model */
+body.recruiter-mode .tab-panel { display: none !important; }
+body.recruiter-mode #about,
+body.recruiter-mode #resume,
+body.recruiter-mode #projects,
+body.recruiter-mode #experiences,
+body.recruiter-mode #stack,
+body.recruiter-mode #contact {
+  display: block !important;
+  padding-bottom: 48px;
+  margin-bottom: 48px;
+  border-bottom: 1px solid var(--ide-border-soft);
+}
+body.recruiter-mode #contact { border-bottom: none; margin-bottom: 0; }
+
+/* Filtering/sorting/admin affordances aren't needed for a quick skim */
+body.recruiter-mode .subsection-nav,
+body.recruiter-mode .controls-row,
+body.recruiter-mode .skills-filter-row,
+body.recruiter-mode .recently-viewed-section,
+body.recruiter-mode .bulk-bar,
+body.recruiter-mode .fav-btn,
+body.recruiter-mode .card-checkbox,
+body.recruiter-mode .card-pin-toggle,
+body.recruiter-mode .admin-only {
+  display: none !important;
+}
+
+/* Cards may not have scrolled into view yet for the reveal animation to
+   have triggered — force them all visible immediately since everything is
+   stacked on one page now. */
+body.recruiter-mode .card {
+  opacity: 1 !important;
+  transform: none !important;
+}
 
 /* Respect OS-level reduced-motion preference — disables/shortens all
    animations and transitions (fade-ups, glow, scroll-smooth, etc.) for

@@ -101,6 +101,114 @@ function showToast(message, type = "info") {
   setTimeout(() => toast.remove(), 3100);
 }
 
+/* Toast with an Undo action — stays up 6s (vs the plain 3s toast above) to
+   give admins a window to reverse a delete without digging through the
+   Recently Deleted panel. */
+function showUndoToast(message, onUndo) {
+  const container = document.getElementById("toast-container");
+  if (!container) return;
+  const toast = document.createElement("div");
+  toast.className = "toast toast--undo";
+  const text = document.createElement("span");
+  text.textContent = message;
+  const undoBtn = document.createElement("button");
+  undoBtn.type = "button";
+  undoBtn.className = "toast-undo-btn";
+  undoBtn.textContent = "Undo";
+  let dismissed = false;
+  const dismiss = () => {
+    if (dismissed) return;
+    dismissed = true;
+    toast.remove();
+  };
+  undoBtn.addEventListener("click", async () => {
+    dismiss();
+    await onUndo();
+  });
+  toast.append(text, undoBtn);
+  container.appendChild(toast);
+  setTimeout(dismiss, 6100);
+}
+
+/* ===== Per-tab AI TL;DR ===== */
+// Reuses the existing /api/chat endpoint (and its rate limit + system
+// context) rather than a dedicated summarization route — the chat context
+// already breaks the site down by section, so a plain chat message asking
+// for a summary of one section works without any backend changes.
+const TLDR_TABS = {
+  about: { label: "About", topic: "About / bio" },
+  projects: { label: "Projects", topic: "Projects" },
+  experiences: { label: "Experiences", topic: "Experiences" },
+  resume: { label: "Resume", topic: "Resume" },
+  stack: { label: "Stack", topic: "Skills / tech stack" },
+};
+
+function showTldrToast(label, message) {
+  const container = document.getElementById("toast-container");
+  if (!container) return;
+  const toast = document.createElement("div");
+  toast.className = "toast toast--tldr";
+
+  const header = document.createElement("div");
+  header.className = "toast-tldr-head";
+  const icon = document.createElement("ion-icon");
+  icon.setAttribute("name", "sparkles-outline");
+  const titleSpan = document.createElement("strong");
+  titleSpan.textContent = `${label} TL;DR`;
+  const closeBtn = document.createElement("button");
+  closeBtn.type = "button";
+  closeBtn.className = "toast-tldr-close";
+  closeBtn.innerHTML = '<ion-icon name="close-outline"></ion-icon>';
+  closeBtn.title = "Dismiss";
+  closeBtn.addEventListener("click", () => toast.remove());
+  header.append(icon, titleSpan, closeBtn);
+
+  const body = document.createElement("p");
+  body.className = "toast-tldr-body";
+  body.textContent = message;
+
+  toast.append(header, body);
+  container.appendChild(toast);
+}
+
+async function requestTldr(btn, topic, label) {
+  if (btn.disabled) return;
+  btn.disabled = true;
+  const original = btn.innerHTML;
+  btn.innerHTML = '<ion-icon name="hourglass-outline"></ion-icon> TL;DR';
+  try {
+    const message = `In 2-3 concise sentences, summarize the "${topic}" section of this portfolio for a visitor who wants the gist without reading everything. Reply with only the summary — no preamble.`;
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "Couldn't generate a summary.");
+    showTldrToast(label, data.reply || "No summary available.");
+  } catch (err) {
+    showToast(err.message || "Couldn't generate a summary.", "error");
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = original;
+  }
+}
+
+function initTldrButtons() {
+  Object.entries(TLDR_TABS).forEach(([tabId, { label, topic }]) => {
+    const panel = document.getElementById(tabId);
+    const heading = panel?.querySelector(".panel-head h2");
+    if (!heading || heading.querySelector(".tldr-btn")) return;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "tldr-btn";
+    btn.innerHTML = '<ion-icon name="sparkles-outline"></ion-icon> TL;DR';
+    btn.title = `AI summary of ${label}`;
+    btn.addEventListener("click", () => requestTldr(btn, topic, label));
+    heading.appendChild(btn);
+  });
+}
+
 /* ===== Confirm dialog ===== */
 function showConfirm(title, message, options = {}) {
   return new Promise((resolve) => {
@@ -2247,8 +2355,16 @@ function initInlineAdminEditor() {
         await fetchData();
         wireProjectControls();
         logActivity("Delete", item.title);
-        showToast("Item moved to Recently Deleted.", "success");
         renderDeletedItems();
+        showUndoToast(`"${item.title}" moved to Recently Deleted.`, async () => {
+          const restored = await restoreItem(item.id);
+          if (!restored) { showToast("Failed to restore item.", "error"); return; }
+          showToast("Item restored.", "success");
+          await fetchData();
+          wireProjectControls();
+          renderDeletedItems();
+          logActivity("Restore", "Restored deleted item");
+        });
       } catch (err) {
         showToast("Failed to delete item.", "error");
       }
@@ -2339,6 +2455,66 @@ function initInlineAdminEditor() {
   });
 }
 
+/* Shareable filtered views — mirror the active category/search/sort/skill
+   filter into the URL query string (prefixed "p"/"e" for projects vs
+   experiences so both can coexist in one URL) so a link can point straight
+   at a specific filtered result, not just the tab. */
+function readFilterParams(prefix) {
+  const params = new URLSearchParams(window.location.search);
+  return {
+    cat: params.get(`${prefix}cat`),
+    q: params.get(`${prefix}q`),
+    field: params.get(`${prefix}field`),
+    sort: params.get(`${prefix}sort`),
+    skill: params.get(`${prefix}skill`),
+  };
+}
+
+function updateFilterParams(prefix, values) {
+  const url = new URL(window.location.href);
+  Object.entries(values).forEach(([key, value]) => {
+    const paramKey = `${prefix}${key}`;
+    if (!value || value === "all" || value === "All") {
+      url.searchParams.delete(paramKey);
+    } else {
+      url.searchParams.set(paramKey, value);
+    }
+  });
+  history.replaceState(history.state, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
+function applyFiltersFromURL(prefix, navId, searchId, searchFieldId, sortId, skillFilterId) {
+  const p = readFilterParams(prefix);
+  if (p.cat) {
+    const nav = document.getElementById(navId);
+    const btn = nav && [...nav.querySelectorAll(".subsection-btn")].find((b) => b.dataset.subsection === p.cat);
+    if (btn) {
+      nav.querySelectorAll(".subsection-btn").forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+    }
+  }
+  if (p.skill) {
+    const filterEl = document.getElementById(skillFilterId);
+    const btn = filterEl && [...filterEl.querySelectorAll(".skill-filter-btn")].find((b) => b.dataset.skill === p.skill);
+    if (btn) {
+      filterEl.querySelectorAll(".skill-filter-btn").forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+    }
+  }
+  if (p.q) {
+    const input = document.getElementById(searchId);
+    if (input) input.value = p.q;
+  }
+  if (p.field) {
+    const select = document.getElementById(searchFieldId);
+    if (select && [...select.options].some((o) => o.value === p.field)) select.value = p.field;
+  }
+  if (p.sort) {
+    const select = document.getElementById(sortId);
+    if (select && [...select.options].some((o) => o.value === p.sort)) select.value = p.sort;
+  }
+}
+
 function wireProjectControls() {
   const projectCategories = uniqueCategories(state.projects);
   renderSubsectionNav("projects-subsection-nav", projectCategories, state.projects);
@@ -2355,6 +2531,10 @@ function wireProjectControls() {
   const savedExpSort = localStorage.getItem("ctrlaltjay-experiences-sort");
   if (savedProjectSort) document.getElementById("projects-sort").value = savedProjectSort;
   if (savedExpSort) document.getElementById("experiences-sort").value = savedExpSort;
+
+  // URL query params (shareable filtered views) take priority over the above
+  applyFiltersFromURL("p", "projects-subsection-nav", "projects-search", "projects-search-field", "projects-sort", "projects-skills-filter");
+  applyFiltersFromURL("e", "experiences-subsection-nav", "experiences-search", "experiences-search-field", "experiences-sort", "experiences-skills-filter");
 
   state.rerenderProjects = () => {
     const activeSubsection = document.querySelector("#projects-subsection-nav .subsection-btn.active")?.dataset.subsection || "all";
@@ -2384,6 +2564,7 @@ function wireProjectControls() {
       document.querySelectorAll("#projects-subsection-nav .subsection-btn").forEach((it) => it.classList.remove("active"));
       btn.classList.add("active");
       shownCounts["projects-grid"] = PAGE_SIZE;
+      updateFilterParams("p", { cat: btn.dataset.subsection });
       state.rerenderProjects();
     });
 
@@ -2393,32 +2574,49 @@ function wireProjectControls() {
       document.querySelectorAll("#experiences-subsection-nav .subsection-btn").forEach((it) => it.classList.remove("active"));
       btn.classList.add("active");
       shownCounts["experiences-grid"] = PAGE_SIZE;
+      updateFilterParams("e", { cat: btn.dataset.subsection });
       state.rerenderExperiences();
     });
 
     document.getElementById("projects-sort").addEventListener("change", (e) => {
       localStorage.setItem("ctrlaltjay-projects-sort", e.target.value);
+      updateFilterParams("p", { sort: e.target.value });
       state.rerenderProjects();
     });
     document.getElementById("experiences-sort").addEventListener("change", (e) => {
       localStorage.setItem("ctrlaltjay-experiences-sort", e.target.value);
+      updateFilterParams("e", { sort: e.target.value });
       state.rerenderExperiences();
     });
 
     // Search inputs
     let projectSearchTimer, expSearchTimer;
-    document.getElementById("projects-search")?.addEventListener("input", () => {
+    document.getElementById("projects-search")?.addEventListener("input", (e) => {
       clearTimeout(projectSearchTimer);
-      projectSearchTimer = setTimeout(() => state.rerenderProjects(), 250);
+      const value = e.target.value;
+      projectSearchTimer = setTimeout(() => {
+        updateFilterParams("p", { q: value });
+        state.rerenderProjects();
+      }, 250);
     });
-    document.getElementById("experiences-search")?.addEventListener("input", () => {
+    document.getElementById("experiences-search")?.addEventListener("input", (e) => {
       clearTimeout(expSearchTimer);
-      expSearchTimer = setTimeout(() => state.rerenderExperiences(), 250);
+      const value = e.target.value;
+      expSearchTimer = setTimeout(() => {
+        updateFilterParams("e", { q: value });
+        state.rerenderExperiences();
+      }, 250);
     });
 
     // Search field selectors
-    document.getElementById("projects-search-field")?.addEventListener("change", () => state.rerenderProjects());
-    document.getElementById("experiences-search-field")?.addEventListener("change", () => state.rerenderExperiences());
+    document.getElementById("projects-search-field")?.addEventListener("change", (e) => {
+      updateFilterParams("p", { field: e.target.value });
+      state.rerenderProjects();
+    });
+    document.getElementById("experiences-search-field")?.addEventListener("change", (e) => {
+      updateFilterParams("e", { field: e.target.value });
+      state.rerenderExperiences();
+    });
 
     // Skills filter delegation
     document.getElementById("projects-skills-filter")?.addEventListener("click", (e) => {
@@ -2427,6 +2625,7 @@ function wireProjectControls() {
       document.querySelectorAll("#projects-skills-filter .skill-filter-btn").forEach((it) => it.classList.remove("active"));
       btn.classList.add("active");
       shownCounts["projects-grid"] = PAGE_SIZE;
+      updateFilterParams("p", { skill: btn.dataset.skill });
       state.rerenderProjects();
     });
     document.getElementById("experiences-skills-filter")?.addEventListener("click", (e) => {
@@ -2435,6 +2634,7 @@ function wireProjectControls() {
       document.querySelectorAll("#experiences-skills-filter .skill-filter-btn").forEach((it) => it.classList.remove("active"));
       btn.classList.add("active");
       shownCounts["experiences-grid"] = PAGE_SIZE;
+      updateFilterParams("e", { skill: btn.dataset.skill });
       state.rerenderExperiences();
     });
 
@@ -2456,6 +2656,8 @@ function wireProjectControls() {
       clearBtn.addEventListener("click", () => {
         input.value = "";
         clearBtn.style.display = "none";
+        const prefix = id === "projects-search" ? "p" : "e";
+        updateFilterParams(prefix, { q: "" });
         if (id === "projects-search") state.rerenderProjects();
         else state.rerenderExperiences();
       });
@@ -2488,7 +2690,9 @@ async function bootstrap() {
   initResumeKey();
   initDblClickEdit();
   initThemeToggle();
+  initRecruiterMode();
   applySitePrefs();
+  initTldrButtons();
   initMobileNav();
   initDragAndDrop();
   initBatchSkills();
@@ -3292,11 +3496,12 @@ async function bulkDelete() {
   const count = bulkSelected.size;
   const confirmed = await showConfirm("Bulk Delete", `This will move ${count} item(s) to Recently Deleted.`, { requireText: `DELETE ${count}`, confirmLabel: "Delete All" });
   if (!confirmed) return;
-  let ok = 0, fail = 0;
+  const okIds = [];
+  let fail = 0;
   for (const id of bulkSelected) {
     try {
       const res = await fetch(`/api/admin/items/${id}`, { method: "DELETE" });
-      if (res.ok) ok++; else fail++;
+      if (res.ok) okIds.push(id); else fail++;
     } catch { fail++; }
   }
   bulkSelected.clear();
@@ -3304,7 +3509,21 @@ async function bulkDelete() {
   await fetchData();
   wireProjectControls();
   renderDeletedItems();
-  showToast(`Moved ${ok} item(s) to Recently Deleted${fail ? `, ${fail} failed` : ""}.`, fail ? "error" : "success");
+  const message = `Moved ${okIds.length} item(s) to Recently Deleted${fail ? `, ${fail} failed` : ""}.`;
+  if (okIds.length === 0) {
+    showToast(message, "error");
+    return;
+  }
+  showUndoToast(message, async () => {
+    let restored = 0;
+    for (const id of okIds) {
+      if (await restoreItem(id)) restored++;
+    }
+    showToast(`Restored ${restored} item(s).`, restored === okIds.length ? "success" : "error");
+    await fetchData();
+    wireProjectControls();
+    renderDeletedItems();
+  });
 }
 
 function bulkCancel() {
@@ -3369,6 +3588,15 @@ async function fetchDeletedItems() {
   } catch { return []; }
 }
 
+async function restoreItem(id) {
+  try {
+    const res = await fetch(`/api/admin/items/${id}/restore`, { method: "POST" });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 async function renderDeletedItems() {
   const list = document.getElementById("deleted-items-list");
   const badge = document.getElementById("deleted-count-badge");
@@ -3398,15 +3626,13 @@ async function renderDeletedItems() {
   list.querySelectorAll(".deleted-restore-btn").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const id = btn.dataset.id;
-      try {
-        const res = await fetch(`/api/admin/items/${id}/restore`, { method: "POST" });
-        if (!res.ok) throw new Error();
-        showToast("Item restored.", "success");
-        await fetchData();
-        wireProjectControls();
-        renderDeletedItems();
-        logActivity("Restore", "Restored deleted item");
-      } catch { showToast("Failed to restore item.", "error"); }
+      const ok = await restoreItem(id);
+      if (!ok) { showToast("Failed to restore item.", "error"); return; }
+      showToast("Item restored.", "success");
+      await fetchData();
+      wireProjectControls();
+      renderDeletedItems();
+      logActivity("Restore", "Restored deleted item");
     });
   });
   // Wire permanent delete buttons
@@ -3780,7 +4006,10 @@ const THEME_KEY = "ctrlaltjay-theme";
 
 function initThemeToggle() {
   const saved = localStorage.getItem(THEME_KEY);
-  if (saved === "light") document.documentElement.classList.add("light-theme");
+  // No stored preference yet (first-time visitor) — match their OS setting
+  // instead of always forcing dark.
+  const prefersLight = !saved && window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches;
+  if (saved === "light" || prefersLight) document.documentElement.classList.add("light-theme");
 
   const btn = document.getElementById("theme-toggle");
   if (!btn) return;
@@ -3800,6 +4029,33 @@ function updateThemeIcon(btn) {
     ? '<ion-icon name="moon-outline"></ion-icon>'
     : '<ion-icon name="sunny-outline"></ion-icon>';
   btn.title = isLight ? "Switch to dark mode" : "Switch to light mode";
+}
+
+/* ===== Recruiter Mode ===== */
+const RECRUITER_MODE_KEY = "ctrlaltjay-recruiter-mode";
+
+function isRecruiterMode() {
+  return document.body.classList.contains("recruiter-mode");
+}
+
+function setRecruiterMode(enabled) {
+  document.body.classList.toggle("recruiter-mode", enabled);
+  localStorage.setItem(RECRUITER_MODE_KEY, enabled ? "1" : "0");
+  const btn = document.getElementById("recruiter-mode-toggle");
+  if (btn) {
+    btn.innerHTML = enabled
+      ? '<ion-icon name="close-outline"></ion-icon>'
+      : '<ion-icon name="document-text-outline"></ion-icon>';
+    btn.title = enabled ? "Exit recruiter mode" : "Recruiter mode — condensed, single-page view";
+    btn.setAttribute("aria-pressed", String(enabled));
+  }
+}
+
+function initRecruiterMode() {
+  const btn = document.getElementById("recruiter-mode-toggle");
+  if (!btn) return;
+  setRecruiterMode(localStorage.getItem(RECRUITER_MODE_KEY) === "1");
+  btn.addEventListener("click", () => setRecruiterMode(!isRecruiterMode()));
 }
 
 /* ===== Recently Viewed Carousel ===== */
@@ -5486,6 +5742,7 @@ function getCommandPaletteItems() {
     { icon: "logo-linkedin", label: "LinkedIn", hint: "linkedin.md", action: () => openIdeTabByName("linkedin") },
     { icon: "contrast-outline", label: "Toggle Theme", hint: "dark / light", action: () => document.getElementById("theme-toggle")?.click() },
     { icon: "contract-outline", label: "Toggle Zen Mode", hint: "Z", action: () => toggleZenMode() },
+    { icon: "document-text-outline", label: "Toggle Recruiter Mode", hint: "condensed single-page view", action: () => document.getElementById("recruiter-mode-toggle")?.click() },
     { icon: "close-outline", label: "Close All Tabs", hint: "Shift+W", action: () => closeAllIdeTabs() },
     { icon: "settings-outline", label: "Settings", hint: "Cmd/Ctrl+,", action: () => openIdeTabByName("settings") },
     { icon: "keypad-outline", label: "Keyboard Shortcuts", hint: "?", action: () => toggleShortcutsOverlay() },
