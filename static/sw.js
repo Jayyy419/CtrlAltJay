@@ -1,10 +1,16 @@
-const CACHE_NAME = "ctrlaltjay-v11";
+// Bumping this string is what makes browsers notice a new service-worker
+// script and go through install/activate again — without it, a change to
+// the fetch logic below never reaches anyone already registered.
+const CACHE_NAME = "ctrlaltjay-v12";
 const PRECACHE_URLS = [
   "/",
-  "/static/css/style.css",
-  "/static/js/script.js",
   "/static/images/PersonalLogo.ico",
 ];
+// style.css/script.js are no longer precached here: they're now requested
+// with a ?v=<mtime> cache-busting query (see inject_asset_version() in
+// app.py), so a fixed, unversioned URL in this list would just accumulate
+// as a permanently stale entry that the network-first fetch handler below
+// never touches.
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
