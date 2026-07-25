@@ -2732,7 +2732,13 @@ body.zen-mode .ide-panel-scroll { padding: 48px max(32px, calc(50% - 380px)); }
   backdrop-filter: blur(8px);
   margin-left: -8px;
   margin-right: -8px;
-  padding-left: 12px;
+  /* The bar's own box now sits flush against the true top edge (see the
+     top offset above) — without its own top padding the pills would butt
+     right up against that edge with no breathing room, looking tucked into
+     the corner instead of like a properly spaced toolbar. */
+  padding-top: 14px;
+  padding-bottom: 10px;
+  padding-left: 20px;
   padding-right: 28px;
   flex-wrap: nowrap;
   overflow-x: auto;
