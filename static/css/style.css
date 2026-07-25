@@ -115,7 +115,7 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
   html { height: auto; }
   body { height: auto; overflow: visible; }
   .layout { overflow: visible; }
-  .ide-shell { height: auto; min-height: 640px; }
+  .ide-shell { height: auto; min-height: 640px; overflow: visible; }
   .scroll-progress, .back-to-top { display: block !important; }
   #chat.tab-panel.active { height: auto; }
   .chat-window { flex: none; }
@@ -1172,6 +1172,18 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
   /* The desktop editor padding (28px/32px) is a lot of dead space to give
      up on a phone-width screen — claw most of it back for content. */
   .ide-panel-scroll { padding: 16px 14px 28px; }
+  /* Mobile scrolls the whole page (see html/body/.ide-shell height:auto
+     rules below), not this container — but it still carries the desktop
+     overflow-y:auto, which makes it the sticky containing block instead of
+     the viewport, and since it never scrolls internally, .subsection-nav's
+     sticky never engages at all. Falling back to visible lets it stick to
+     the real viewport, and top:0 needs no offset since there's no padding
+     edge in the way anymore. */
+  .ide-panel-scroll { overflow-y: visible; }
+  /* !important: the unconditional .subsection-nav rule (with its desktop
+     top:-28px offset) is defined later in this file, so at equal specificity
+     it would otherwise win this cascade regardless of media match. */
+  .subsection-nav { top: 0 !important; }
 
   /* Mobile nav: activity bar + file tree become a slide-in drawer,
      triggered by a hamburger button in a small top bar. */
@@ -1326,6 +1338,15 @@ body.zen-mode .ide-panel-scroll { padding: 48px max(32px, calc(50% - 380px)); }
 }
 .subsection-btn:hover { border-color: var(--ide-accent); color: var(--ide-text); }
 .subsection-btn.active { background: var(--ide-accent); color: #fff; border-color: var(--ide-accent); }
+
+/* Card grid relies on a Tailwind arbitrary-value utility for its columns
+   (grid grid-cols-[repeat(auto-fill,minmax(min(280px,100%),1fr))]) with no
+   plain-CSS fallback — if the Tailwind CDN is slow/blocked this silently
+   collapses to a single block-stacked column instead of erroring visibly. */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
+}
 
 /* Cards (JS-generated via buildCard) */
 .card {
@@ -2700,7 +2721,12 @@ body.zen-mode .ide-panel-scroll { padding: 48px max(32px, calc(50% - 380px)); }
   display: flex;
   align-items: center;
   position: sticky;
-  top: 0;
+  /* #ide-panel-scroll has padding-top: 28px, and `top: 0` sticks flush with
+     that padding edge, not the container's actual visible top — leaving a
+     28px gap above the bar where scrolled-past content (search row, cards)
+     isn't clipped and isn't covered, so it visibly peeks above the bar as it
+     scrolls through. Offsetting top by -28px pins it flush with the real edge. */
+  top: -28px;
   z-index: 20;
   background: var(--ide-editor-bg-soft);
   backdrop-filter: blur(8px);
