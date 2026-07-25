@@ -399,6 +399,25 @@ def build_profile():
     }
 
 
+def _static_version(rel_path):
+    # Cache-bust static assets by their own mtime — browsers cache /static/
+    # for 24h (see the Cache-Control header below), so without this every
+    # CSS/JS deploy would stay invisible to returning visitors until that
+    # cache naturally expired or they hard-refreshed.
+    try:
+        return str(int((Path(app.root_path) / "static" / rel_path).stat().st_mtime))
+    except OSError:
+        return "0"
+
+
+@app.context_processor
+def inject_asset_version():
+    return {
+        "css_version": _static_version("css/style.css"),
+        "js_version": _static_version("js/script.js"),
+    }
+
+
 @app.route("/")
 def index():
     return render_template("index.html", profile=build_profile())
@@ -1775,7 +1794,13 @@ def api_chat():
 
 SEARCH_MAX_ATTEMPTS = 20
 SEARCH_RATE_WINDOW_SECONDS = 600
-SEARCH_MAX_ITEMS = 80
+# DynamoDB scan order is unspecified, so a low cap here silently drops an
+# arbitrary subset of items from the search corpus every time — a real item
+# a visitor searches for can just never be in the candidate set. 80 was too
+# low for a site already past that many items; this comfortably covers a
+# personal portfolio's realistic growth while staying well within the
+# model's context window.
+SEARCH_MAX_ITEMS = 500
 
 
 @app.route("/api/semantic-search", methods=["POST"])
