@@ -347,8 +347,13 @@ def set_security_headers(response):
     response.headers["Cross-Origin-Embedder-Policy"] = "unsafe-none"
     response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
     response.headers["X-Permitted-Cross-Domain-Policies"] = "none"
-    # Cache static assets for CDN / browser caching
-    if request.path.startswith("/static/"):
+    # Cache static assets for CDN / browser caching. The service worker
+    # script is exempt: it controls how every other asset gets served, so
+    # letting it sit in the browser's HTTP cache for 24h would delay any
+    # service-worker update (and therefore every other fix) by up to a day.
+    if request.path == "/static/sw.js":
+        response.headers["Cache-Control"] = "no-cache"
+    elif request.path.startswith("/static/"):
         response.headers["Cache-Control"] = "public, max-age=86400"
     return response
 
