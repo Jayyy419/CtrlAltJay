@@ -285,7 +285,11 @@ function updateMobileTopbarTitle(panel) {
   if (!titleEl || !panel) return;
   const heading = panel.querySelector("h1, h2");
   if (heading) {
-    titleEl.textContent = heading.textContent.trim();
+    // Strip the injected TL;DR button (a child of the heading) out of a
+    // clone before reading text, so it doesn't get concatenated in.
+    const clone = heading.cloneNode(true);
+    clone.querySelector(".tldr-btn")?.remove();
+    titleEl.textContent = clone.textContent.trim();
     return;
   }
   const activeBtn = document.querySelector(".tab-btn.active");

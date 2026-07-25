@@ -1337,7 +1337,7 @@ body.zen-mode .ide-panel-scroll { padding: 48px max(32px, calc(50% - 380px)); }
   transition: all 0.2s ease;
 }
 .subsection-btn:hover { border-color: var(--ide-accent); color: var(--ide-text); }
-.subsection-btn.active { background: var(--ide-accent); color: #fff; border-color: var(--ide-accent); }
+.subsection-btn.active { background: var(--ide-accent); color: #fff; border-color: var(--ide-accent); box-shadow: 0 2px 8px -2px rgba(55,148,255,0.5); }
 
 /* Card grid relies on a Tailwind arbitrary-value utility for its columns
    (grid grid-cols-[repeat(auto-fill,minmax(min(280px,100%),1fr))]) with no
@@ -2800,6 +2800,15 @@ body.zen-mode .ide-panel-scroll { padding: 48px max(32px, calc(50% - 380px)); }
 .subsection-nav {
   display: flex;
   align-items: center;
+  /* gap/margin-bottom/border-bottom were previously only set via Tailwind
+     utility classes in the template (gap-3 mb-5 border-b border-white/[0.06])
+     with no plain-CSS fallback — same class of bug as this element's
+     display:flex before it, and .card-grid's display:grid: if the Tailwind
+     CDN is slow/blocked/ad-blocked for a given visitor, this bar silently
+     loses its spacing and bottom divider and reads as unstyled/"unnatural". */
+  gap: 12px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--ide-border-soft);
   position: sticky;
   /* #ide-panel-scroll has padding-top: 28px, and `top: 0` sticks flush with
      that padding edge, not the container's actual visible top — leaving a
@@ -2816,9 +2825,9 @@ body.zen-mode .ide-panel-scroll { padding: 48px max(32px, calc(50% - 380px)); }
      top offset above) — without its own top padding the pills would butt
      right up against that edge with no breathing room, looking tucked into
      the corner instead of like a properly spaced toolbar. */
-  padding-top: 14px;
-  padding-bottom: 10px;
-  padding-left: 20px;
+  padding-top: 18px;
+  padding-bottom: 14px;
+  padding-left: 24px;
   padding-right: 28px;
   flex-wrap: nowrap;
   overflow-x: auto;
