@@ -46,10 +46,13 @@ Globals:
   Function:
     Timeout: 30
     MemorySize: 1024
-    # arm64/Graviton is ~20% cheaper per GB-second than x86_64 for identical
-    # work, which matters because cost is the whole point of this migration.
-    # The build must therefore install manylinux2014_aarch64 wheels.
-    Architectures: [arm64]
+    # x86_64 despite arm64 being ~20% cheaper per GB-second. The CI runner is
+    # x86_64, so an arm64 build has to run its build container under QEMU
+    # emulation — which took >13 minutes without finishing on the first
+    # attempt. At this traffic level the whole function sits inside the Lambda
+    # free tier, so 20% of ~nothing is not worth an emulated build on every
+    # deploy. Revisit only if invocation cost ever becomes material.
+    Architectures: [x86_64]
     Runtime: python3.11
     Tags:
       Project: CtrlAltJay
