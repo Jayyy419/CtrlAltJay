@@ -11,7 +11,15 @@ on:
   # real deploy path:
   #   push:
   #     branches: [main]
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      manage_dns:
+        description: >
+          Point ctrlaltjay.dev at CloudFront. "false" deploys the stack
+          without touching DNS.
+        type: choice
+        options: ["false", "true"]
+        default: "false"
 
 permissions:
   id-token: write
@@ -56,10 +64,22 @@ jobs:
         # matches the runner, so this builds natively with no emulation.
         run: sam build --use-container
 
+      - name: Record the current apex before changing DNS
+        # Rolling the cutover back is NOT just redeploying with manage_dns
+        # false -- that deletes the alias records rather than restoring what
+        # was there before. So print the existing apex record set first; this
+        # log is the rollback instruction if the cutover has to be undone.
+        if: inputs.manage_dns == 'true'
+        run: |
+          aws route53 list-resource-record-sets \
+            --hosted-zone-id Z096666535JC4AOH22XFD \
+            --query "ResourceRecordSets[?Name=='ctrlaltjay.dev.']" \
+            --output json
+
       - name: Deploy
-        # ManageDns stays false here. Cutting the apex over is a deliberate,
-        # one-time manual step (see docs/lambda-migration.md), not something a
-        # routine push should be able to do.
+        # Cutting the apex over is a deliberate, opt-in step (see
+        # docs/lambda-migration.md): manage_dns defaults to false so a routine
+        # deploy can never move DNS by itself.
         run: |
           sam deploy \
             --stack-name "${STACK_NAME}" \
@@ -69,7 +89,7 @@ jobs:
             --no-fail-on-empty-changeset \
             --resolve-s3 \
             --parameter-overrides \
-              ManageDns="${{ vars.MANAGE_DNS || 'false' }}" \
+              ManageDns="${{ inputs.manage_dns }}" \
             --tags Project=CtrlAltJay Environment=Production
 
       - name: Resolve static bucket
