@@ -1,0 +1,168 @@
+name: Cut ctrlaltjay.dev over to CloudFront
+
+# Points the apex at CloudFront via a direct Route53 API call rather than
+# through CloudFormation's ApexRecords resource.
+#
+# Why not CloudFormation: it calls route53:GetHostedZone before writing, and
+# the deploy role does not have it, so `manage_dns=true` fails and rolls back
+# (safely -- no record is written -- but it never gets the cutover done). A
+# direct change-resource-record-sets call needs only ChangeResourceRecordSets
+# on the zone. If the role lacks that too, this fails with AccessDenied
+# having changed nothing.
+#
+# Consequence: the apex is then managed here, not by the stack, so
+# ManageDns must stay false. That is the safer arrangement anyway -- the
+# hosted zone and the apex record both predate the stack, and records owned
+# by the stack would be deleted along with it.
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: >
+          Set to "cutover" to move ctrlaltjay.dev to CloudFront. Any other
+          value does nothing.
+        type: string
+        default: ""
+      rollback:
+        description: >
+          Set to "yes" to point the apex back at the Elastic Beanstalk
+          instance instead. Requires confirm=cutover as well.
+        type: string
+        default: ""
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: ctrlaltjay-dns
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ap-southeast-1
+  STACK_NAME: ctrlaltjay-app
+  ZONE_ID: Z096666535JC4AOH22XFD
+  DOMAIN: ctrlaltjay.dev
+  # Fixed magic value: the global hosted-zone ID shared by every CloudFront
+  # distribution, not this account's zone.
+  CF_ZONE_ID: Z2FDTNDATAQYW2
+  EB_IP: 47.128.182.192
+
+jobs:
+  cutover:
+    if: inputs.confirm == 'cutover'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Record the apex as it stands now
+        # This output is the rollback instruction. Capture it before writing.
+        run: |
+          aws route53 list-resource-record-sets \
+            --hosted-zone-id "$ZONE_ID" \
+            --query "ResourceRecordSets[?Name=='${DOMAIN}.']" \
+            --output json
+
+      - name: Resolve the CloudFront domain
+        id: cf
+        run: |
+          D=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
+            --query "Stacks[0].Outputs[?OutputKey=='CloudFrontDomain'].OutputValue" \
+            --output text)
+          test -n "$D" && test "$D" != "None" || { echo "::error::no CloudFrontDomain output"; exit 1; }
+          echo "domain=${D}" >> "$GITHUB_OUTPUT"
+          echo "CloudFront: ${D}"
+
+      - name: Build the change batches
+        run: |
+          python3 - <<'PY'
+          import json, os
+          dom = os.environ["DOMAIN"]
+          alias = {"HostedZoneId": os.environ["CF_ZONE_ID"],
+                   "DNSName": os.environ["CF_DOMAIN"],
+                   "EvaluateTargetHealth": False}
+          def w(name, batch):
+              with open(name, "w") as f:
+                  json.dump(batch, f, indent=2)
+              print("==", name, "=="); print(json.dumps(batch, indent=2))
+          # Cutover: UPSERT replaces the existing plain A record in place, so
+          # there is never a moment where the apex has no record at all.
+          w("/tmp/cutover.json", {"Comment": "apex to CloudFront", "Changes": [
+              {"Action": "UPSERT", "ResourceRecordSet":
+                  {"Name": dom, "Type": t, "AliasTarget": alias}}
+              for t in ("A", "AAAA")]})
+          # Rollback is split in two so the part that matters cannot be taken
+          # down by the part that might not apply: restoring the A record is
+          # its own batch, and removing the AAAA (which did not exist before
+          # the cutover) is best-effort afterwards. A single batch would fail
+          # wholesale if the AAAA were already gone.
+          w("/tmp/rollback-a.json", {"Comment": "apex back to EB", "Changes": [
+              {"Action": "UPSERT", "ResourceRecordSet": {
+                  "Name": dom, "Type": "A", "TTL": 300,
+                  "ResourceRecords": [{"Value": os.environ["EB_IP"]}]}}]})
+          w("/tmp/rollback-aaaa.json", {"Comment": "drop AAAA", "Changes": [
+              {"Action": "DELETE", "ResourceRecordSet":
+                  {"Name": dom, "Type": "AAAA", "AliasTarget": alias}}]})
+          PY
+        env:
+          CF_DOMAIN: ${{ steps.cf.outputs.domain }}
+
+      - name: Apply
+        run: |
+          if [ "${{ inputs.rollback }}" = "yes" ]; then
+            aws route53 change-resource-record-sets \
+              --hosted-zone-id "$ZONE_ID" --change-batch file:///tmp/rollback-a.json
+            aws route53 change-resource-record-sets \
+              --hosted-zone-id "$ZONE_ID" --change-batch file:///tmp/rollback-aaaa.json \
+              || echo "no AAAA to remove -- apex A is restored, which is what matters"
+          else
+            aws route53 change-resource-record-sets \
+              --hosted-zone-id "$ZONE_ID" --change-batch file:///tmp/cutover.json
+          fi
+
+      - name: Wait for the apex to serve from the new target
+        # Not dig: the runner may not have it, and a resolver cache would lie
+        # anyway. Poll the site itself and look for a CloudFront-only header.
+        # Old TTL was 300s, so allow well past that.
+        run: |
+          python3 - <<'PY'
+          import subprocess, sys, time
+          rollback = "${{ inputs.rollback }}" == "yes"
+          want_cf = not rollback
+          deadline = time.time() + 480
+          last = ""
+          while time.time() < deadline:
+              p = subprocess.run(
+                  ["curl", "-sS", "-o", "/dev/null", "-D", "-", "--max-time", "20",
+                   "https://ctrlaltjay.dev/"],
+                  capture_output=True, text=True)
+              head = (p.stdout or "") + (p.stderr or "")
+              is_cf = "x-amz-cf-id" in head.lower()
+              status = head.split("\n", 1)[0].strip()
+              last = f"{status} cloudfront={is_cf}"
+              if is_cf == want_cf and " 200" in status:
+                  print("apex now serving as expected:", last)
+                  sys.exit(0)
+              print("waiting...", last, flush=True)
+              time.sleep(15)
+          sys.exit(f"::error::apex did not converge within 8 minutes (last: {last})")
+          PY
+
+      - name: Verify the live site
+        if: inputs.rollback != 'yes'
+        run: |
+          set -e
+          CODE=$(curl -sS -o /tmp/home.html -w '%{http_code}' --max-time 30 "https://${DOMAIN}/")
+          test "$CODE" = "200" || { echo "::error::homepage ${CODE}"; exit 1; }
+          grep -q "CtrlAltJay" /tmp/home.html || { echo "::error::homepage body wrong"; exit 1; }
+          CODE=$(curl -sS -o /tmp/api.json -w '%{http_code}' --max-time 30 "https://${DOMAIN}/api/public-data")
+          test "$CODE" = "200" || { echo "::error::api ${CODE}"; exit 1; }
+          python3 -c "import json;d=json.load(open('/tmp/api.json'));c={k:len(v) for k,v in d.items() if isinstance(v,list)};print('collections:',c);assert any(c.values()),'no rows'"
+          CODE=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 "https://${DOMAIN}/static/css/style.css")
+          test "$CODE" = "200" || { echo "::error::static ${CODE}"; exit 1; }
+          echo "ctrlaltjay.dev verified on CloudFront"
