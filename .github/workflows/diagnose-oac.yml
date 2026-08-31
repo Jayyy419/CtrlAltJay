@@ -1,0 +1,83 @@
+name: Diagnose CloudFront -> Lambda OAC
+
+# Temporary, read-only. CloudFront is returning the Function URL's own
+# "Forbidden ... urls-auth" body, which means the Function URL is rejecting
+# CloudFront's SigV4 signature. This job dumps the three things that decide
+# that -- the Lambda resource policy, the Function URL auth type, and the
+# OAC attached to the lambda origin -- plus a live curl, so the fix is based
+# on the deployed state rather than a guess. Delete once resolved.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ap-southeast-1
+  STACK_NAME: ctrlaltjay-app
+  FUNCTION_NAME: ctrlaltjay-app
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # Every step is `|| true`: the deploy role may lack a given read
+      # permission, and a denial on one call should not hide the others.
+      - name: Stack outputs
+        run: |
+          aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
+            --query 'Stacks[0].Outputs' --output json || true
+
+      - name: Function URL config
+        run: |
+          aws lambda get-function-url-config --function-name "$FUNCTION_NAME" || true
+
+      - name: Lambda resource policy
+        # The decisive one: is there a statement allowing
+        # lambda:InvokeFunctionUrl to cloudfront.amazonaws.com, and does its
+        # SourceArn match this distribution?
+        run: |
+          aws lambda get-policy --function-name "$FUNCTION_NAME" \
+            --query Policy --output text | python3 -m json.tool || true
+
+      - name: Distribution id
+        id: dist
+        run: |
+          DIST=$(aws cloudformation describe-stack-resources \
+            --stack-name "$STACK_NAME" \
+            --query "StackResources[?ResourceType=='AWS::CloudFront::Distribution'].PhysicalResourceId" \
+            --output text)
+          echo "id=${DIST}" >> "$GITHUB_OUTPUT"
+          echo "distribution: ${DIST}"
+
+      - name: Distribution origins and behaviours
+        run: |
+          aws cloudfront get-distribution-config --id "${{ steps.dist.outputs.id }}" \
+            --query 'DistributionConfig.{Origins:Origins.Items[].{Id:Id,Domain:DomainName,OAC:OriginAccessControlId},Default:DefaultCacheBehavior.{Target:TargetOriginId,Cache:CachePolicyId,OriginReq:OriginRequestPolicyId},Ordered:CacheBehaviors.Items[].{Path:PathPattern,Target:TargetOriginId}}' \
+            --output json || true
+
+      - name: Origin access controls
+        run: |
+          aws cloudfront list-origin-access-controls \
+            --query 'OriginAccessControlList.Items[].{Id:Id,Name:Name,Type:OriginAccessControlOriginType,Signing:SigningBehavior,Protocol:SigningProtocol}' \
+            --output json || true
+
+      - name: Live request through CloudFront
+        run: |
+          DOMAIN=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
+            --query "Stacks[0].Outputs[?OutputKey=='CloudFrontDomain'].OutputValue" \
+            --output text)
+          echo "== GET https://${DOMAIN}/ =="
+          curl -sS -i --max-time 30 "https://${DOMAIN}/" | head -40 || true
+          echo
+          echo "== GET https://${DOMAIN}/static/css/style.css (S3 origin) =="
+          curl -sS -o /dev/null -w 'status=%{http_code}\n' --max-time 30 \
+            "https://${DOMAIN}/static/css/style.css" || true
