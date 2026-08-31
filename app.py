@@ -1,3 +1,4 @@
+import mimetypes
 import os
 import re
 import secrets
@@ -57,14 +58,54 @@ ALLOWED_IMAGE_EXT = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".ico"}
 # current CSP allows 'unsafe-inline' script-src, so it wouldn't block this.
 
 AWS_REGION = os.getenv("AWS_REGION", "ap-southeast-1")
+# When set, uploaded images are stored in S3 under static/uploads/ and served
+# from there via CloudFront, instead of the local filesystem. Required on
+# Lambda, whose filesystem is read-only apart from an ephemeral /tmp — a
+# locally-saved upload would fail to write, and any that did would vanish
+# with the execution environment. Unset locally, so dev still uses disk.
+STATIC_S3_BUCKET = os.getenv("STATIC_S3_BUCKET", "").strip()
+# Lambda only permits writes under /tmp; Pillow needs a real file to optimise
+# before the result is uploaded to S3.
+SCRATCH_DIR = Path(os.getenv("UPLOAD_SCRATCH_DIR", "/tmp")) if STATIC_S3_BUCKET else None
 dynamodb = boto3.resource("dynamodb", region_name=AWS_REGION)
 table_items = dynamodb.Table("ctrlaltjay-portfolio-items")
 table_resume = dynamodb.Table("ctrlaltjay-resume-items")
 table_skills = dynamodb.Table("ctrlaltjay-skills")
 
+def _resolve_secret(env_var, secret_id_env_var="", default="", ssm_param_env_var=""):
+    """Read a config value, preferring SSM Parameter Store, then Secrets
+    Manager, then the plain <env_var> environment variable.
+
+    SSM SecureString is the preferred store: it is free, where Secrets Manager
+    bills $0.40/secret/month. Secrets Manager is kept as a fallback so a
+    migration can deploy this code, populate SSM, verify the new path is
+    actually serving, and only then delete the old secret — rather than
+    needing both to flip at the same instant.
+
+    Never raises — a fetch failure degrades to the next source rather than
+    crashing the app. Callers that cannot safely run on a fallback (SECRET_KEY)
+    validate the result themselves."""
+    ssm_param = os.getenv(ssm_param_env_var, "").strip() if ssm_param_env_var else ""
+    if ssm_param:
+        try:
+            ssm = boto3.client("ssm", region_name=AWS_REGION)
+            return ssm.get_parameter(Name=ssm_param, WithDecryption=True)["Parameter"]["Value"]
+        except Exception as e:
+            print(f"WARNING: could not fetch SSM parameter {ssm_param!r} ({ssm_param_env_var}): {e}", flush=True)
+
+    secret_id = os.getenv(secret_id_env_var, "").strip() if secret_id_env_var else ""
+    if secret_id:
+        try:
+            sm = boto3.client("secretsmanager", region_name=AWS_REGION)
+            return sm.get_secret_value(SecretId=secret_id)["SecretString"]
+        except Exception as e:
+            print(f"WARNING: could not fetch secret {secret_id!r} ({secret_id_env_var}): {e}", flush=True)
+    return os.getenv(env_var, default)
+
+
 app = Flask(__name__)
 
-_secret_key = os.getenv("SECRET_KEY", "").strip()
+_secret_key = _resolve_secret("SECRET_KEY", ssm_param_env_var="SECRET_KEY_SSM_PARAM").strip()
 if not _secret_key or _secret_key == "change-this-secret":
     raise RuntimeError(
         "SECRET_KEY is not set (or is still the placeholder from .env.example). "
@@ -79,27 +120,13 @@ app.secret_key = _secret_key
 # so request.remote_addr reflects the real visitor instead of 127.0.0.1.
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
-def _resolve_secret(env_var, secret_id_env_var, default=""):
-    """Read a config value from AWS Secrets Manager if <secret_id_env_var> is
-    set (naming a secret name or ARN), otherwise fall back to the plain
-    <env_var> environment variable. Never raises — a Secrets Manager fetch
-    failure degrades to the env var/default rather than crashing the app,
-    matching how mail errors are already handled elsewhere (best-effort,
-    not security-critical like SECRET_KEY/admin passcode)."""
-    secret_id = os.getenv(secret_id_env_var, "").strip()
-    if secret_id:
-        try:
-            sm = boto3.client("secretsmanager", region_name=AWS_REGION)
-            return sm.get_secret_value(SecretId=secret_id)["SecretString"]
-        except Exception as e:
-            print(f"WARNING: could not fetch secret {secret_id!r} ({secret_id_env_var}): {e}", flush=True)
-    return os.getenv(env_var, default)
-
-
 app.config["MAIL_SERVER"] = os.getenv("MAIL_SERVER", "default_server")
 app.config["MAIL_PORT"] = int(os.getenv("MAIL_PORT", 587))
 app.config["MAIL_USERNAME"] = os.getenv("MAIL_USERNAME", "default_username")
-app.config["MAIL_PASSWORD"] = _resolve_secret("MAIL_PASSWORD", "MAIL_PASSWORD_SECRET_ID", "default_password")
+app.config["MAIL_PASSWORD"] = _resolve_secret(
+    "MAIL_PASSWORD", "MAIL_PASSWORD_SECRET_ID", "default_password",
+    ssm_param_env_var="MAIL_PASSWORD_SSM_PARAM",
+)
 app.config["MAIL_USE_TLS"] = os.getenv("MAIL_USE_TLS", "true").lower() in ["true", "1", "t"]
 app.config["MAIL_USE_SSL"] = os.getenv("MAIL_USE_SSL", "false").lower() in ["true", "1", "t"]
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB upload limit
@@ -113,10 +140,22 @@ app.config["SESSION_COOKIE_SECURE"] = os.getenv("FLASK_DEBUG", "").lower() not i
 
 mail = Mail(app)
 
-if not any(
-    os.getenv(name, "").strip()
-    for name in ("ADMIN_PASSCODE_HASH", "ADMIN_PASSCODE", "ADMIN_PASSWORD")
-):
+# Resolved once at import (cold start on Lambda) rather than per request:
+# these are read on hot paths, and an SSM call per request would add latency
+# and API cost to every admin login and every chat/search call.
+ADMIN_PASSCODE_HASH = _resolve_secret(
+    "ADMIN_PASSCODE_HASH", ssm_param_env_var="ADMIN_PASSCODE_HASH_SSM_PARAM"
+).strip()
+ADMIN_PASSCODE_PLAIN = (
+    _resolve_secret("ADMIN_PASSCODE", ssm_param_env_var="ADMIN_PASSCODE_SSM_PARAM").strip()
+    # Legacy alias, kept for compatibility with older deployments.
+    or os.getenv("ADMIN_PASSWORD", "").strip()
+)
+ANTHROPIC_API_KEY = _resolve_secret(
+    "ANTHROPIC_API_KEY", ssm_param_env_var="ANTHROPIC_API_KEY_SSM_PARAM"
+).strip()
+
+if not (ADMIN_PASSCODE_HASH or ADMIN_PASSCODE_PLAIN):
     print(
         "WARNING: No admin passcode is configured (ADMIN_PASSCODE_HASH, "
         "ADMIN_PASSCODE, or ADMIN_PASSWORD) — admin login is disabled until "
@@ -154,13 +193,10 @@ def login_required(view_func):
 
 
 def verify_admin_passcode(submitted_passcode):
-    configured_hash = os.getenv("ADMIN_PASSCODE_HASH", "").strip()
-    # ADMIN_PASSWORD is accepted as a legacy alias for ADMIN_PASSCODE — earlier
-    # versions of the docs told deployers to set that name instead.
-    configured_plain = (
-        os.getenv("ADMIN_PASSCODE", "").strip()
-        or os.getenv("ADMIN_PASSWORD", "").strip()
-    )
+    # Resolved at import — see ADMIN_PASSCODE_* above. ADMIN_PASSWORD is
+    # accepted as a legacy alias for ADMIN_PASSCODE, folded in there.
+    configured_hash = ADMIN_PASSCODE_HASH
+    configured_plain = ADMIN_PASSCODE_PLAIN
 
     if configured_hash:
         return check_password_hash(configured_hash, submitted_passcode)
@@ -190,9 +226,12 @@ def save_uploaded_image(upload):
     if ext not in ALLOWED_IMAGE_EXT:
         return ""
 
-    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     stamped_name = f"{int(datetime.utcnow().timestamp())}_{safe_name}"
-    destination = UPLOAD_DIR / stamped_name
+    # Write somewhere real first either way: Pillow optimises a file in place
+    # below, so even the S3 path needs a scratch file before uploading.
+    write_dir = SCRATCH_DIR if STATIC_S3_BUCKET else UPLOAD_DIR
+    write_dir.mkdir(parents=True, exist_ok=True)
+    destination = write_dir / stamped_name
     upload.save(destination)
 
     # Optimise with Pillow when available (skip SVG/ICO)
@@ -222,7 +261,35 @@ def save_uploaded_image(upload):
         except Exception:
             pass  # keep original if optimisation fails
 
-    return f"../static/uploads/{stamped_name}"
+    # Root-relative, not "../static/...": the value is used directly as an
+    # <img src> from pages at varying depths, so a relative path can resolve
+    # against the wrong base.
+    web_path = f"/static/uploads/{stamped_name}"
+
+    if STATIC_S3_BUCKET:
+        try:
+            s3 = boto3.client("s3", region_name=AWS_REGION)
+            s3.upload_file(
+                str(destination),
+                STATIC_S3_BUCKET,
+                f"static/uploads/{stamped_name}",
+                ExtraArgs={
+                    "ContentType": mimetypes.guess_type(stamped_name)[0] or "application/octet-stream",
+                    "CacheControl": "public, max-age=31536000, immutable",
+                },
+            )
+        except Exception as e:
+            print(f"ERROR: could not upload {stamped_name!r} to s3://{STATIC_S3_BUCKET}: {e}", flush=True)
+            return ""
+        finally:
+            # Ephemeral scratch space is shared across invocations on a warm
+            # Lambda and capped at 512MB by default — don't accumulate.
+            try:
+                destination.unlink()
+            except OSError:
+                pass
+
+    return web_path
 
 
 def save_additional_images(files):
@@ -311,6 +378,12 @@ def _clear_rate_limit(bucket, ip):
 
 @app.before_request
 def ensure_upload_dir():
+    # Skipped entirely when uploads go to S3: the app root is read-only on
+    # Lambda, so this mkdir would raise on the first request and 500 every
+    # route, not just the upload ones. save_uploaded_image() creates its own
+    # scratch directory when it actually needs one.
+    if STATIC_S3_BUCKET:
+        return
     if not getattr(app, "_dirs_ready", False):
         UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
         app._dirs_ready = True
@@ -1739,7 +1812,7 @@ def api_chat():
     if remaining_lock > 0:
         return jsonify({"error": "You've hit the chat limit for now — please wait a bit before trying again.", "retry_in": remaining_lock}), 429
 
-    api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
+    api_key = ANTHROPIC_API_KEY
     if not HAS_ANTHROPIC or not api_key:
         return jsonify({"error": "The AI assistant isn't configured yet."}), 503
 
@@ -1815,7 +1888,7 @@ def api_semantic_search():
     if remaining_lock > 0:
         return jsonify({"error": "Too many searches — please wait a bit before trying again.", "retry_in": remaining_lock}), 429
 
-    api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
+    api_key = ANTHROPIC_API_KEY
     if not HAS_ANTHROPIC or not api_key:
         return jsonify({"error": "Smart search isn't configured yet."}), 503
 

@@ -1,0 +1,102 @@
+name: Deploy to Lambda
+
+# Replaces deploy.yml (Elastic Beanstalk). Kept alongside it during the
+# migration so the old environment can still be redeployed if a rollback is
+# needed; delete deploy.yml once the EB environment is torn down.
+
+on:
+  # Manual-only until the migration is actually cut over. The first deploy is
+  # a hand-run `sam deploy` (runbook step 3) against a stack that does not
+  # exist yet, and this workflow needs an ACM_CERTIFICATE_ARN secret that is
+  # not set — so a push trigger would fail on the very commit that merges it.
+  # Add the push trigger below once the stack exists and DNS is cut:
+  #   push:
+  #     branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: lambda-deploy-prod
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ap-southeast-1
+  STACK_NAME: ctrlaltjay-app
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Sanity check Python syntax
+        run: python3 -m py_compile app.py lambda_handler.py
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: Build
+        # --use-container so Pillow resolves real manylinux aarch64 wheels
+        # rather than whatever matches the x86_64 GitHub runner. A wheel built
+        # for the runner's architecture imports fine here and then fails at
+        # runtime on Graviton.
+        run: sam build --use-container
+
+      - name: Deploy
+        # ManageDns stays false here. Cutting the apex over is a deliberate,
+        # one-time manual step (see docs/lambda-migration.md), not something a
+        # routine push should be able to do.
+        run: |
+          sam deploy \
+            --stack-name "${STACK_NAME}" \
+            --region "${AWS_REGION}" \
+            --capabilities CAPABILITY_IAM \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset \
+            --resolve-s3 \
+            --parameter-overrides \
+              AcmCertificateArn="${{ secrets.ACM_CERTIFICATE_ARN }}" \
+              ManageDns="${{ vars.MANAGE_DNS || 'false' }}" \
+            --tags Project=CtrlAltJay Environment=Production
+
+      - name: Resolve static bucket
+        id: bucket
+        run: |
+          BUCKET=$(aws cloudformation describe-stacks \
+            --stack-name "${STACK_NAME}" \
+            --query "Stacks[0].Outputs[?OutputKey=='StaticBucketName'].OutputValue" \
+            --output text)
+          echo "name=${BUCKET}" >> "$GITHUB_OUTPUT"
+
+      - name: Sync static assets to S3
+        # --delete keeps the bucket in step with the repo, but excludes
+        # uploads/: those are written at runtime by the admin UI and exist
+        # only in S3, so syncing from the repo would delete every one.
+        run: |
+          aws s3 sync static/ "s3://${{ steps.bucket.outputs.name }}/static/" \
+            --delete \
+            --exclude "uploads/*" \
+            --cache-control "public, max-age=31536000, immutable"
+
+      - name: Invalidate CloudFront
+        run: |
+          DIST=$(aws cloudformation describe-stack-resources \
+            --stack-name "${STACK_NAME}" \
+            --query "StackResources[?ResourceType=='AWS::CloudFront::Distribution'].PhysicalResourceId" \
+            --output text)
+          aws cloudfront create-invalidation --distribution-id "$DIST" --paths "/*"

@@ -1,0 +1,249 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  CtrlAltJay portfolio — Flask on Lambda behind CloudFront, replacing the
+  Elastic Beanstalk environment. CloudFront serves /static/* straight from S3
+  and sends everything else to the Lambda Function URL, so the 23MB of images
+  and fonts never cost a Lambda invocation.
+
+Parameters:
+  DomainName:
+    Type: String
+    Default: ctrlaltjay.dev
+  AcmCertificateArn:
+    Type: String
+    Description: >
+      ACM certificate ARN for DomainName. MUST be in us-east-1 — CloudFront
+      only reads certificates from that region regardless of where the rest
+      of the stack lives.
+  HostedZoneId:
+    Type: String
+    Default: Z096666535JC4AOH22XFD
+  ManageDns:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: >
+      Leave "false" for the first deploy so the stack can be verified on its
+      CloudFront domain while Elastic Beanstalk still serves live traffic.
+      Set "true" to point the apex at CloudFront.
+  MailPasswordSsmParam:
+    Type: String
+    Default: /ctrlaltjay/mail-password
+  AnthropicApiKeySsmParam:
+    Type: String
+    Default: /ctrlaltjay/anthropic-api-key
+  SecretKeySsmParam:
+    Type: String
+    Default: /ctrlaltjay/flask-secret-key
+  AdminPasscodeSsmParam:
+    Type: String
+    Default: /ctrlaltjay/admin-passcode
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 1024
+    # arm64/Graviton is ~20% cheaper per GB-second than x86_64 for identical
+    # work, which matters because cost is the whole point of this migration.
+    # The build must therefore install manylinux2014_aarch64 wheels.
+    Architectures: [arm64]
+    Runtime: python3.11
+    Tags:
+      Project: CtrlAltJay
+      Environment: Production
+
+Resources:
+  # ── Static assets + uploads ────────────────────────────────────────────────
+  StaticBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "ctrlaltjay-static-${AWS::AccountId}"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - { Key: Project, Value: CtrlAltJay }
+        - { Key: Environment, Value: Production }
+
+  StaticBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref StaticBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          # Reachable only through this CloudFront distribution, never directly.
+          - Effect: Allow
+            Principal: { Service: cloudfront.amazonaws.com }
+            Action: s3:GetObject
+            Resource: !Sub "${StaticBucket.Arn}/*"
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}"
+
+  # ── Application ───────────────────────────────────────────────────────────
+  AppFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: ctrlaltjay-app
+      CodeUri: ./
+      Handler: lambda_handler.handler
+      Environment:
+        Variables:
+          AWS_LAMBDA_REGION_HINT: !Ref AWS::Region
+          STATIC_S3_BUCKET: !Ref StaticBucket
+          BACKUP_S3_BUCKET: !Ref StaticBucket
+          MAIL_SERVER: smtp.office365.com
+          MAIL_PORT: "587"
+          MAIL_USERNAME: rone_peh@hotmail.com
+          MAIL_USE_TLS: "true"
+          MAIL_USE_SSL: "false"
+          # Secrets are read from SSM at cold start rather than baked in as
+          # plaintext environment variables (which is how they were exposed
+          # on the old Elastic Beanstalk environment).
+          MAIL_PASSWORD_SSM_PARAM: !Ref MailPasswordSsmParam
+          ANTHROPIC_API_KEY_SSM_PARAM: !Ref AnthropicApiKeySsmParam
+          SECRET_KEY_SSM_PARAM: !Ref SecretKeySsmParam
+          ADMIN_PASSCODE_SSM_PARAM: !Ref AdminPasscodeSsmParam
+      FunctionUrlConfig:
+        AuthType: AWS_IAM
+        InvokeMode: BUFFERED
+      Policies:
+        - DynamoDBCrudPolicy: { TableName: ctrlaltjay-portfolio-items }
+        - DynamoDBCrudPolicy: { TableName: ctrlaltjay-resume-items }
+        - DynamoDBCrudPolicy: { TableName: ctrlaltjay-skills }
+        - S3CrudPolicy: { BucketName: !Sub "ctrlaltjay-static-${AWS::AccountId}" }
+        - Statement:
+            - Effect: Allow
+              Action: [ssm:GetParameter, ssm:GetParameters]
+              Resource:
+                - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${MailPasswordSsmParam}"
+                - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${AnthropicApiKeySsmParam}"
+                - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${SecretKeySsmParam}"
+                - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${AdminPasscodeSsmParam}"
+            # SecureString values are KMS-encrypted; decrypting them via the
+            # AWS-managed SSM key requires this alongside ssm:GetParameter.
+            - Effect: Allow
+              Action: kms:Decrypt
+              Resource: "*"
+              Condition:
+                StringEquals:
+                  kms:ViaService: !Sub "ssm.${AWS::Region}.amazonaws.com"
+
+  # Lets CloudFront (and only CloudFront) sign requests to the Function URL.
+  AppFunctionUrlPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref AppFunction
+      Action: lambda:InvokeFunctionUrl
+      Principal: cloudfront.amazonaws.com
+      FunctionUrlAuthType: AWS_IAM
+      SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}"
+
+  # ── Edge ──────────────────────────────────────────────────────────────────
+  StaticOAC:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: ctrlaltjay-static-oac
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  LambdaOAC:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: ctrlaltjay-lambda-oac
+        OriginAccessControlOriginType: lambda
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: CtrlAltJay portfolio
+        Aliases: [!Ref DomainName]
+        PriceClass: PriceClass_All
+        HttpVersion: http2and3
+        IPV6Enabled: true
+        ViewerCertificate:
+          AcmCertificateArn: !Ref AcmCertificateArn
+          SslSupportMethod: sni-only
+          MinimumProtocolVersion: TLSv1.2_2021
+        Origins:
+          - Id: lambda-origin
+            DomainName: !Select [2, !Split ["/", !GetAtt AppFunctionUrl.FunctionUrl]]
+            OriginAccessControlId: !GetAtt LambdaOAC.Id
+            CustomOriginConfig:
+              OriginProtocolPolicy: https-only
+              OriginSSLProtocols: [TLSv1.2]
+          - Id: s3-static-origin
+            DomainName: !GetAtt StaticBucket.RegionalDomainName
+            OriginAccessControlId: !GetAtt StaticOAC.Id
+            S3OriginConfig: {}
+        DefaultCacheBehavior:
+          TargetOriginId: lambda-origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+          # CachingDisabled: the app is session-aware (admin cookie) and most
+          # routes are dynamic JSON. Caching HTML here would serve one
+          # visitor's admin state to another.
+          CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+          # AllViewerExceptHostHeader — Function URLs validate the SigV4
+          # signature against their own host, so the viewer Host must not be
+          # forwarded, but cookies/auth headers must be.
+          OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+        CacheBehaviors:
+          - PathPattern: /static/*
+            TargetOriginId: s3-static-origin
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD]
+            Compress: true
+            # CachingOptimized
+            CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+      Tags:
+        - { Key: Project, Value: CtrlAltJay }
+        - { Key: Environment, Value: Production }
+
+  # ── DNS ───────────────────────────────────────────────────────────────────
+  # Deliberately NOT created on first deploy — bring the stack up, verify it
+  # serves on the CloudFront domain, and only then point the apex at it.
+  # Deploy with ManageDns=true once verified.
+  ApexRecords:
+    Type: AWS::Route53::RecordSetGroup
+    Condition: ManageDnsEnabled
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      RecordSets:
+        - Name: !Ref DomainName
+          Type: A
+          AliasTarget:
+            DNSName: !GetAtt CloudFrontDistribution.DomainName
+            # Fixed magic value: the global hosted-zone ID for all CloudFront
+            # distributions, not this account's zone.
+            HostedZoneId: Z2FDTNDATAQYW2
+            EvaluateTargetHealth: false
+        - Name: !Ref DomainName
+          Type: AAAA
+          AliasTarget:
+            DNSName: !GetAtt CloudFrontDistribution.DomainName
+            HostedZoneId: Z2FDTNDATAQYW2
+            EvaluateTargetHealth: false
+
+Conditions:
+  ManageDnsEnabled: !Equals [!Ref ManageDns, "true"]
+
+Outputs:
+  CloudFrontDomain:
+    Description: Test URL — verify here before cutting DNS
+    Value: !GetAtt CloudFrontDistribution.DomainName
+  FunctionUrl:
+    Value: !GetAtt AppFunctionUrl.FunctionUrl
+  StaticBucketName:
+    Value: !Ref StaticBucket
