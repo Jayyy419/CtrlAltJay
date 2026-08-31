@@ -5,11 +5,10 @@ name: Deploy to Lambda
 # needed; delete deploy.yml once the EB environment is torn down.
 
 on:
-  # Manual-only until the migration is actually cut over. The first deploy is
-  # a hand-run `sam deploy` (runbook step 3) against a stack that does not
-  # exist yet, and this workflow needs an ACM_CERTIFICATE_ARN secret that is
-  # not set — so a push trigger would fail on the very commit that merges it.
-  # Add the push trigger below once the stack exists and DNS is cut:
+  # Manual-only until the migration is cut over, so a routine push to main
+  # cannot redeploy the stack or move DNS while EB is still serving live
+  # traffic. Add the push trigger below once cutover is done and this is the
+  # real deploy path:
   #   push:
   #     branches: [main]
   workflow_dispatch: {}
@@ -70,7 +69,6 @@ jobs:
             --no-fail-on-empty-changeset \
             --resolve-s3 \
             --parameter-overrides \
-              AcmCertificateArn="${{ secrets.ACM_CERTIFICATE_ARN }}" \
               ManageDns="${{ vars.MANAGE_DNS || 'false' }}" \
             --tags Project=CtrlAltJay Environment=Production
 
