@@ -106,9 +106,18 @@ aws s3 sync static/ "s3://$(aws cloudformation describe-stacks \
   --output text)/static/" --exclude "uploads/*"
 ```
 
-`--use-container` matters: Pillow must be an `aarch64` wheel for the arm64
-Lambda. A wheel built on an x86_64 runner imports fine locally and then fails
-at runtime.
+`--use-container` matters: dependencies must resolve against the real Lambda
+runtime image, not whatever happens to match the machine running the build.
+Pillow is the one that bites — it is pinned to 12.2.0 because 12.3.0 ships no
+cp311 x86_64 manylinux wheel, so pip falls back to the sdist and tries to
+compile it in a build container with no toolchain. (EB's build image *does*
+have a compiler, which is why 12.3.0 worked there and hid the problem.)
+
+The function is x86_64, matching the CI runner, so this builds natively. It
+was briefly arm64 — ~20% cheaper per GB-second — but that forces the build
+container to run under QEMU on an x86_64 runner, which took >13 minutes
+without finishing. At this traffic level the function sits inside the Lambda
+free tier, so the saving is 20% of approximately nothing.
 
 ### 4. Verify on the CloudFront domain
 
@@ -125,7 +134,9 @@ Use the `CloudFrontDomain` output — EB is still live on the real domain.
 ### 5. Cut DNS
 
 `ctrlaltjay.dev` is currently an **A record to `47.128.182.192`**, not an
-alias. Redeploy with `ManageDns=true`; the A/AAAA aliases replace it.
+alias. Redeploying with `ManageDns=true` replaces it with A/AAAA aliases to
+the distribution. In CI this is the `manage_dns` input on the deploy
+workflow; it defaults to `false`, so a routine deploy cannot move DNS.
 
 ```bash
 sam deploy --stack-name ctrlaltjay-app --region ap-southeast-1 \
@@ -133,8 +144,37 @@ sam deploy --stack-name ctrlaltjay-app --region ap-southeast-1 \
   --parameter-overrides AcmCertificateArn=<arn> ManageDns=true
 ```
 
+**The deploy role needs Route53 permissions for this step, and only this
+step.** The scoped `ctrlaltjay-sam-deploy` policy was written when the first
+deploy ran with `ManageDns=false`, so it had none, and the cutover failed
+with `route53:GetHostedZone ... is not authorized`. This is a safe failure —
+CloudFormation checks the permission before writing any record, so
+`ApexRecords` went `CREATE_FAILED` and rolled back with DNS untouched — but
+it is a wasted deploy. Attach this before cutting over:
+
+```json
+{
+  "Effect": "Allow",
+  "Action": [
+    "route53:GetHostedZone",
+    "route53:ListResourceRecordSets",
+    "route53:ChangeResourceRecordSets"
+  ],
+  "Resource": "arn:aws:route53:::hostedzone/Z096666535JC4AOH22XFD"
+}
+```
+
+plus `route53:GetChange` on `arn:aws:route53:::change/*` — CloudFormation
+polls that to wait for the change to propagate, and it does not accept a
+zone-scoped resource.
+
 Old TTL is 300s. Confirm `dig ctrlaltjay.dev` returns CloudFront and the live
 site serves before continuing. **Leave EB running** — it is the rollback.
+
+Note what rollback means here: redeploying with `ManageDns=false` **deletes**
+the alias records, it does not restore the old `A` record. Undoing the
+cutover means recreating `ctrlaltjay.dev A 47.128.182.192` by hand, so the
+deploy workflow logs the existing apex record set before changing it.
 
 ### 6. Tear down EB
 
