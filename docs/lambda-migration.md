@@ -144,13 +144,14 @@ sam deploy --stack-name ctrlaltjay-app --region ap-southeast-1 \
   --parameter-overrides AcmCertificateArn=<arn> ManageDns=true
 ```
 
-**The deploy role needs Route53 permissions for this step, and only this
-step.** The scoped `ctrlaltjay-sam-deploy` policy was written when the first
-deploy ran with `ManageDns=false`, so it had none, and the cutover failed
-with `route53:GetHostedZone ... is not authorized`. This is a safe failure —
+**This is not how the cutover was actually done — see below.** The
+CloudFormation path needs Route53 permissions the deploy role does not have.
+The scoped `ctrlaltjay-sam-deploy` policy was written when the first deploy
+ran with `ManageDns=false`, so it had none, and the cutover failed with
+`route53:GetHostedZone ... is not authorized`. That is a safe failure —
 CloudFormation checks the permission before writing any record, so
 `ApexRecords` went `CREATE_FAILED` and rolled back with DNS untouched — but
-it is a wasted deploy. Attach this before cutting over:
+it is a wasted build and deploy. To use this path, attach:
 
 ```json
 {
@@ -168,13 +169,31 @@ plus `route53:GetChange` on `arn:aws:route53:::change/*` — CloudFormation
 polls that to wait for the change to propagate, and it does not accept a
 zone-scoped resource.
 
-Old TTL is 300s. Confirm `dig ctrlaltjay.dev` returns CloudFront and the live
-site serves before continuing. **Leave EB running** — it is the rollback.
+#### What was actually done: `cutover-dns.yml`
 
-Note what rollback means here: redeploying with `ManageDns=false` **deletes**
-the alias records, it does not restore the old `A` record. Undoing the
-cutover means recreating `ctrlaltjay.dev A 47.128.182.192` by hand, so the
-deploy workflow logs the existing apex record set before changing it.
+Rather than granting the above, the apex was moved with a direct Route53
+API call, which needs only `ChangeResourceRecordSets` — a permission the
+role already had. Run the `Cut ctrlaltjay.dev over to CloudFront` workflow
+with `confirm: cutover`; it records the apex as it stands, UPSERTs A and
+AAAA aliases, waits for the old 300s TTL to drain, and asserts the live
+domain serves. To undo, run it again with `confirm: cutover` **and**
+`rollback: yes`.
+
+**Consequence: the apex is managed by that workflow, not by the stack, so
+`ManageDns` must stay `false`.** Deploying with `manage_dns=true` now would
+fail — CloudFormation would try to *create* records that already exist.
+Delete the apex records by hand first if you ever want the stack to own them.
+
+This is the better arrangement regardless: the hosted zone and the apex
+record both predate the stack, and records owned by the stack would be
+destroyed along with it. It also means **tearing the stack down cannot take
+DNS with it.**
+
+The cutover uses UPSERT, so the existing record is replaced in place and the
+apex is never without a record — the convergence log showed an unbroken run
+of `200`s, transitioning from `HTTP/1.1` (EB) to `HTTP/2 ... cloudfront=True`.
+
+**Leave EB running** until everything below is verified — it is the rollback.
 
 ### 6. Tear down EB
 
