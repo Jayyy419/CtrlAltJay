@@ -1,0 +1,91 @@
+name: Verify Lambda stack
+
+# Pre-cutover verification for the Lambda/CloudFront stack. Read-only: it
+# creates and changes nothing. Run this before pointing ctrlaltjay.dev at
+# CloudFront, and again afterwards, to confirm the whole path -- CloudFront ->
+# OAC/SigV4 -> Function URL -> Flask -> DynamoDB, plus the S3 static origin --
+# actually serves rather than just existing.
+#
+# Grew out of the diagnostic that root-caused the OAC 403 (#96/#97): function
+# URLs created from October 2025 onward need lambda:InvokeFunction as well as
+# lambda:InvokeFunctionUrl.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ap-southeast-1
+  STACK_NAME: ctrlaltjay-app
+  FUNCTION_NAME: ctrlaltjay-app
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Resolve stack
+        id: stack
+        run: |
+          DOMAIN=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
+            --query "Stacks[0].Outputs[?OutputKey=='CloudFrontDomain'].OutputValue" \
+            --output text)
+          echo "domain=${DOMAIN}" >> "$GITHUB_OUTPUT"
+          echo "CloudFront domain: ${DOMAIN}"
+
+      - name: Lambda resource policy
+        # Both lambda:InvokeFunctionUrl and lambda:InvokeFunction must be
+        # granted to cloudfront.amazonaws.com, or the Function URL rejects
+        # CloudFront's signed request with its own "Forbidden ... urls-auth".
+        run: |
+          aws lambda get-policy --function-name "$FUNCTION_NAME" \
+            --query Policy --output text | python3 -m json.tool || true
+
+      # Each check below fails the job on a bad result, so this workflow going
+      # green is itself the verification -- it is not a log to read by eye.
+      - name: Homepage through CloudFront
+        run: |
+          D="${{ steps.stack.outputs.domain }}"
+          CODE=$(curl -sS -o /tmp/home.html -w '%{http_code}' --max-time 30 "https://${D}/")
+          echo "status=${CODE} bytes=$(wc -c < /tmp/home.html)"
+          test "$CODE" = "200" || { echo "::error::homepage returned ${CODE}"; exit 1; }
+          grep -q "CtrlAltJay" /tmp/home.html || { echo "::error::homepage body missing title"; exit 1; }
+
+      - name: Public data API through CloudFront
+        # Proves DynamoDB is reachable from inside the Lambda over the full
+        # edge path, not just from a direct invoke.
+        run: |
+          D="${{ steps.stack.outputs.domain }}"
+          CODE=$(curl -sS -o /tmp/api.json -w '%{http_code}' --max-time 30 "https://${D}/api/public-data")
+          echo "status=${CODE}"
+          test "$CODE" = "200" || { echo "::error::api returned ${CODE}"; exit 1; }
+          python3 - <<'PY'
+          import json, sys
+          d = json.load(open("/tmp/api.json"))
+          counts = {k: len(v) for k, v in d.items() if isinstance(v, list)}
+          print("collection sizes:", counts)
+          if not counts or not any(counts.values()):
+              sys.exit("::error::api returned no rows -- DynamoDB not reachable?")
+          PY
+
+      - name: Static asset through the S3 origin
+        run: |
+          D="${{ steps.stack.outputs.domain }}"
+          CODE=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 "https://${D}/static/css/style.css")
+          echo "status=${CODE}"
+          test "$CODE" = "200" || { echo "::error::static asset returned ${CODE}"; exit 1; }
+
+      - name: Unknown route returns the app's 404, not an edge error
+        run: |
+          D="${{ steps.stack.outputs.domain }}"
+          CODE=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 "https://${D}/no-such-page-$RANDOM")
+          echo "status=${CODE}"
+          test "$CODE" = "404" || { echo "::error::expected 404, got ${CODE}"; exit 1; }
