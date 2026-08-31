@@ -50,10 +50,10 @@ jobs:
           use-installer: true
 
       - name: Build
-        # --use-container so Pillow resolves real manylinux aarch64 wheels
-        # rather than whatever matches the x86_64 GitHub runner. A wheel built
-        # for the runner's architecture imports fine here and then fails at
-        # runtime on Graviton.
+        # --use-container so dependencies resolve against the real Lambda
+        # runtime image (manylinux wheels for Pillow et al.) rather than
+        # whatever happens to match the runner. The function is x86_64, which
+        # matches the runner, so this builds natively with no emulation.
         run: sam build --use-container
 
       - name: Deploy
