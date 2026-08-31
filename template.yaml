@@ -12,10 +12,12 @@ Parameters:
     Default: ctrlaltjay.dev
   AcmCertificateArn:
     Type: String
+    Default: arn:aws:acm:us-east-1:140023398409:certificate/70c4a202-c8ca-4449-9bb2-7e6cbd124cbf
     Description: >
       ACM certificate ARN for DomainName. MUST be in us-east-1 — CloudFront
       only reads certificates from that region regardless of where the rest
-      of the stack lives.
+      of the stack lives. Defaulted rather than passed as a CI secret: an ARN
+      is an identifier, not a credential.
   HostedZoneId:
     Type: String
     Default: Z096666535JC4AOH22XFD
