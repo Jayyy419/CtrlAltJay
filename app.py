@@ -188,6 +188,24 @@ EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 # named here so the SES and SMTP paths cannot drift apart.
 CONTACT_RECIPIENT = os.getenv("CONTACT_RECIPIENT", "Rone_peh@hotmail.com").strip()
 
+
+def _from_display_name(raw):
+    """Build the From display name from a visitor-supplied name.
+
+    The address itself cannot be the visitor's. SES only sends as an identity
+    this account has verified, and mail claiming to come from someone else's
+    domain fails that domain's SPF/DKIM checks -- so it would be rejected or
+    junked rather than delivered, which is worse than not setting it. The
+    display name is free text, though, so the inbox can still show who wrote
+    in, and Reply-To still goes to them.
+
+    Carriage returns and newlines are stripped rather than escaped: they would
+    be header injection, letting a visitor append arbitrary headers to the
+    message. Quotes and backslashes would break out of the quoted string.
+    """
+    cleaned = re.sub(r'[\r\n"\\]', "", raw).strip()
+    return cleaned[:64]
+
 PORTFOLIO_ITEM_FIELDS = [
     "additional_images", "byline", "category", "challenges",
     "credential_url", "date_label", "date_value", "deliverables",
@@ -1184,8 +1202,9 @@ Message:
     try:
         if SES_SENDER:
             ses = boto3.client("ses", region_name=AWS_REGION)
+            display = _from_display_name(fullname)
             ses.send_email(
-                Source=SES_SENDER,
+                Source=f'"{display} via CtrlAltJay" <{SES_SENDER}>' if display else SES_SENDER,
                 Destination={"ToAddresses": [CONTACT_RECIPIENT]},
                 Message={
                     "Subject": {"Data": f"Portfolio Contact: {subject}"},
@@ -1197,9 +1216,14 @@ Message:
                 ReplyToAddresses=[email],
             )
         else:
+            display = _from_display_name(fullname)
             msg = Message(
                 subject=f"Portfolio Contact: {subject}",
-                sender=app.config["MAIL_USERNAME"],
+                sender=(
+                    (f"{display} via CtrlAltJay", app.config["MAIL_USERNAME"])
+                    if display
+                    else app.config["MAIL_USERNAME"]
+                ),
                 recipients=[CONTACT_RECIPIENT],
                 body=email_body,
                 reply_to=email,
