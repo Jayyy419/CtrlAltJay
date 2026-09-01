@@ -76,6 +76,33 @@ jobs:
               sys.exit("::error::api returned no rows -- DynamoDB not reachable?")
           PY
 
+      - name: POST through CloudFront
+        # The check this suite was missing. Every other assertion here is a
+        # GET, which is why the OAC body-signing problem reached production:
+        # GETs have no body to sign, so they passed while every POST 403'd.
+        #
+        # Submits the contact form with a deliberately invalid payload. Flask
+        # rejects it on validation before any mail is attempted, so this sends
+        # nothing, and the three outcomes are distinguishable:
+        #   403 -> request never reached the app (signing/authorization)
+        #   404 -> reached the app but the origin-verify header did not
+        #   400/429 -> reached the app and was parsed; the POST path works
+        # 429 counts as a pass: being rate limited still proves arrival.
+        run: |
+          D="${{ steps.stack.outputs.domain }}"
+          CODE=$(curl -sS -o /tmp/post.json -w '%{http_code}' --max-time 30 \
+            -X POST "https://${D}/send_message" \
+            -H "X-Requested-With: XMLHttpRequest" \
+            --data-urlencode "fullname=")
+          echo "status=${CODE}"; cat /tmp/post.json; echo
+          case "$CODE" in
+            400|429) echo "POST reached the application -- body-carrying requests work" ;;
+            403) echo "::error::403 -- POST never reached the app; origin rejected the signed request"; exit 1 ;;
+            404) echo "::error::404 -- reached the app but x-origin-verify did not match"; exit 1 ;;
+            *)   echo "::error::unexpected status ${CODE}"; exit 1 ;;
+          esac
+          grep -qi "signature" /tmp/post.json && { echo "::error::AWS signature error in body"; exit 1; } || true
+
       - name: Static asset through the S3 origin
         run: |
           D="${{ steps.stack.outputs.domain }}"

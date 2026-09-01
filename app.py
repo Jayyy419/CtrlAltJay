@@ -67,6 +67,14 @@ STATIC_S3_BUCKET = os.getenv("STATIC_S3_BUCKET", "").strip()
 # Lambda only permits writes under /tmp; Pillow needs a real file to optimise
 # before the result is uploaded to S3.
 SCRATCH_DIR = Path(os.getenv("UPLOAD_SCRATCH_DIR", "/tmp")) if STATIC_S3_BUCKET else None
+# Shared secret proving a request arrived through CloudFront. The Lambda
+# Function URL has to be publicly reachable (AuthType NONE) because
+# CloudFront's origin access control cannot sign a request body, so every
+# POST fails signature validation under AWS_IAM. CloudFront injects this as
+# a custom origin header on each origin request, and a custom origin header
+# overrides any value the viewer sent, so it cannot be spoofed from outside.
+# Unset locally, where the check is skipped.
+ORIGIN_VERIFY_TOKEN = os.getenv("ORIGIN_VERIFY_TOKEN", "").strip()
 dynamodb = boto3.resource("dynamodb", region_name=AWS_REGION)
 table_items = dynamodb.Table("ctrlaltjay-portfolio-items")
 table_resume = dynamodb.Table("ctrlaltjay-resume-items")
@@ -374,6 +382,23 @@ def _record_rate_limit_failure(bucket, ip, max_attempts, lock_seconds):
 
 def _clear_rate_limit(bucket, ip):
     table_items.delete_item(Key={"id": _rate_limit_id(bucket, ip)})
+
+
+@app.before_request
+def verify_cloudfront_origin():
+    # Registered before every other hook so nothing runs for a request that
+    # bypassed CloudFront by hitting the Function URL hostname directly.
+    #
+    # 404 rather than 403: a 403 confirms the endpoint exists and that a
+    # header would satisfy it. Constant-time compare so the token cannot be
+    # recovered a byte at a time from response timing.
+    if not ORIGIN_VERIFY_TOKEN:
+        return None
+    if hmac.compare_digest(
+        request.headers.get("X-Origin-Verify", ""), ORIGIN_VERIFY_TOKEN
+    ):
+        return None
+    return jsonify({"error": "Not found"}), 404
 
 
 @app.before_request
