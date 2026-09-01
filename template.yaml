@@ -144,21 +144,13 @@ Resources:
                 StringEquals:
                   kms:ViaService: !Sub "ssm.${AWS::Region}.amazonaws.com"
 
-  # SAM adds the lambda:InvokeFunctionUrl grant for an AuthType NONE URL, but
-  # not this one: function URLs created from October 2025 onward are also
-  # authorized against lambda:InvokeFunction, and without it every request is
-  # refused. Same trap that produced the original 403, in its public form.
-  #
-  # The lambda:FunctionUrlAuthType condition keeps this to traffic arriving
-  # through the function URL, which is already public; it does not open the
-  # regular Invoke API to everyone.
-  AppFunctionUrlInvokePermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !Ref AppFunction
-      Action: lambda:InvokeFunction
-      Principal: "*"
-      FunctionUrlAuthType: NONE
+  # No explicit function-URL permission here. For an AuthType NONE URL, SAM
+  # emits both grants itself -- AppFunctionUrlPublicPermissions for
+  # lambda:InvokeFunctionUrl and AppFunctionURLInvokeAllowPublicAccess for
+  # lambda:InvokeFunction -- so it already covers the October 2025 change that
+  # made function URLs need both. Adding a third was redundant, and invalid
+  # besides: FunctionUrlAuthType is only accepted on lambda:InvokeFunctionUrl,
+  # so pairing it with lambda:InvokeFunction fails the deploy outright.
 
   # ── Edge ──────────────────────────────────────────────────────────────────
   StaticOAC:
