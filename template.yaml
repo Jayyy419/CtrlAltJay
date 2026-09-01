@@ -101,6 +101,11 @@ Resources:
           AWS_LAMBDA_REGION_HINT: !Ref AWS::Region
           STATIC_S3_BUCKET: !Ref StaticBucket
           BACKUP_S3_BUCKET: !Ref StaticBucket
+          # SES rather than SMTP: Microsoft disabled basic authentication on
+          # the Office365 mailbox, so the SMTP path fails with 535 5.7.139 no
+          # matter what password is supplied. Sending as the domain means no
+          # credential is involved at all.
+          SES_SENDER: !Sub "no-reply@${DomainName}"
           MAIL_SERVER: smtp.office365.com
           MAIL_PORT: "587"
           MAIL_USERNAME: rone_peh@hotmail.com
@@ -127,6 +132,16 @@ Resources:
         - DynamoDBCrudPolicy: { TableName: ctrlaltjay-resume-items }
         - DynamoDBCrudPolicy: { TableName: ctrlaltjay-skills }
         - S3CrudPolicy: { BucketName: !Sub "ctrlaltjay-static-${AWS::AccountId}" }
+        - Statement:
+            - Effect: Allow
+              Action: [ses:SendEmail, ses:SendRawEmail]
+              Resource: "*"
+              Condition:
+                StringEquals:
+                  # Restricts sending to this one From address, so the
+                  # permission cannot be used to send as any other verified
+                  # identity in the account.
+                  ses:FromAddress: !Sub "no-reply@${DomainName}"
         - Statement:
             - Effect: Allow
               Action: [ssm:GetParameter, ssm:GetParameters]

@@ -128,6 +128,14 @@ app.secret_key = _secret_key
 # so request.remote_addr reflects the real visitor instead of 127.0.0.1.
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
+# When set, mail goes out through Amazon SES using the execution role rather
+# than SMTP. Office365 SMTP stopped working entirely: Microsoft disabled basic
+# authentication on the mailbox, so every send fails with
+#   535 5.7.139 Authentication unsuccessful, basic authentication is disabled
+# regardless of whether the password is correct. SES authenticates with SigV4,
+# so there is no password to store, fetch or rotate at all.
+SES_SENDER = os.getenv("SES_SENDER", "").strip()
+
 app.config["MAIL_SERVER"] = os.getenv("MAIL_SERVER", "default_server")
 app.config["MAIL_PORT"] = int(os.getenv("MAIL_PORT", 587))
 app.config["MAIL_USERNAME"] = os.getenv("MAIL_USERNAME", "default_username")
@@ -176,6 +184,9 @@ ADMIN_LOCK_SECONDS = 600
 MAX_CONTACT_ATTEMPTS = 5
 CONTACT_RATE_WINDOW_SECONDS = 600
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+# Where contact-form submissions are delivered. Was inline in the send call;
+# named here so the SES and SMTP paths cannot drift apart.
+CONTACT_RECIPIENT = os.getenv("CONTACT_RECIPIENT", "Rone_peh@hotmail.com").strip()
 
 PORTFOLIO_ITEM_FIELDS = [
     "additional_images", "byline", "category", "challenges",
@@ -1171,14 +1182,29 @@ Message:
 """
 
     try:
-        msg = Message(
-            subject=f"Portfolio Contact: {subject}",
-            sender=app.config["MAIL_USERNAME"],
-            recipients=["Rone_peh@hotmail.com"],
-            body=email_body,
-            reply_to=email,
-        )
-        mail.send(msg)
+        if SES_SENDER:
+            ses = boto3.client("ses", region_name=AWS_REGION)
+            ses.send_email(
+                Source=SES_SENDER,
+                Destination={"ToAddresses": [CONTACT_RECIPIENT]},
+                Message={
+                    "Subject": {"Data": f"Portfolio Contact: {subject}"},
+                    "Body": {"Text": {"Data": email_body}},
+                },
+                # The visitor's address goes in Reply-To, never in Source: SES
+                # will only send as an identity this account has verified, and
+                # a stranger's domain never will be.
+                ReplyToAddresses=[email],
+            )
+        else:
+            msg = Message(
+                subject=f"Portfolio Contact: {subject}",
+                sender=app.config["MAIL_USERNAME"],
+                recipients=[CONTACT_RECIPIENT],
+                body=email_body,
+                reply_to=email,
+            )
+            mail.send(msg)
         if request.headers.get("X-Requested-With") == "XMLHttpRequest":
             return jsonify({"message": "Message sent successfully. I'll get back to you soon!"})
         flash("Message sent successfully. I'll get back to you soon!", "success")
