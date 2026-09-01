@@ -1,16 +1,11 @@
 name: Deploy to Lambda
 
-# Replaces deploy.yml (Elastic Beanstalk). Kept alongside it during the
-# migration so the old environment can still be redeployed if a rollback is
-# needed; delete deploy.yml once the EB environment is torn down.
+# The deploy path for the site. Replaced deploy.yml, which targeted the
+# Elastic Beanstalk environment that has since been torn down.
 
 on:
-  # Manual-only until the migration is cut over, so a routine push to main
-  # cannot redeploy the stack or move DNS while EB is still serving live
-  # traffic. Add the push trigger below once cutover is done and this is the
-  # real deploy path:
-  #   push:
-  #     branches: [main]
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       manage_dns:
@@ -89,7 +84,7 @@ jobs:
             --no-fail-on-empty-changeset \
             --resolve-s3 \
             --parameter-overrides \
-              ManageDns="${{ inputs.manage_dns }}" \
+              ManageDns="${{ inputs.manage_dns || 'false' }}" \
             --tags Project=CtrlAltJay Environment=Production
 
       - name: Resolve static bucket

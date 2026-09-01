@@ -40,6 +40,39 @@ CloudFront  ── /static/*  → S3 (OAC)      23MB of images/fonts, cached at 
   Store, falls back to Secrets Manager, then to a plain env var. All four
   secrets resolve once at import (cold start), not per request.
 
+## Outcome
+
+Done. `ctrlaltjay.dev` is served by CloudFront in front of Lambda; the
+Elastic Beanstalk environment is terminated, its CloudFormation stacks are
+gone, and the Elastic IP is **released** — `describe-addresses` returns an
+empty list, so the account holds no Elastic IP at all. That last point is
+the one that matters for the bill: an unattached address is billed *more*
+than an attached one, so disassociating without releasing would have made
+the spend worse.
+
+Two things behaved differently from the plan and are worth carrying
+forward:
+
+- **CloudFront OAC cannot sign a request body.** Lambda function URLs
+  reject `UNSIGNED-PAYLOAD`, so under `AuthType: AWS_IAM` every POST fails
+  with a SigV4 mismatch while every GET succeeds. The function URL is
+  therefore `AuthType: NONE`, with CloudFront injecting `x-origin-verify`
+  and the app rejecting anything without it. Nothing about the OAC could
+  have been configured to make POST work.
+- **A GET-only test suite cannot see that.** The verification passed and
+  the site was broken for every form on it. `verify-lambda.yml` now sends a
+  POST and distinguishes "never arrived" from "arrived without the header"
+  from "works".
+
+Still outstanding, both needing access this automation does not have:
+
+- `CtrlAltJay-HighCPU` still exists — the deploy role lacks
+  `cloudwatch:DeleteAlarms`. It watches an instance that no longer exists,
+  so it will sit in `INSUFFICIENT_DATA` forever.
+- SES will not deliver until `no-reply@ctrlaltjay.dev` is a verified
+  identity, and while the account is in the SES sandbox the recipient must
+  be verified too.
+
 ## Runbook
 
 Nothing here is destructive until step 6. EB keeps serving live traffic
