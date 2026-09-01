@@ -1,0 +1,138 @@
+name: Set up SES sending
+
+# Gets contact-form mail actually delivering. Idempotent -- safe to re-run at
+# any point, including after you click the verification link.
+#
+# Verifies the DOMAIN rather than the sending address: domain verification is
+# DNS-only, so it needs no mailbox at no-reply@ctrlaltjay.dev (which does not
+# exist). The DKIM records are published straight into Route53 here.
+#
+# One step cannot be automated. While the account is in the SES sandbox, the
+# RECIPIENT must be verified too, and that means clicking a link in an email
+# sent to it. This job triggers that email; you click it.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ap-southeast-1
+  ZONE_ID: Z096666535JC4AOH22XFD
+  DOMAIN: ctrlaltjay.dev
+  RECIPIENT: rone_peh@hotmail.com
+
+jobs:
+  ses:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Sandbox status
+        # Production access removes the recipient-verification requirement
+        # entirely. Worth knowing which regime we are in before interpreting
+        # anything below.
+        run: |
+          aws sesv2 get-account \
+            --query '{Sandbox:ProductionAccessEnabled,SendingEnabled:SendingEnabled}' \
+            --output json || echo "could not read account status"
+
+      - name: Create or fetch the domain identity
+        id: domain
+        # create-email-identity fails with AlreadyExists on a re-run, which is
+        # not an error here -- fall through to reading the existing identity.
+        run: |
+          aws sesv2 create-email-identity --email-identity "$DOMAIN" >/dev/null 2>&1 \
+            || echo "identity already exists; reading it instead"
+          aws sesv2 get-email-identity --email-identity "$DOMAIN" \
+            --query 'DkimAttributes.Tokens' --output json > /tmp/tokens.json
+          cat /tmp/tokens.json
+          test "$(jq 'length' /tmp/tokens.json)" = "3" \
+            || { echo "::error::expected 3 DKIM tokens"; exit 1; }
+
+      - name: Publish the DKIM records to Route53
+        # UPSERT so a re-run is harmless. These three CNAMEs are what proves
+        # domain ownership and signs outgoing mail.
+        run: |
+          jq --arg d "$DOMAIN" '{
+            Comment: "SES DKIM",
+            Changes: [ .[] | {
+              Action: "UPSERT",
+              ResourceRecordSet: {
+                Name: (. + "._domainkey." + $d),
+                Type: "CNAME", TTL: 1800,
+                ResourceRecords: [ { Value: (. + ".dkim.amazonses.com") } ]
+              } } ] }' /tmp/tokens.json > /tmp/dkim.json
+          cat /tmp/dkim.json
+          aws route53 change-resource-record-sets \
+            --hosted-zone-id "$ZONE_ID" --change-batch file:///tmp/dkim.json
+
+      - name: Trigger recipient verification
+        # Sandbox only. Sends a verification email to the recipient; the link
+        # in it has to be clicked by a person.
+        run: |
+          aws sesv2 create-email-identity --email-identity "$RECIPIENT" >/dev/null 2>&1 \
+            && echo "verification email sent to ${RECIPIENT} -- click the link in it" \
+            || echo "identity already exists for ${RECIPIENT} (already verified, or link still pending)"
+          aws sesv2 get-email-identity --email-identity "$RECIPIENT" \
+            --query '{Verified:VerifiedForSendingStatus}' --output json || true
+
+      - name: Wait for the domain to verify
+        # DNS propagation plus SES's own polling; usually minutes. Not fatal if
+        # it has not landed yet -- re-run this workflow to re-check.
+        run: |
+          for i in $(seq 1 20); do
+            S=$(aws sesv2 get-email-identity --email-identity "$DOMAIN" \
+                  --query 'VerifiedForSendingStatus' --output text 2>/dev/null || echo "unknown")
+            echo "domain verified=${S}"
+            [ "$S" = "True" ] && exit 0
+            sleep 30
+          done
+          echo "::warning::domain not verified yet -- DNS records are published; re-run to re-check"
+
+      - name: What is left
+        run: |
+          echo "== domain =="
+          aws sesv2 get-email-identity --email-identity "$DOMAIN" \
+            --query '{Verified:VerifiedForSendingStatus,Dkim:DkimAttributes.Status}' --output json || true
+          echo "== recipient =="
+          aws sesv2 get-email-identity --email-identity "$RECIPIENT" \
+            --query '{Verified:VerifiedForSendingStatus}' --output json || true
+          echo
+          echo "Both must read True before the contact form can deliver."
+
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Delete the retired CPU alarm
+        # Left behind by the Elastic Beanstalk teardown: the deploy role had no
+        # cloudwatch:DeleteAlarms at the time. It watches an instance that no
+        # longer exists.
+        run: |
+          aws cloudwatch delete-alarms --alarm-names CtrlAltJay-HighCPU \
+            && echo "delete-alarms returned success" \
+            || { echo "::warning::still not permitted to delete the alarm"; exit 0; }
+          N=$(aws cloudwatch describe-alarms --alarm-names CtrlAltJay-HighCPU \
+                --query 'length(MetricAlarms)' --output text 2>/dev/null || echo "?")
+          echo "alarms remaining with that name: ${N}"
+
+      - name: Confirm the retired spend is at zero
+        # The three line items the migration was meant to remove.
+        run: |
+          aws ce get-cost-and-usage --region us-east-1 \
+            --time-period Start=$(date -u -d '7 days ago' +%Y-%m-%d),End=$(date -u +%Y-%m-%d) \
+            --granularity DAILY --metrics UnblendedCost \
+            --group-by Type=DIMENSION,Key=USAGE_TYPE \
+            --filter '{"Dimensions":{"Key":"USAGE_TYPE","Values":["APS1-BoxUsage:t3.micro","PublicIPv4:InUseAddress","APS1-EBS:VolumeUsage.gp3"]}}' \
+            --query 'ResultsByTime[].{Day:TimePeriod.Start,Items:Groups[].{Type:Keys[0],Cost:Metrics.UnblendedCost.Amount}}' \
+            --output json || echo "::warning::Cost Explorer not permitted"
