@@ -109,12 +109,18 @@ Resources:
           # Secrets are read from SSM at cold start rather than baked in as
           # plaintext environment variables (which is how they were exposed
           # on the old Elastic Beanstalk environment).
+          ORIGIN_VERIFY_TOKEN: !Select [2, !Split ["/", !Ref "AWS::StackId"]]
           MAIL_PASSWORD_SSM_PARAM: !Ref MailPasswordSsmParam
           ANTHROPIC_API_KEY_SSM_PARAM: !Ref AnthropicApiKeySsmParam
           SECRET_KEY_SSM_PARAM: !Ref SecretKeySsmParam
           ADMIN_PASSCODE_SSM_PARAM: !Ref AdminPasscodeSsmParam
       FunctionUrlConfig:
-        AuthType: AWS_IAM
+        # NONE, not AWS_IAM. CloudFront's OAC does not sign the request body
+        # and Lambda function URLs reject UNSIGNED-PAYLOAD, so every POST is
+        # refused with a SigV4 signature mismatch under AWS_IAM. GETs work,
+        # which is exactly why this survived a GET-only verification pass.
+        # The origin is protected by the ORIGIN_VERIFY_TOKEN header instead.
+        AuthType: NONE
         InvokeMode: BUFFERED
       Policies:
         - DynamoDBCrudPolicy: { TableName: ctrlaltjay-portfolio-items }
@@ -138,37 +144,21 @@ Resources:
                 StringEquals:
                   kms:ViaService: !Sub "ssm.${AWS::Region}.amazonaws.com"
 
-  # Lets CloudFront (and only CloudFront) sign requests to the Function URL.
-  AppFunctionUrlPermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !Ref AppFunction
-      Action: lambda:InvokeFunctionUrl
-      Principal: cloudfront.amazonaws.com
-      FunctionUrlAuthType: AWS_IAM
-      SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}"
-
-  # Both grants are required, not one. Function URLs created from October 2025
-  # onward are authorized against lambda:InvokeFunction *as well as*
-  # lambda:InvokeFunctionUrl; this URL was created well after that cutoff, so
-  # with only the grant above CloudFront's signed request is rejected and the
-  # Function URL returns its own "Forbidden ... urls-auth" body — which reads
-  # like a signing failure rather than a missing action. Almost every OAC
-  # example predates the change and shows only InvokeFunctionUrl, so the
-  # configuration looks correct against the documentation and still 403s.
+  # SAM adds the lambda:InvokeFunctionUrl grant for an AuthType NONE URL, but
+  # not this one: function URLs created from October 2025 onward are also
+  # authorized against lambda:InvokeFunction, and without it every request is
+  # refused. Same trap that produced the original 403, in its public form.
   #
-  # SourceArn pins this to the one distribution, which is what actually
-  # constrains the grant. The lambda:FunctionUrlAuthType condition is
-  # deliberately not set here: it is unnecessary alongside SourceArn, and it is
-  # not worth risking that the condition key is absent from the request context
-  # for this action and silently reintroducing the same 403.
-  AppFunctionInvokePermission:
+  # The lambda:FunctionUrlAuthType condition keeps this to traffic arriving
+  # through the function URL, which is already public; it does not open the
+  # regular Invoke API to everyone.
+  AppFunctionUrlInvokePermission:
     Type: AWS::Lambda::Permission
     Properties:
       FunctionName: !Ref AppFunction
       Action: lambda:InvokeFunction
-      Principal: cloudfront.amazonaws.com
-      SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}"
+      Principal: "*"
+      FunctionUrlAuthType: NONE
 
   # ── Edge ──────────────────────────────────────────────────────────────────
   StaticOAC:
@@ -177,15 +167,6 @@ Resources:
       OriginAccessControlConfig:
         Name: ctrlaltjay-static-oac
         OriginAccessControlOriginType: s3
-        SigningBehavior: always
-        SigningProtocol: sigv4
-
-  LambdaOAC:
-    Type: AWS::CloudFront::OriginAccessControl
-    Properties:
-      OriginAccessControlConfig:
-        Name: ctrlaltjay-lambda-oac
-        OriginAccessControlOriginType: lambda
         SigningBehavior: always
         SigningProtocol: sigv4
 
@@ -206,7 +187,12 @@ Resources:
         Origins:
           - Id: lambda-origin
             DomainName: !Select [2, !Split ["/", !GetAtt AppFunctionUrl.FunctionUrl]]
-            OriginAccessControlId: !GetAtt LambdaOAC.Id
+            # CloudFront overrides any same-named header the viewer sent, so
+            # this cannot be forged by a client -- only by someone who can
+            # read the stack. The app 404s anything arriving without it.
+            OriginCustomHeaders:
+              - HeaderName: x-origin-verify
+                HeaderValue: !Select [2, !Split ["/", !Ref "AWS::StackId"]]
             CustomOriginConfig:
               OriginProtocolPolicy: https-only
               OriginSSLProtocols: [TLSv1.2]
