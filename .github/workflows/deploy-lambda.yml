@@ -71,6 +71,20 @@ jobs:
             --query "ResourceRecordSets[?Name=='ctrlaltjay.dev.']" \
             --output json
 
+      - name: Carry the current on/off state forward
+        # A routine deploy must not switch the site back on. SiteEnabled is
+        # read from the live stack and passed back explicitly, so a push while
+        # the site is deliberately dark leaves it dark. Empty on the first
+        # deploy after the parameter is introduced, which correctly means "on".
+        id: power
+        run: |
+          CUR=$(aws cloudformation describe-stacks --stack-name "${STACK_NAME}" \
+            --query "Stacks[0].Parameters[?ParameterKey=='SiteEnabled'].ParameterValue" \
+            --output text 2>/dev/null || echo "")
+          case "$CUR" in true|false) ;; *) CUR=true ;; esac
+          echo "site_enabled=${CUR}" >> "$GITHUB_OUTPUT"
+          echo "carrying SiteEnabled=${CUR} forward"
+
       - name: Deploy
         # Cutting the apex over is a deliberate, opt-in step (see
         # docs/lambda-migration.md): manage_dns defaults to false so a routine
@@ -85,6 +99,7 @@ jobs:
             --resolve-s3 \
             --parameter-overrides \
               ManageDns="${{ inputs.manage_dns || 'false' }}" \
+              SiteEnabled="${{ steps.power.outputs.site_enabled }}" \
             --tags Project=CtrlAltJay Environment=Production
 
       - name: Resolve static bucket
