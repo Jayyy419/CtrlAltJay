@@ -126,6 +126,12 @@ jobs:
                 --query 'length(MetricAlarms)' --output text 2>/dev/null || echo "?")
           echo "alarms remaining with that name: ${N}"
 
+      - name: Alarm state
+        run: |
+          N=$(aws cloudwatch describe-alarms --alarm-names CtrlAltJay-HighCPU \
+                --query 'length(MetricAlarms)' --output text 2>/dev/null || echo "?")
+          if [ "$N" = "0" ]; then echo "CtrlAltJay-HighCPU: deleted"; else echo "::warning::CtrlAltJay-HighCPU still present (count=${N})"; fi
+
       - name: Confirm the retired spend is at zero
         # The three line items the migration was meant to remove.
         run: |
@@ -136,3 +142,33 @@ jobs:
             --filter '{"Dimensions":{"Key":"USAGE_TYPE","Values":["APS1-BoxUsage:t3.micro","PublicIPv4:InUseAddress","APS1-EBS:VolumeUsage.gp3"]}}' \
             --query 'ResultsByTime[].{Day:TimePeriod.Start,Items:Groups[].{Type:Keys[0],Cost:Metrics.UnblendedCost.Amount}}' \
             --output json || echo "::warning::Cost Explorer not permitted"
+
+  deliver:
+    needs: ses
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send a real contact-form submission
+        # The check that matters. Everything else proves configuration; this
+        # proves a message leaves the site and reaches the inbox. A valid
+        # payload, so the route runs the whole path and actually sends --
+        # unlike the verification suite, which submits an invalid form on
+        # purpose to avoid mailing anyone.
+        run: |
+          RESP=$(curl -sS -w '\n%{http_code}' --max-time 45 \
+            -X POST "https://ctrlaltjay.dev/send_message" \
+            -H "X-Requested-With: XMLHttpRequest" \
+            --data-urlencode "fullname=CtrlAltJay deployment check" \
+            --data-urlencode "email=noreply@ctrlaltjay.dev" \
+            --data-urlencode "subject=SES delivery confirmed" \
+            --data-urlencode "reason=Other" \
+            --data-urlencode "message=Automated end-to-end check. If this is in your inbox, the contact form works again: SES is verified and sending, and the Office365 basic-auth failure is behind us. No reply needed.")
+          BODY=$(echo "$RESP" | head -n -1); CODE=$(echo "$RESP" | tail -n 1)
+          echo "status=${CODE}"; echo "body=${BODY}"
+          case "$CODE" in
+            200) echo "$BODY" | grep -q "successfully" \
+                   && echo "delivered -- check the inbox for \"CtrlAltJay deployment check via CtrlAltJay\"" \
+                   || { echo "::error::200 but unexpected body"; exit 1; } ;;
+            429) echo "::warning::rate limited -- inconclusive, re-run in a few minutes"; exit 1 ;;
+            500) echo "::error::the send still fails -- SES rejected it"; exit 1 ;;
+            *)   echo "::error::unexpected status ${CODE}"; exit 1 ;;
+          esac
