@@ -103,6 +103,32 @@ jobs:
           esac
           grep -qi "signature" /tmp/post.json && { echo "::error::AWS signature error in body"; exit 1; } || true
 
+      - name: Anthropic-backed search still works
+        # Covers the one feature that depends on a rotated credential, and the
+        # only part of the stack a key rotation can silently break: the site
+        # keeps serving, the search box just stops returning anything.
+        #
+        # The route separates the two failure causes by status, so this does
+        # not have to guess which happened:
+        #   503 -> no key reached the app (SSM parameter empty or unreadable)
+        #   502 -> a key reached Anthropic and was rejected (wrong or revoked)
+        #   200 -> the key works
+        # 429 is the route's own rate limit and says nothing about the key.
+        run: |
+          D="${{ steps.stack.outputs.domain }}"
+          CODE=$(curl -sS -o /tmp/search.json -w '%{http_code}' --max-time 45 \
+            -X POST "https://${D}/api/semantic-search" \
+            -H "Content-Type: application/json" \
+            --data '{"query":"cloud infrastructure"}')
+          echo "status=${CODE}"; head -c 300 /tmp/search.json; echo
+          case "$CODE" in
+            200) python3 -c "import json;d=json.load(open('/tmp/search.json'));assert 'results' in d, d;print('matches:', len(d['results']))" ;;
+            429) echo "::warning::rate limited -- inconclusive, says nothing about the key"; exit 0 ;;
+            503) echo "::error::503 -- no Anthropic key reached the app; check /ctrlaltjay/anthropic-api-key"; exit 1 ;;
+            502) echo "::error::502 -- Anthropic rejected the key; it is wrong or revoked"; exit 1 ;;
+            *)   echo "::error::unexpected status ${CODE}"; exit 1 ;;
+          esac
+
       - name: Static asset through the S3 origin
         run: |
           D="${{ steps.stack.outputs.domain }}"
