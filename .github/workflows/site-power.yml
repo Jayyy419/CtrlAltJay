@@ -1,0 +1,95 @@
+name: Site on/off
+
+# Takes the whole portfolio out of public view, and puts it back. Nothing is
+# destroyed: DynamoDB, S3 and the Lambda are untouched, so "on" restores the
+# site exactly as it was, with the same domain and certificate.
+#
+# It works by disabling the CloudFront distribution, which is the only public
+# way in. S3 is reachable solely through the origin access control, and the
+# function URL rejects any request without the CloudFront origin header, so
+# with the distribution off there is no route to the site, the static assets
+# or the function -- not merely a hidden home page.
+#
+# Deploys through SAM rather than editing the distribution directly, so the
+# state lives in the stack. A hand-edited distribution would be silently
+# reverted by the next push to main; a stack parameter is carried forward.
+
+on:
+  workflow_dispatch:
+    inputs:
+      state:
+        description: "off = take the site out of public view. on = bring it back."
+        type: choice
+        options: ["off", "on"]
+        default: "off"
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: lambda-deploy-prod
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ap-southeast-1
+  STACK_NAME: ctrlaltjay-app
+  DOMAIN: ctrlaltjay.dev
+
+jobs:
+  power:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: Build
+        run: sam build --use-container
+
+      - name: Apply the requested state
+        run: |
+          VAL=$([ "${{ inputs.state }}" = "on" ] && echo true || echo false)
+          echo "setting SiteEnabled=${VAL}"
+          sam deploy \
+            --stack-name "${STACK_NAME}" --region "${AWS_REGION}" \
+            --capabilities CAPABILITY_IAM \
+            --no-confirm-changeset --no-fail-on-empty-changeset --resolve-s3 \
+            --parameter-overrides ManageDns="false" SiteEnabled="${VAL}" \
+            --tags Project=CtrlAltJay Environment=Production
+
+      - name: Confirm the site is actually in the requested state
+        # CloudFront takes a few minutes to propagate either way, so poll
+        # rather than checking once. Asserting the outcome matters more here
+        # than usual: "I thought I turned it off" is the failure mode worth
+        # ruling out.
+        run: |
+          WANT="${{ inputs.state }}"
+          for i in $(seq 1 24); do
+            CODE=$(curl -sS -o /tmp/b.html -w '%{http_code}' --max-time 20 "https://${DOMAIN}/" || echo 000)
+            echo "attempt ${i}: status=${CODE}"
+            if [ "$WANT" = "on" ]; then
+              if [ "$CODE" = "200" ] && grep -q "CtrlAltJay" /tmp/b.html; then
+                echo "site is live again at https://${DOMAIN}/"; exit 0
+              fi
+            else
+              # Disabled distributions answer 403 with CloudFront's own error
+              # page. Anything that is not a served page counts as dark.
+              if [ "$CODE" != "200" ]; then
+                echo "site is no longer publicly reachable (status ${CODE})"; exit 0
+              fi
+            fi
+            sleep 20
+          done
+          echo "::error::did not reach the requested state within 8 minutes"
+          exit 1

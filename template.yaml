@@ -21,6 +21,19 @@ Parameters:
   HostedZoneId:
     Type: String
     Default: Z096666535JC4AOH22XFD
+  SiteEnabled:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: >
+      "false" takes the whole site out of public view by disabling the
+      CloudFront distribution. Nothing is destroyed -- DynamoDB, S3 and the
+      function are untouched -- so setting it back to "true" restores the
+      site exactly as it was. Disabling the distribution is what hides the
+      static assets and the Lambda too: S3 is reachable only through the
+      OAC, and the function URL rejects anything without the CloudFront
+      origin header, so with the distribution off there is no public path in.
+
   ManageDns:
     Type: String
     Default: "false"
@@ -181,7 +194,7 @@ Resources:
     Type: AWS::CloudFront::Distribution
     Properties:
       DistributionConfig:
-        Enabled: true
+        Enabled: !Ref SiteEnabled
         Comment: CtrlAltJay portfolio
         Aliases: [!Ref DomainName]
         PriceClass: PriceClass_All
