@@ -1,77 +1,106 @@
 name: Portfolio inventory
 
-# Prints what is currently in the portfolio, as a compact index used to check
-# a LinkedIn import against what already exists. Read-only: it fetches the
-# same public endpoint a visitor's browser does and writes nothing.
+# Prints what is currently in the portfolio, as the index used to check a
+# LinkedIn import against what already exists. Read-only: scans DynamoDB and
+# writes nothing.
 #
-# Needs no AWS credentials at all, which is the point -- it works whether or
-# not the AWS connector happens to be authorised.
-#
-# Caveat, printed in the output so it cannot be forgotten: /api/public-data
-# hides drafts and soft-deleted items from non-admin callers, so an entry
-# sitting in draft will not appear here and could be duplicated by an import.
+# Reads the tables directly rather than the public API, for two reasons. The
+# site can legitimately be switched off, and while it is off the apex does not
+# even resolve, so anything built on the public endpoint simply fails. And the
+# public endpoint hides drafts, which still count as duplicates -- importing a
+# second copy of something sitting in draft is exactly the mistake this is
+# meant to prevent.
 
 on:
   workflow_dispatch: {}
 
 permissions:
+  id-token: write
   contents: read
+
+env:
+  AWS_REGION: ap-southeast-1
 
 jobs:
   inventory:
     runs-on: ubuntu-latest
     steps:
-      - name: Fetch and index
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Scan the tables
         run: |
-          curl -sS --max-time 45 "https://ctrlaltjay.dev/api/public-data" -o /tmp/data.json
+          set -e
+          for t in ctrlaltjay-portfolio-items ctrlaltjay-resume-items ctrlaltjay-skills; do
+            aws dynamodb scan --table-name "$t" --output json > "/tmp/${t}.json" \
+              || { echo "::error::cannot scan ${t} -- the deploy role lacks dynamodb:Scan"; exit 1; }
+            echo "scanned ${t}"
+          done
+
+      - name: Index
+        run: |
           python3 - <<'PY'
           import json, re
 
-          d = json.load(open("/tmp/data.json"))
+          def val(a):
+              if a is None: return None
+              for k in ("S", "N", "BOOL"):
+                  if k in a: return a[k]
+              return None
+
+          def rows(path):
+              return [{k: val(v) for k, v in it.items()}
+                      for it in json.load(open(path))["Items"]]
 
           def norm(s):
-              # The matching key for duplicate detection. Separators are dropped
-              # rather than turned into spaces: replacing them splits "J.P." into
-              # two tokens, so "J.P. Morgan Chase" would not match "JP Morgan
-              # Chase" -- precisely the LinkedIn-versus-hand-typed case this
-              # exists to catch. Collapsing everything sidesteps it.
-              #
-              # This only flags candidates for a human to look at, so an
-              # occasional false match costs a glance, while a missed one costs
-              # a duplicate entry on the live site.
+              # Separators dropped, not spaced: replacing them splits "J.P."
+              # into two tokens so "J.P. Morgan Chase" would miss "JP Morgan
+              # Chase" -- the LinkedIn-versus-hand-typed case this exists for.
               return re.sub(r"[^a-z0-9]+", "", (s or "").lower())
 
-          print("COUNTS:", {k: len(v) for k, v in d.items() if isinstance(v, list)})
-          print()
+          items = rows("/tmp/ctrlaltjay-portfolio-items.json")
 
-          for section in ("experiences", "projects"):
-              rows = d.get(section, [])
-              print(f"=== {section.upper()} ({len(rows)}) ===")
-              for i in sorted(rows, key=lambda r: (r.get("category",""), r.get("title",""))):
+          live, drafts, deleted, internal = [], [], 0, 0
+          for i in items:
+              if (i.get("id") or "").startswith("__"):
+                  internal += 1; continue
+              if i.get("deleted_at"):
+                  deleted += 1; continue
+              (drafts if i.get("is_draft") else live).append(i)
+
+          def show(label, group):
+              print(f"=== {label} ({len(group)}) ===")
+              for i in sorted(group, key=lambda r: ((r.get("section") or ""),
+                                                    (r.get("category") or ""),
+                                                    (r.get("title") or ""))):
                   print(" | ".join([
-                      i.get("category", "") or "-",
-                      i.get("title", "") or "-",
-                      i.get("byline", "") or "-",
-                      i.get("date_label", "") or "-",
-                      f"key={norm(i.get('title'))}",
+                      i.get("section") or "-", i.get("category") or "-",
+                      i.get("title") or "-", i.get("byline") or "-",
+                      i.get("date_label") or "-", "key=" + norm(i.get("title")),
                   ]))
               print()
 
-          print(f"=== RESUME ({len(d.get('resume', []))}) ===")
-          for i in d.get("resume", []):
-              print(" | ".join([
-                  i.get("lane", "") or "-",
-                  i.get("title", "") or i.get("label", "") or "-",
-                  i.get("subtitle", "") or i.get("org", "") or "-",
-                  i.get("period", "") or i.get("date_label", "") or "-",
-              ]))
+          show("LIVE ITEMS", live)
+          if drafts:
+              # Invisible on the site but still real rows; a second copy would
+              # surface the moment either was published.
+              show("DRAFTS -- not public, but still duplicate candidates", drafts)
+
+          res = rows("/tmp/ctrlaltjay-resume-items.json")
+          print(f"=== RESUME ({len(res)}) ===")
+          for i in sorted(res, key=lambda r: ((r.get("lane") or ""), (r.get("id") or ""))):
+              print(" | ".join([i.get("lane") or "-",
+                                i.get("title") or i.get("label") or "-",
+                                i.get("subtitle") or i.get("org") or "-",
+                                i.get("period") or i.get("date_label") or "-"]))
           print()
 
-          print(f"=== SKILLS ({len(d.get('skills', []))}) ===")
-          print(", ".join(sorted(
-              (i.get("name") or i.get("title") or i.get("label") or "?") for i in d.get("skills", [])
-          )))
+          sk = rows("/tmp/ctrlaltjay-skills.json")
+          print(f"=== SKILLS ({len(sk)}) ===")
+          print(", ".join(sorted((i.get("name") or i.get("title")
+                                  or i.get("label") or "?") for i in sk)))
           print()
-          print("NOTE: drafts and soft-deleted items are not listed -- this endpoint")
-          print("hides them from non-admin callers, so a draft could still be duplicated.")
+          print(f"soft-deleted rows skipped: {deleted}; internal rows skipped: {internal}")
           PY
