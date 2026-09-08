@@ -1,0 +1,77 @@
+name: Portfolio inventory
+
+# Prints what is currently in the portfolio, as a compact index used to check
+# a LinkedIn import against what already exists. Read-only: it fetches the
+# same public endpoint a visitor's browser does and writes nothing.
+#
+# Needs no AWS credentials at all, which is the point -- it works whether or
+# not the AWS connector happens to be authorised.
+#
+# Caveat, printed in the output so it cannot be forgotten: /api/public-data
+# hides drafts and soft-deleted items from non-admin callers, so an entry
+# sitting in draft will not appear here and could be duplicated by an import.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch and index
+        run: |
+          curl -sS --max-time 45 "https://ctrlaltjay.dev/api/public-data" -o /tmp/data.json
+          python3 - <<'PY'
+          import json, re
+
+          d = json.load(open("/tmp/data.json"))
+
+          def norm(s):
+              # The matching key for duplicate detection. Separators are dropped
+              # rather than turned into spaces: replacing them splits "J.P." into
+              # two tokens, so "J.P. Morgan Chase" would not match "JP Morgan
+              # Chase" -- precisely the LinkedIn-versus-hand-typed case this
+              # exists to catch. Collapsing everything sidesteps it.
+              #
+              # This only flags candidates for a human to look at, so an
+              # occasional false match costs a glance, while a missed one costs
+              # a duplicate entry on the live site.
+              return re.sub(r"[^a-z0-9]+", "", (s or "").lower())
+
+          print("COUNTS:", {k: len(v) for k, v in d.items() if isinstance(v, list)})
+          print()
+
+          for section in ("experiences", "projects"):
+              rows = d.get(section, [])
+              print(f"=== {section.upper()} ({len(rows)}) ===")
+              for i in sorted(rows, key=lambda r: (r.get("category",""), r.get("title",""))):
+                  print(" | ".join([
+                      i.get("category", "") or "-",
+                      i.get("title", "") or "-",
+                      i.get("byline", "") or "-",
+                      i.get("date_label", "") or "-",
+                      f"key={norm(i.get('title'))}",
+                  ]))
+              print()
+
+          print(f"=== RESUME ({len(d.get('resume', []))}) ===")
+          for i in d.get("resume", []):
+              print(" | ".join([
+                  i.get("lane", "") or "-",
+                  i.get("title", "") or i.get("label", "") or "-",
+                  i.get("subtitle", "") or i.get("org", "") or "-",
+                  i.get("period", "") or i.get("date_label", "") or "-",
+              ]))
+          print()
+
+          print(f"=== SKILLS ({len(d.get('skills', []))}) ===")
+          print(", ".join(sorted(
+              (i.get("name") or i.get("title") or i.get("label") or "?") for i in d.get("skills", [])
+          )))
+          print()
+          print("NOTE: drafts and soft-deleted items are not listed -- this endpoint")
+          print("hides them from non-admin callers, so a draft could still be duplicated.")
+          PY
