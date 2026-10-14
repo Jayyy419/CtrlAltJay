@@ -193,11 +193,24 @@ Resources:
         SigningBehavior: always
         SigningProtocol: sigv4
 
+  # Holds the owner preview secret. Written only by the "Owner preview link"
+  # workflow, which mints a new value each run -- so minting a link revokes
+  # the previous one. Starts empty, and an empty or short value unlocks
+  # nothing.
+  PreviewStore:
+    Type: AWS::CloudFront::KeyValueStore
+    Properties:
+      Name: !Sub "${AWS::StackName}-preview"
+      Comment: Owner preview secret for the CtrlAltJay holding page
+
   # Holding page served while SiteEnabled is "false". Answers at the edge,
   # before any origin, so with it attached nothing reaches the function or
   # S3 -- the site is dark -- while the domain keeps a valid certificate.
-  # It is only attached when the site is off; the function itself costs
-  # nothing while unattached.
+  # The one exception is the owner: a browser that opened the current
+  # preview link carries a cookie matching PreviewStore and is let through
+  # to the real site, admin panel included (which still needs the admin
+  # passcode). It is only attached when the site is off; the function
+  # itself costs nothing while unattached.
   OfflinePage:
     Type: AWS::CloudFront::Function
     Properties:
@@ -206,7 +219,13 @@ Resources:
       FunctionConfig:
         Comment: CtrlAltJay holding page while the site is switched off
         Runtime: cloudfront-js-2.0
+        KeyValueStoreAssociations:
+          - KeyValueStoreARN: !GetAtt PreviewStore.Arn
       FunctionCode: |
+        import cf from 'cloudfront';
+
+        var kvs = cf.kvs();
+        var COOKIE = 'cajpreview';
         var PAGE = '<!doctype html><html lang="en" data-ctrlaltjay-offline><head>' +
           '<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
           '<meta name="robots" content="noindex"><title>ctrlaltjay.dev</title><style>' +
@@ -221,7 +240,7 @@ Resources:
           '<h1>ctrlaltjay.dev</h1><p>Offline for now. Check back soon.</p>' +
           '</main></body></html>';
 
-        function handler(event) {
+        function offline() {
           return {
             statusCode: 503,
             statusDescription: 'Service Unavailable',
@@ -233,6 +252,38 @@ Resources:
             },
             body: PAGE
           };
+        }
+
+        async function handler(event) {
+          var req = event.request;
+          var secret = '';
+          try { secret = await kvs.get('preview-token'); } catch (e) { secret = ''; }
+          // Nothing minted yet, or a value too short to be one we wrote:
+          // everyone gets the holding page.
+          if (!secret || secret.length < 32) return offline();
+
+          var q = req.querystring.preview;
+          if (q && q.value === secret) {
+            // Trade the link for a cookie and drop the secret from the
+            // address bar.
+            return {
+              statusCode: 302,
+              statusDescription: 'Found',
+              headers: {
+                'location': { value: req.uri },
+                'cache-control': { value: 'no-store' }
+              },
+              cookies: {
+                'cajpreview': {
+                  value: secret,
+                  attributes: 'Path=/; Secure; HttpOnly; SameSite=Lax; Max-Age=2592000'
+                }
+              }
+            };
+          }
+          var c = req.cookies[COOKIE];
+          if (c && c.value === secret) return req;
+          return offline();
         }
 
   CloudFrontDistribution:
@@ -337,3 +388,6 @@ Outputs:
     Value: !GetAtt AppFunctionUrl.FunctionUrl
   StaticBucketName:
     Value: !Ref StaticBucket
+  PreviewStoreArn:
+    Description: Read by the "Owner preview link" workflow
+    Value: !GetAtt PreviewStore.Arn
