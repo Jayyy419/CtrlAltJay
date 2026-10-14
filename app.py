@@ -1,3 +1,4 @@
+import hashlib
 import mimetypes
 import os
 import re
@@ -531,15 +532,30 @@ def build_profile():
     }
 
 
+_static_version_cache = {}
+
+
 def _static_version(rel_path):
-    # Cache-bust static assets by their own mtime — browsers cache /static/
-    # for 24h (see the Cache-Control header below), so without this every
-    # CSS/JS deploy would stay invisible to returning visitors until that
-    # cache naturally expired or they hard-refreshed.
+    # Cache-bust static assets by a hash of their contents. /static/ is served
+    # from S3 with "max-age=31536000, immutable", so a returning browser never
+    # re-fetches a URL it already has -- the ?v= value is the only thing that
+    # makes a deploy visible. This used to be the file's mtime, but SAM zips
+    # the Lambda package with every timestamp set to 1980-01-01, so the value
+    # was 315532800 on every deploy and browsers kept the first script.js and
+    # style.css they ever loaded.
+    path = Path(app.root_path) / "static" / rel_path
     try:
-        return str(int((Path(app.root_path) / "static" / rel_path).stat().st_mtime))
+        stat = path.stat()
     except OSError:
         return "0"
+    # Keyed on mtime and size so local edits still bust it; on Lambda the
+    # package never changes, so each file is hashed once per container.
+    key = (rel_path, stat.st_mtime_ns, stat.st_size)
+    version = _static_version_cache.get(key)
+    if version is None:
+        version = hashlib.sha256(path.read_bytes()).hexdigest()[:12]
+        _static_version_cache[key] = version
+    return version
 
 
 @app.context_processor
