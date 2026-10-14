@@ -1047,35 +1047,6 @@ body { font-family: 'Plex Sans', system-ui, sans-serif; }
 }
 .settings-reset-btn:hover { background: rgba(239,68,68,0.1); border-color: #ef4444; }
 
-.settings-advanced { margin-top: 20px; max-width: 640px; }
-.settings-advanced summary {
-  cursor: pointer;
-  font-family: 'Plex Mono', monospace;
-  font-size: 0.78rem;
-  color: var(--ide-text-faint);
-  padding: 6px 0;
-  user-select: none;
-}
-.settings-advanced summary:hover { color: var(--ide-text-dim); }
-.settings-advanced .settings-json-viewer { margin-top: 10px; }
-
-.settings-json-viewer {
-  background: var(--ide-editor-bg-soft);
-  border: 1px solid var(--ide-border-soft);
-  border-radius: 8px;
-  padding: 16px 18px;
-  font-family: 'Plex Mono', monospace;
-  font-size: 0.82rem;
-  line-height: 1.7;
-  color: var(--ide-text);
-  overflow-x: auto;
-  white-space: pre;
-}
-.json-key { color: var(--ide-keyword); }
-.json-string { color: var(--ide-string); }
-.json-number { color: var(--ide-function); }
-.json-boolean { color: var(--ide-type); font-weight: 600; }
-.json-null { color: var(--ide-text-faint); font-style: italic; }
 
 /* ===== Live Visitor Presence ===== */
 .presence-indicator { display: flex; align-items: center; gap: 6px; }
@@ -2073,62 +2044,6 @@ body.zen-mode .ide-panel-scroll { padding: 48px max(32px, calc(50% - 380px)); }
   transition: opacity 0.15s ease;
 }
 .toast-undo-btn:hover { opacity: 0.85; }
-
-/* TL;DR summary toast — no auto-dismiss, since a 2-3 sentence summary
-   takes longer to read than a status message; closed explicitly instead. */
-.toast--tldr {
-  max-width: 320px;
-  animation: toastIn 0.3s ease-out forwards;
-}
-.toast-tldr-head {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--ide-accent);
-  font-size: 0.78rem;
-}
-.toast-tldr-head strong { flex: 1; font-family: 'Plex Mono', monospace; }
-.toast-tldr-close {
-  background: none;
-  border: none;
-  color: var(--ide-text-faint);
-  cursor: pointer;
-  font-size: 1.1rem;
-  line-height: 1;
-  padding: 0;
-  display: flex;
-}
-.toast-tldr-close:hover { color: var(--ide-text-bright); }
-.toast-tldr-body {
-  margin: 8px 0 0;
-  font-weight: 400;
-  font-size: 0.82rem;
-  line-height: 1.5;
-  color: var(--ide-text);
-  white-space: normal;
-}
-
-/* TL;DR button, injected next to each main tab's <h2> */
-.tldr-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: 12px;
-  padding: 4px 10px;
-  vertical-align: middle;
-  background: var(--ide-editor-bg-soft);
-  color: var(--ide-accent);
-  border: 1px solid rgba(55,148,255,0.35);
-  border-radius: 5px;
-  font-family: 'Plex Mono', monospace;
-  font-size: 0.68rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-.tldr-btn:hover { background: rgba(55,148,255,0.12); }
-.tldr-btn:disabled { opacity: 0.6; cursor: default; }
-.tldr-btn ion-icon { font-size: 0.9rem; }
 
 /* ===== Exploration Completion Celebration ===== */
 .celebration-overlay {
@@ -4056,7 +3971,7 @@ select.ide-control:hover { border-color: var(--ide-accent); }
   .activity-bar, .ide-sidebar, .ide-sidebar-resizer, .mobile-topbar, .mobile-nav-backdrop,
   .ide-tabbar-row, .ide-minimap, .ide-statusbar,
   .main-nav, footer, .toast-container, .back-to-top, .scroll-progress,
-  .theme-toggle-btn, .recruiter-mode-btn, .tldr-btn,
+  .theme-toggle-btn, .recruiter-mode-btn,
   .controls-row, .subsection-nav, .panel-head p, .bulk-bar,
   #about, #projects, #experiences, #stack, #contact, #profile, #credly, #linkedin,
   #chat, #settings, #now, #uses, #testimonials, .admin-only, .modal-shell,

@@ -130,85 +130,6 @@ function showUndoToast(message, onUndo) {
   setTimeout(dismiss, 6100);
 }
 
-/* ===== Per-tab AI TL;DR ===== */
-// Reuses the existing /api/chat endpoint (and its rate limit + system
-// context) rather than a dedicated summarization route — the chat context
-// already breaks the site down by section, so a plain chat message asking
-// for a summary of one section works without any backend changes.
-const TLDR_TABS = {
-  about: { label: "About", topic: "About / bio" },
-  projects: { label: "Projects", topic: "Projects" },
-  experiences: { label: "Experiences", topic: "Experiences" },
-  resume: { label: "Resume", topic: "Resume" },
-  stack: { label: "Stack", topic: "Skills / tech stack" },
-};
-
-function showTldrToast(label, message) {
-  const container = document.getElementById("toast-container");
-  if (!container) return;
-  const toast = document.createElement("div");
-  toast.className = "toast toast--tldr";
-
-  const header = document.createElement("div");
-  header.className = "toast-tldr-head";
-  const icon = document.createElement("ion-icon");
-  icon.setAttribute("name", "sparkles-outline");
-  const titleSpan = document.createElement("strong");
-  titleSpan.textContent = `${label} TL;DR`;
-  const closeBtn = document.createElement("button");
-  closeBtn.type = "button";
-  closeBtn.className = "toast-tldr-close";
-  closeBtn.innerHTML = '<ion-icon name="close-outline"></ion-icon>';
-  closeBtn.title = "Dismiss";
-  closeBtn.addEventListener("click", () => toast.remove());
-  header.append(icon, titleSpan, closeBtn);
-
-  const body = document.createElement("p");
-  body.className = "toast-tldr-body";
-  body.textContent = message;
-
-  toast.append(header, body);
-  container.appendChild(toast);
-}
-
-async function requestTldr(btn, topic, label) {
-  if (btn.disabled) return;
-  btn.disabled = true;
-  const original = btn.innerHTML;
-  btn.innerHTML = '<ion-icon name="hourglass-outline"></ion-icon> TL;DR';
-  try {
-    const message = `In 2-3 concise sentences, summarize the "${topic}" section of this portfolio for a visitor who wants the gist without reading everything. Reply with only the summary — no preamble.`;
-    const res = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || "Couldn't generate a summary.");
-    showTldrToast(label, data.reply || "No summary available.");
-  } catch (err) {
-    showToast(err.message || "Couldn't generate a summary.", "error");
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = original;
-  }
-}
-
-function initTldrButtons() {
-  Object.entries(TLDR_TABS).forEach(([tabId, { label, topic }]) => {
-    const panel = document.getElementById(tabId);
-    const heading = panel?.querySelector(".panel-head h2");
-    if (!heading || heading.querySelector(".tldr-btn")) return;
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "tldr-btn";
-    btn.innerHTML = '<ion-icon name="sparkles-outline"></ion-icon> TL;DR';
-    btn.title = `AI summary of ${label}`;
-    btn.addEventListener("click", () => requestTldr(btn, topic, label));
-    heading.appendChild(btn);
-  });
-}
-
 /* ===== Confirm dialog ===== */
 function showConfirm(title, message, options = {}) {
   return new Promise((resolve) => {
@@ -285,11 +206,7 @@ function updateMobileTopbarTitle(panel) {
   if (!titleEl || !panel) return;
   const heading = panel.querySelector("h1, h2");
   if (heading) {
-    // Strip the injected TL;DR button (a child of the heading) out of a
-    // clone before reading text, so it doesn't get concatenated in.
-    const clone = heading.cloneNode(true);
-    clone.querySelector(".tldr-btn")?.remove();
-    titleEl.textContent = clone.textContent.trim();
+    titleEl.textContent = heading.textContent.trim();
     return;
   }
   const activeBtn = document.querySelector(".tab-btn.active");
@@ -2127,7 +2044,6 @@ function setAdminMode(enabled) {
     renderDeletedItems();
   }
   updateDraftIndicator();
-  if (document.getElementById("guestbook-list")) loadGuestbookNotes();
 }
 
 function findItemById(itemId) {
@@ -2661,7 +2577,6 @@ async function bootstrap() {
   initTabs();
   initTabTransitions();
   initContactForm();
-  initGuestbook();
   initChat();
   initTestimonialForm();
   initAdminAuth();
@@ -2679,7 +2594,6 @@ async function bootstrap() {
   initThemeToggle();
   initRecruiterMode();
   applySitePrefs();
-  initTldrButtons();
   initMobileNav();
   initDragAndDrop();
   initBatchSkills();
@@ -2987,113 +2901,6 @@ function initChatVoiceInput() {
       // recognition already running — ignore
     }
   });
-}
-
-/* ===== Guestbook: "Leave a Note" ===== */
-function initGuestbook() {
-  const form = document.getElementById("guestbook-form");
-  if (!form) return;
-
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const feedback = document.getElementById("guestbook-feedback");
-    const submitBtn = form.querySelector('button[type="submit"]');
-    const origText = submitBtn.textContent;
-    submitBtn.textContent = "Posting...";
-    submitBtn.disabled = true;
-    feedback.textContent = "";
-    try {
-      const res = await fetch("/api/notes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: form.name.value.trim(),
-          message: form.message.value.trim(),
-          website: form.website.value,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok) {
-        form.reset();
-        feedback.textContent = data.message || "Note submitted.";
-        feedback.style.color = "var(--ide-git-added)";
-        showToast(data.message || "Note submitted — it'll appear once reviewed.", "success");
-      } else {
-        feedback.textContent = data.error || "Could not submit note.";
-        feedback.style.color = "#ef4444";
-      }
-    } catch {
-      feedback.textContent = "Network error. Please try again.";
-      feedback.style.color = "#ef4444";
-    } finally {
-      submitBtn.textContent = origText;
-      submitBtn.disabled = false;
-    }
-  });
-}
-
-async function loadGuestbookNotes() {
-  const list = document.getElementById("guestbook-list");
-  if (!list) return;
-  const endpoint = state.isAdmin ? "/api/admin/notes" : "/api/notes";
-  try {
-    const res = await fetch(endpoint);
-    if (!res.ok) throw new Error(`notes API ${res.status}`);
-    const notes = await res.json();
-    renderGuestbookNotes(list, Array.isArray(notes) ? notes : []);
-  } catch {
-    list.innerHTML = `<div class="guestbook-empty">// couldn't load notes right now</div>`;
-  }
-}
-
-function renderGuestbookNotes(list, notes) {
-  if (!notes.length) {
-    list.innerHTML = `<div class="guestbook-empty">// no notes yet — be the first to say hello</div>`;
-    return;
-  }
-  list.innerHTML = notes.map((n) => {
-    const initial = (n.name || "?").trim().charAt(0).toUpperCase();
-    const statusBadge = state.isAdmin && n.status && n.status !== "approved"
-      ? `<span class="guestbook-status guestbook-status--${escapeHtml(n.status)}">${escapeHtml(n.status)}</span>`
-      : "";
-    const adminActions = state.isAdmin ? `
-      <div class="guestbook-admin-actions">
-        ${n.status !== "approved" ? `<button type="button" class="guestbook-action-btn guestbook-action-btn--approve" data-note-action="approved" data-note-id="${escapeHtml(n.id)}">Approve</button>` : ""}
-        ${n.status !== "rejected" ? `<button type="button" class="guestbook-action-btn guestbook-action-btn--reject" data-note-action="rejected" data-note-id="${escapeHtml(n.id)}">Reject</button>` : ""}
-        <button type="button" class="guestbook-action-btn guestbook-action-btn--delete" data-note-action="delete" data-note-id="${escapeHtml(n.id)}">Delete</button>
-      </div>` : "";
-    return `
-      <div class="guestbook-note">
-        <div class="guestbook-note-avatar">${escapeHtml(initial)}</div>
-        <div class="guestbook-note-body">
-          <div class="guestbook-note-head">
-            <strong>${escapeHtml(n.name || "Anonymous")}</strong>
-            ${statusBadge}
-            <span class="guestbook-note-time">${escapeHtml(timeAgo(n.created_at))}</span>
-          </div>
-          <p class="guestbook-note-message">${escapeHtml(n.message || "")}</p>
-          ${adminActions}
-        </div>
-      </div>`;
-  }).join("");
-
-  if (state.isAdmin) {
-    list.querySelectorAll("[data-note-action]").forEach((btn) => {
-      btn.addEventListener("click", async () => {
-        const noteId = btn.dataset.noteId;
-        const action = btn.dataset.noteAction;
-        try {
-          const res = await fetch(`/api/admin/notes/${encodeURIComponent(noteId)}`, action === "delete"
-            ? { method: "DELETE" }
-            : { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: action }) });
-          if (!res.ok) throw new Error();
-          loadGuestbookNotes();
-        } catch {
-          showToast("Could not update note.", "error");
-        }
-      });
-    });
-  }
 }
 
 /* ===== Testimonials: request form + admin moderation ===== */
@@ -4778,70 +4585,6 @@ function renderGithubActivity(container, events) {
 }
 
 /* ===== Settings Panel ===== */
-const JSON_TOKEN_RE = /("(?:\\.|[^"\\])*"(\s*:)?)|(\btrue\b|\bfalse\b)|(\bnull\b)|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/g;
-
-function highlightJSON(obj) {
-  const raw = JSON.stringify(obj, null, 2);
-  let result = "";
-  let lastIndex = 0;
-  let match;
-  JSON_TOKEN_RE.lastIndex = 0;
-  while ((match = JSON_TOKEN_RE.exec(raw)) !== null) {
-    result += escapeHtml(raw.slice(lastIndex, match.index));
-    const [full, str, colon, bool, nul, num] = match;
-    if (str) {
-      result += `<span class="${colon ? "json-key" : "json-string"}">${escapeHtml(full)}</span>`;
-    } else if (bool) {
-      result += `<span class="json-boolean">${escapeHtml(full)}</span>`;
-    } else if (nul) {
-      result += `<span class="json-null">${escapeHtml(full)}</span>`;
-    } else if (num) {
-      result += `<span class="json-number">${escapeHtml(full)}</span>`;
-    }
-    lastIndex = match.index + full.length;
-  }
-  result += escapeHtml(raw.slice(lastIndex));
-  return result;
-}
-
-function buildSettingsSnapshot() {
-  const isLight = document.documentElement.classList.contains("light-theme") || document.documentElement.dataset.theme === "light";
-  return {
-    theme: isLight ? "light" : "dark",
-    admin_mode: !!state.isAdmin,
-    content: {
-      projects: state.projects.length,
-      experiences: state.experiences.length,
-      resume_entries: state.resume.length,
-      skills: state.skills.length,
-    },
-    features: {
-      zen_mode: true,
-      command_palette: true,
-      live_visitor_presence: true,
-      build_deploy_panel: true,
-      exploration_progress: true,
-    },
-    keyboard_shortcuts: {
-      command_palette: "Cmd/Ctrl+K",
-      settings: "Cmd/Ctrl+,",
-      terminal: "`",
-      zen_mode: "Z",
-      close_tab: "W",
-      close_all_tabs: "Shift+W",
-      switch_tabs: "1-9",
-      theme_toggle: "T",
-      shortcuts_overlay: "?",
-    },
-    build: {
-      framework: "Flask + Jinja2",
-      frontend: "Vanilla JavaScript + Tailwind CSS",
-      hosting: "AWS Elastic Beanstalk",
-      ci_cd: "GitHub Actions",
-    },
-  };
-}
-
 function updateSettingsThemeButtons() {
   const isLight = document.documentElement.classList.contains("light-theme");
   document.querySelectorAll("#settings-theme-switch .settings-theme-btn").forEach((btn) => {
@@ -4858,9 +4601,6 @@ function setSettingsTheme(isLight) {
 }
 
 function renderSettingsPanel() {
-  const jsonEl = document.getElementById("settings-json");
-  if (jsonEl) jsonEl.innerHTML = highlightJSON(buildSettingsSnapshot());
-
   const prefs = getSitePrefs();
   const reduceMotionEl = document.getElementById("setting-reduce-motion");
   const shareCursorEl = document.getElementById("setting-share-cursor");
