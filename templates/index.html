@@ -684,45 +684,6 @@
           </div>
         </form>
 
-        <section class="guestbook-section mt-10" id="guestbook-section">
-          <h3 class="font-display text-xl font-semibold text-white mb-2"><ion-icon aria-hidden="true" name="chatbubbles-outline" class="align-middle mr-2"></ion-icon>Leave a Note</h3>
-          <p class="text-sm text-ink-muted mb-4">Public notes, reviewed before they go live — say hello, leave feedback, or just sign the guestbook.</p>
-
-          <form id="guestbook-form" class="guestbook-form">
-            <div class="contact-form-card">
-              <div class="contact-form-card-header">
-                <span class="traffic-dots"><span class="traffic-dot traffic-dot--red"></span><span class="traffic-dot traffic-dot--yellow"></span><span class="traffic-dot traffic-dot--green"></span></span>
-                <ion-icon aria-hidden="true" name="chatbubbles-outline"></ion-icon>
-                <span class="filename">guestbook.log</span>
-              </div>
-              <div class="contact-form-card-body">
-                <div class="field-group">
-                  <label for="guestbook-name" class="field-label">Your name</label>
-                  <div class="field-icon-input">
-                    <ion-icon aria-hidden="true" name="person-outline"></ion-icon>
-                    <input type="text" id="guestbook-name" name="name" placeholder="Ada Lovelace" required minlength="2" maxlength="60" class="ide-control">
-                  </div>
-                </div>
-                <div class="field-group mt-3">
-                  <label for="guestbook-message" class="field-label">Message</label>
-                  <textarea id="guestbook-message" name="message" placeholder="Say something..." required minlength="3" maxlength="500" rows="3" class="ide-control"></textarea>
-                </div>
-                <div class="hp-field" aria-hidden="true" tabindex="-1">
-                  <input type="text" name="website" tabindex="-1" autocomplete="off">
-                </div>
-                <div class="contact-form-footer">
-                  <button type="submit" class="contact-submit-btn"><ion-icon aria-hidden="true" name="send-outline"></ion-icon>Post Note</button>
-                  <p id="guestbook-feedback" class="form-note" aria-live="polite"></p>
-                </div>
-              </div>
-            </div>
-          </form>
-
-          <div class="guestbook-list-header"><ion-icon aria-hidden="true" name="list-outline"></ion-icon>Public entries</div>
-          <div id="guestbook-list" class="guestbook-list">
-            <div class="guestbook-loading">// loading notes...</div>
-          </div>
-        </section>
       </article>
 
       <!-- Build & Deploy (formerly Source Control) -->
@@ -1072,10 +1033,6 @@
           </section>
         </div>
 
-        <details class="settings-advanced">
-          <summary>View raw site config (JSON)</summary>
-          <pre id="settings-json" class="settings-json-viewer"></pre>
-        </details>
       </article>
 
       <!-- Item Viewer: opened when a project/experience file-tree item is clicked -->
