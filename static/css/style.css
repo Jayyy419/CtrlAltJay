@@ -1605,10 +1605,6 @@ body.zen-mode .ide-panel-scroll { padding: 48px max(32px, calc(50% - 380px)); }
   flex-shrink: 0;
 }
 .ext-publisher { font-family: 'Plex Mono', monospace; font-size: 0.72rem; color: var(--ide-text-faint); margin-top: 2px; }
-.ext-bar-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
-.ext-bar { flex: 1; height: 4px; border-radius: 2px; background: var(--ide-border); overflow: hidden; }
-.ext-bar-fill { height: 100%; background: var(--ide-accent); border-radius: 2px; }
-.ext-bar-pct { font-family: 'Plex Mono', monospace; font-size: 0.68rem; color: var(--ide-text-faint); flex-shrink: 0; }
 .stack-search-input {
   width: 100%;
   max-width: 420px;
@@ -4084,8 +4080,7 @@ select.ide-control:hover { border-color: var(--ide-accent); }
   .ext-icon { background: #333 !important; }
   .ext-name { color: #222 !important; }
   .ext-badge { background: none !important; color: #222 !important; border-color: #ccc !important; }
-  .ext-publisher, .ext-bar-pct, .ext-tier-heading { color: #555 !important; }
-  .ext-bar-fill { background: #333 !important; }
+  .ext-publisher, .ext-tier-heading { color: #555 !important; }
 }
 
 /* (Mobile overrides for late-declared components — merged into main @media 640px block above) */
