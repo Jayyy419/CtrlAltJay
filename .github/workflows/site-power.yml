@@ -4,11 +4,17 @@ name: Site on/off
 # destroyed: DynamoDB, S3 and the Lambda are untouched, so "on" restores the
 # site exactly as it was, with the same domain and certificate.
 #
-# It works by disabling the CloudFront distribution, which is the only public
-# way in. S3 is reachable solely through the origin access control, and the
-# function URL rejects any request without the CloudFront origin header, so
-# with the distribution off there is no route to the site, the static assets
-# or the function -- not merely a hidden home page.
+# "Off" attaches a CloudFront Function that answers every request at the edge
+# with a 503 holding page, before any origin is contacted. CloudFront is the
+# only public way in -- S3 is reachable solely through the origin access
+# control, and the function URL rejects any request without the CloudFront
+# origin header -- so nothing reaches the site, the static assets or the
+# function, not merely a hidden home page.
+#
+# The distribution itself stays enabled. Disabling it, as this used to do,
+# left the domain with no TLS endpoint at all, and on an HSTS-preloaded .dev
+# domain anything that filled that gap showed visitors an unbypassable
+# "connection is not secure" error instead of a page.
 #
 # Deploys through SAM rather than editing the distribution directly, so the
 # state lives in the stack. A hand-edited distribution would be silently
@@ -83,10 +89,11 @@ jobs:
                 echo "site is live again at https://${DOMAIN}/"; exit 0
               fi
             else
-              # Disabled distributions answer 403 with CloudFront's own error
-              # page. Anything that is not a served page counts as dark.
-              if [ "$CODE" != "200" ]; then
-                echo "site is no longer publicly reachable (status ${CODE})"; exit 0
+              # Only the holding page counts as off. curl verifies the
+              # certificate, so this also proves "off" still presents a valid
+              # one -- the failure the old any-non-200 check could not see.
+              if [ "$CODE" = "503" ] && grep -q "data-ctrlaltjay-offline" /tmp/b.html; then
+                echo "site is out of public view, holding page served (status ${CODE})"; exit 0
               fi
             fi
             sleep 20
