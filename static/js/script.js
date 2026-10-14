@@ -596,7 +596,7 @@ function renderStackFileTree() {
     groups[tier].push(skill);
   });
 
-  target.innerHTML = ["Primary Stack", "Experienced"].map((tier) => {
+  target.innerHTML = ["Primary Stack", "Experienced", "Toolbox"].map((tier) => {
     const skills = groups[tier];
     if (!skills || !skills.length) return "";
     const itemsHtml = skills
@@ -715,7 +715,6 @@ function renderSkillItemViewer(skill) {
   document.getElementById("skill-item-title").textContent = skill.name;
   const tier = skill.focus === "Familiar" ? "Experienced" : (skill.focus || "Stack");
   document.getElementById("skill-item-tag").textContent = tier;
-  const level = Math.max(0, Math.min(100, Number(skill.level) || 0));
 
   const related = [...state.projects, ...state.experiences].filter((it) =>
     parseSkills(it.skills).some((s) => s.toLowerCase() === skill.name.toLowerCase())
@@ -727,7 +726,6 @@ function renderSkillItemViewer(skill) {
 
   const body = document.getElementById("skill-item-body");
   body.innerHTML = [
-    rowToHTML("Proficiency", `${level}%`),
     rowToHTML("Publisher", `ctrlaltjay.${slugifyTitle(tier)}`),
     rowToHTML("Experience", computeSkillExperience(related)),
   ].join("");
@@ -1949,13 +1947,14 @@ const EXT_TIER_COLOR = {
   "Primary Stack": "var(--ide-accent-strong)",
   "Experienced": "var(--ide-type)",
   "Familiar": "var(--ide-text-faint)",
+  "Toolbox": "var(--ide-text-faint)",
 };
 
 function renderSkills() {
   const target = document.getElementById("skills-grid");
   target.innerHTML = "";
 
-  const tierOrder = ["Primary Stack", "Experienced"];
+  const tierOrder = ["Primary Stack", "Experienced", "Toolbox"];
   const grouped = {};
   state.skills.forEach((skill) => {
     let tier = skill.focus || "Other";
@@ -2016,24 +2015,8 @@ function buildExtensionCard(skill, tier) {
   publisher.className = "ext-publisher";
   publisher.textContent = `ctrlaltjay.${slugifyTitle(tier)}`;
 
-  const level = Math.max(0, Math.min(100, Number(skill.level) || 0));
-  const barRow = document.createElement("div");
-  barRow.className = "ext-bar-row";
-  const bar = document.createElement("div");
-  bar.className = "ext-bar";
-  const fill = document.createElement("div");
-  fill.className = "ext-bar-fill";
-  fill.style.width = `${level}%`;
-  bar.appendChild(fill);
-  const pct = document.createElement("span");
-  pct.className = "ext-bar-pct";
-  pct.textContent = `${level}%`;
-  barRow.appendChild(bar);
-  barRow.appendChild(pct);
-
   info.appendChild(titleRow);
   info.appendChild(publisher);
-  info.appendChild(barRow);
 
   card.appendChild(icon);
   card.appendChild(info);
