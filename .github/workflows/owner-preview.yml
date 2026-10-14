@@ -1,0 +1,99 @@
+name: Owner preview link
+
+# While the site is switched off, everyone gets the holding page -- including
+# the owner. Run this to get a private link that lets your browser through to
+# the real site, admin panel included, while the public still sees the
+# holding page. The admin panel still asks for the admin passcode, so the
+# link alone shows the site but cannot change anything.
+#
+# Each run mints a new secret, so it also revokes the previous link and logs
+# out every browser that used it. Run it again whenever you want a fresh link,
+# or right away if a link may have leaked.
+#
+# The link is emailed to the owner, never printed: this repository is public,
+# and so are its Actions logs. The secret is masked from the moment it exists.
+#
+# The link only matters while the site is off. With the site on, the holding
+# page is detached and the site is public anyway.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: owner-preview
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ap-southeast-1
+  STACK_NAME: ctrlaltjay-app
+  DOMAIN: ctrlaltjay.dev
+  # The verified inbox the contact form already delivers to.
+  OWNER_EMAIL: rone_peh@hotmail.com
+  SENDER: no-reply@ctrlaltjay.dev
+
+jobs:
+  mint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Mint, check and email a new preview link
+        run: |
+          set -euo pipefail
+          TOKEN=$(python3 -c "import secrets; print(secrets.token_urlsafe(32))")
+          echo "::add-mask::${TOKEN}"
+
+          KVS=$(aws cloudformation describe-stacks --stack-name "${STACK_NAME}" \
+            --query "Stacks[0].Outputs[?OutputKey=='PreviewStoreArn'].OutputValue" --output text)
+          ETAG=$(aws cloudfront-keyvaluestore describe-key-value-store --kvs-arn "${KVS}" \
+            --query ETag --output text)
+          aws cloudfront-keyvaluestore put-key --kvs-arn "${KVS}" --if-match "${ETAG}" \
+            --key preview-token --value "${TOKEN}" > /dev/null
+          echo "new secret stored; any earlier link is revoked"
+
+          # Prove the link works before sending it. Only meaningful while the
+          # site is off -- with it on, everyone gets the real site anyway.
+          PUBLIC=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 "https://${DOMAIN}/" || echo 000)
+          if [ "${PUBLIC}" = "503" ]; then
+            for i in $(seq 1 12); do
+              OWNER=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 \
+                --cookie "cajpreview=${TOKEN}" "https://${DOMAIN}/" || echo 000)
+              echo "attempt ${i}: public=503 owner=${OWNER}"
+              [ "${OWNER}" = "200" ] && break
+              sleep 10
+            done
+            if [ "${OWNER}" != "200" ]; then
+              echo "::error::the new link did not open the site; nothing was emailed"
+              exit 1
+            fi
+            NOTE="The site is currently switched off. This link lets your browser through; everyone else still sees the holding page."
+          else
+            echo "site is on (public status ${PUBLIC}); link stored for the next time it is switched off"
+            NOTE="The site is currently switched ON, so it is public and you do not need this link right now. It will work the next time the site is switched off."
+          fi
+
+          LINK="https://${DOMAIN}/?preview=${TOKEN}" NOTE="${NOTE}" python3 - <<'PY' > mail.json
+          import json, os
+          link, note = os.environ["LINK"], os.environ["NOTE"]
+          text = (f"Your owner preview link for ctrlaltjay.dev:\n\n{link}\n\n{note}\n\n"
+                  "Opening it once remembers this browser for 30 days. The admin panel still "
+                  "needs your admin passcode.\n\nDo not share it. Running the 'Owner preview link' "
+                  "workflow again replaces it and revokes this one.\n")
+          html = (f"<p>Your owner preview link for ctrlaltjay.dev:</p><p><a href=\"{link}\">{link}</a></p>"
+                  f"<p>{note}</p><p>Opening it once remembers this browser for 30 days. The admin "
+                  "panel still needs your admin passcode.</p><p>Do not share it. Running the "
+                  "<em>Owner preview link</em> workflow again replaces it and revokes this one.</p>")
+          print(json.dumps({"Simple": {"Subject": {"Data": "Your ctrlaltjay.dev preview link"},
+                                       "Body": {"Text": {"Data": text}, "Html": {"Data": html}}}}))
+          PY
+          aws sesv2 send-email --from-email-address "${SENDER}" \
+            --destination "ToAddresses=${OWNER_EMAIL}" --content file://mail.json > /dev/null
+          rm -f mail.json
+          echo "link emailed to the owner"
