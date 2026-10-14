@@ -26,13 +26,16 @@ Parameters:
     Default: "true"
     AllowedValues: ["true", "false"]
     Description: >
-      "false" takes the whole site out of public view by disabling the
-      CloudFront distribution. Nothing is destroyed -- DynamoDB, S3 and the
-      function are untouched -- so setting it back to "true" restores the
-      site exactly as it was. Disabling the distribution is what hides the
-      static assets and the Lambda too: S3 is reachable only through the
-      OAC, and the function URL rejects anything without the CloudFront
-      origin header, so with the distribution off there is no public path in.
+      "false" takes the whole site out of public view: every request, for
+      every path and method, is answered at the edge by the OfflinePage
+      function with a 503 holding page, so nothing reaches the function or
+      S3. Nothing is destroyed -- DynamoDB, S3 and the function are
+      untouched -- so setting it back to "true" restores the site exactly as
+      it was. The distribution itself stays enabled either way. Disabling it
+      left ctrlaltjay.dev with no TLS endpoint: the apex alias resolved to
+      nothing, and any resolver or cache that filled the gap handed browsers
+      a certificate for some other name. On an HSTS-preloaded .dev domain
+      that is an unbypassable "connection is not secure" error.
 
   ManageDns:
     Type: String
@@ -190,11 +193,54 @@ Resources:
         SigningBehavior: always
         SigningProtocol: sigv4
 
+  # Holding page served while SiteEnabled is "false". Answers at the edge,
+  # before any origin, so with it attached nothing reaches the function or
+  # S3 -- the site is dark -- while the domain keeps a valid certificate.
+  # It is only attached when the site is off; the function itself costs
+  # nothing while unattached.
+  OfflinePage:
+    Type: AWS::CloudFront::Function
+    Properties:
+      Name: !Sub "${AWS::StackName}-offline"
+      AutoPublish: true
+      FunctionConfig:
+        Comment: CtrlAltJay holding page while the site is switched off
+        Runtime: cloudfront-js-2.0
+      FunctionCode: |
+        var PAGE = '<!doctype html><html lang="en" data-ctrlaltjay-offline><head>' +
+          '<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+          '<meta name="robots" content="noindex"><title>ctrlaltjay.dev</title><style>' +
+          ':root{color-scheme:light dark}' +
+          'body{margin:0;min-height:100vh;display:grid;place-items:center;' +
+          'font:16px/1.6 ui-sans-serif,system-ui,-apple-system,sans-serif;' +
+          'background:#fafaf9;color:#1c1917}' +
+          '@media (prefers-color-scheme:dark){body{background:#0c0a09;color:#e7e5e4}}' +
+          'main{padding:2rem;text-align:center}' +
+          'h1{font:600 1.1rem ui-monospace,SFMono-Regular,Menlo,monospace;margin:0 0 .5rem}' +
+          'p{margin:0;opacity:.7}</style></head><body><main>' +
+          '<h1>ctrlaltjay.dev</h1><p>Offline for now. Check back soon.</p>' +
+          '</main></body></html>';
+
+        function handler(event) {
+          return {
+            statusCode: 503,
+            statusDescription: 'Service Unavailable',
+            headers: {
+              'content-type': { value: 'text/html; charset=utf-8' },
+              'cache-control': { value: 'no-store' },
+              'retry-after': { value: '86400' },
+              'x-robots-tag': { value: 'noindex' }
+            },
+            body: PAGE
+          };
+        }
+
   CloudFrontDistribution:
     Type: AWS::CloudFront::Distribution
     Properties:
       DistributionConfig:
-        Enabled: !Ref SiteEnabled
+        # Always on -- see SiteEnabled. "Off" is the OfflinePage function.
+        Enabled: true
         Comment: CtrlAltJay portfolio
         Aliases: [!Ref DomainName]
         PriceClass: PriceClass_All
@@ -232,6 +278,11 @@ Resources:
           # signature against their own host, so the viewer Host must not be
           # forwarded, but cookies/auth headers must be.
           OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+          FunctionAssociations: !If
+            - SiteOff
+            - - EventType: viewer-request
+                FunctionARN: !GetAtt OfflinePage.FunctionARN
+            - !Ref AWS::NoValue
         CacheBehaviors:
           - PathPattern: /static/*
             TargetOriginId: s3-static-origin
@@ -240,6 +291,11 @@ Resources:
             Compress: true
             # CachingOptimized
             CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+            FunctionAssociations: !If
+              - SiteOff
+              - - EventType: viewer-request
+                  FunctionARN: !GetAtt OfflinePage.FunctionARN
+              - !Ref AWS::NoValue
       Tags:
         - { Key: Project, Value: CtrlAltJay }
         - { Key: Environment, Value: Production }
@@ -271,6 +327,7 @@ Resources:
 
 Conditions:
   ManageDnsEnabled: !Equals [!Ref ManageDns, "true"]
+  SiteOff: !Equals [!Ref SiteEnabled, "false"]
 
 Outputs:
   CloudFrontDomain:
