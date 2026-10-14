@@ -259,6 +259,17 @@ function initTabs() {
   if (hash && !hash.startsWith("item/") && hash !== "scm" && document.getElementById(hash)) {
     switchTab(hash);
   }
+
+  // Refreshing on /#about makes the browser focus that panel -- it is the
+  // fragment target and has tabindex="0" -- and a keyboard refresh (Cmd+R,
+  // F5) makes that focus visible as a ring around the whole panel. Panels are
+  // focusable so keyboard users can Tab into them, not to be focused on load,
+  // so let go of any focus the browser handed one.
+  const releasePanelFocus = () => {
+    if (document.activeElement?.classList.contains("tab-panel")) document.activeElement.blur();
+  };
+  releasePanelFocus();
+  window.addEventListener("load", releasePanelFocus, { once: true });
 }
 
 /* ===== IDE chrome: tab bar, file tree, status bar ===== */
