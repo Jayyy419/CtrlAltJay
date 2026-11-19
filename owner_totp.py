@@ -90,8 +90,10 @@ def qr_svg(text):
     import segno
 
     buf = io.BytesIO()
+    # omitsize swaps the fixed width and height for a viewBox, so the page
+    # can scale the whole code without cropping its corner markers.
     segno.make(text, error="m").save(buf, kind="svg", scale=5, border=4, dark="#000000", light="#ffffff",
-                                     xmldecl=False, title="QR code for your authenticator app")
+                                     xmldecl=False, omitsize=True, title="QR code for your authenticator app")
     return buf.getvalue().decode()
 
 

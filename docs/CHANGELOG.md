@@ -2,6 +2,14 @@
 
 All notable changes to the CtrlAltJay portfolio are documented here.
 
+## 19 Nov 2026: Owner links
+
+### Added
+- Admin Tools lists Sign-in security and Casebook once you're signed in. The list comes from an owner-only endpoint, so their addresses never appear in the public page.
+
+### Fixed
+- The authenticator QR code was cropped on the setup page, cutting off a corner marker. It now scales as a whole.
+
 ## 19 Nov 2026: Authenticator app sign-in
 
 ### Added

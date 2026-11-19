@@ -2200,7 +2200,45 @@ function setAdminMode(enabled) {
     loadResumeKey();
     renderDeletedItems();
   }
+  renderOwnerToolLinks();
   updateDraftIndicator();
+}
+
+// The owner-only areas are listed by the server, and only to a signed-in
+// owner, so their addresses never appear in the public page or scripts.
+function renderOwnerToolLinks() {
+  const box = document.getElementById("owner-tool-links");
+  if (!box) return;
+  box.replaceChildren();
+  if (!state.isAdmin) return;
+  fetch("/api/owner/tools", { credentials: "same-origin" })
+    .then((res) => (res.ok ? res.json() : []))
+    .then((tools) => {
+      (tools || []).forEach((tool) => {
+        const link = document.createElement("a");
+        link.className = "admin-tool-btn";
+        link.href = tool.href;
+        const icon = document.createElement("ion-icon");
+        icon.setAttribute("aria-hidden", "true");
+        icon.setAttribute("name", tool.icon);
+        const text = document.createElement("span");
+        text.className = "admin-tool-btn-text";
+        const title = document.createElement("span");
+        title.className = "admin-tool-btn-title";
+        title.textContent = tool.title;
+        const desc = document.createElement("span");
+        desc.className = "admin-tool-btn-desc";
+        desc.textContent = tool.desc;
+        text.append(title, desc);
+        const chevron = document.createElement("ion-icon");
+        chevron.setAttribute("aria-hidden", "true");
+        chevron.setAttribute("name", "chevron-forward-outline");
+        chevron.className = "admin-tool-btn-chevron";
+        link.append(icon, text, chevron);
+        box.append(link);
+      });
+    })
+    .catch(() => {});
 }
 
 function findItemById(itemId) {
