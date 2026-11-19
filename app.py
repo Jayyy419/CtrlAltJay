@@ -556,6 +556,11 @@ def set_security_headers(response):
         response.headers["Cache-Control"] = "no-cache"
     elif request.path.startswith("/static/"):
         response.headers["Cache-Control"] = "public, max-age=86400"
+    # Every owner route, including its 404 for everyone else, is never cached
+    # or indexed, whichever module serves it.
+    if request.path.startswith(("/owner/", "/api/owner/")) or request.path in ("/owner", "/api/owner"):
+        response.headers["Cache-Control"] = "no-store, private"
+        response.headers["X-Robots-Tag"] = "noindex, nofollow, noarchive"
     return response
 
 
