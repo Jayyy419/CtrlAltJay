@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <title>Sign-in security</title>
+  <link rel="stylesheet" href="/owner/casebook/app.css">
+  <script>
+    try {
+      var t = localStorage.getItem("ctrlaltjay-theme");
+      if (t === "light" || (!t && window.matchMedia("(prefers-color-scheme: light)").matches)) document.documentElement.classList.add("light-theme");
+    } catch (e) {}
+  </script>
+  <style>
+    .sec { max-width: 640px; margin: 0 auto; padding: 32px 20px 80px; }
+    .sec p { max-width: 60ch; }
+    .qr { background: #ffffff; display: inline-block; padding: 8px; border-radius: 6px; margin: 8px 0 12px; }
+    .qr svg { display: block; width: 205px; height: 205px; }
+    .key { font-family: 'Plex Mono', monospace; font-size: 15px; color: var(--bright); letter-spacing: 0.04em; word-break: break-all; }
+    .codes { font-family: 'Plex Mono', monospace; font-size: 15px; color: var(--bright); columns: 2; padding-left: 20px; margin: 8px 0 16px; }
+    .codes li { margin-bottom: 6px; }
+    .sec input[type=text] { border: 1px solid var(--line); background: var(--input); border-radius: 5px; padding: 9px 10px; min-height: 44px; font-family: 'Plex Mono', monospace; font-size: 16px; width: 12ch; letter-spacing: 0.1em; }
+    .sec .btn { min-height: 44px; }
+    #body { margin-top: 20px; }
+    .step { border-left: 2px solid var(--line); padding: 2px 0 2px 16px; margin: 0 0 22px; }
+    .ok { color: var(--reported); }
+    @media (max-width: 420px) { .codes { columns: 1; } }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to the page</a>
+  <main class="sec" id="main" tabindex="-1">
+    <div class="cb-meta" style="margin:0 0 10px"><a href="/" style="color:var(--accent);display:inline-flex;align-items:center;min-height:44px">ctrlaltjay.dev</a></div>
+    <h1 class="cb-title">Sign-in security</h1>
+    <div id="body" aria-live="polite"><p class="cb-meta">Checking...</p></div>
+  </main>
+  <script>
+  (function () {
+    var body = document.getElementById("body");
+
+    function call(method, url, data) {
+      return fetch(url, {
+        method: method, credentials: "same-origin",
+        headers: data ? { "Content-Type": "application/json" } : {},
+        body: data ? JSON.stringify(data) : undefined
+      }).then(function (r) {
+        if (r.status === 404) throw { gone: true };
+        return r.json().then(function (j) { if (!r.ok) throw j; return j; });
+      });
+    }
+
+    function failed(e) {
+      if (e && e.gone) {
+        body.innerHTML = '<p>You’ve been signed out. <a href="/?admin=login" style="color:var(--accent)">Sign in again</a>.</p>';
+        return;
+      }
+      var err = document.getElementById("err");
+      if (err) err.textContent = (e && e.error) || "That didn't work. Try again.";
+      if (e && e.restart) setTimeout(load, 1500);
+    }
+
+    function showCodes(codes, renewed) {
+      body.innerHTML =
+        (renewed ? '<p class="ok">New recovery codes. The old ones no longer work.</p>'
+          : '<p class="ok">Done. From now on, signing in asks for a code from your authenticator app.</p>') +
+        '<h2 class="h3" style="margin-top:22px">Recovery codes</h2>' +
+        "<p>Each one works once, if you lose your phone. Save them somewhere safe now: they won't be shown again.</p>" +
+        '<ol class="codes" id="codes"></ol>' +
+        '<div class="actions"><button type="button" class="btn" id="copy">Copy them</button>' +
+        '<button type="button" class="btn primary" id="done">I’ve saved them</button></div>';
+      var list = document.getElementById("codes");
+      codes.forEach(function (c) { var li = document.createElement("li"); li.textContent = c; list.appendChild(li); });
+      document.getElementById("copy").onclick = function () {
+        navigator.clipboard.writeText(codes.join("\n")).then(function () { document.getElementById("copy").textContent = "Copied"; });
+      };
+      document.getElementById("done").onclick = load;
+      document.getElementById("copy").focus();
+    }
+
+    function start() {
+      call("POST", "/api/owner/security/start").then(function (s) {
+        body.innerHTML =
+          '<div class="step"><h2 class="h3">1. Scan this</h2><p>Open an authenticator app (Google Authenticator, Microsoft Authenticator, 1Password and others work) and add an account by scanning the code.</p>' +
+          '<div class="qr" role="img" aria-label="QR code for your authenticator app">' + s.qr_svg + "</div>" +
+          '<p class="hint">Can’t scan? Type this key into the app instead:</p><p class="key" id="key"></p></div>' +
+          '<div class="step"><h2 class="h3">2. Enter the code it shows</h2>' +
+          '<form id="confirm" class="qform"><label for="code" class="sr">6-digit code</label>' +
+          '<input type="text" id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" required>' +
+          '<button type="submit" class="btn primary">Turn it on</button></form>' +
+          '<p class="err" id="err" role="alert"></p></div>';
+        document.getElementById("key").textContent = s.key;
+        document.getElementById("confirm").onsubmit = function (e) {
+          e.preventDefault();
+          call("POST", "/api/owner/security/confirm", { code: document.getElementById("code").value })
+            .then(function (r) { showCodes(r.recovery_codes); }).catch(failed);
+        };
+        document.getElementById("code").focus();
+      }).catch(function (e) {
+        if (e && e.gone) return failed(e);
+        body.innerHTML = '<p class="err" id="err"></p>';
+        failed(e);
+      });
+    }
+
+    function load() {
+      call("GET", "/api/owner/security").then(function (s) {
+        if (!s.enrolled) {
+          body.innerHTML =
+            "<p>Right now signing in only needs your passcode. Add an authenticator app and it will also ask for a 6-digit code from your phone, so a passcode on its own is no use to anyone else.</p>" +
+            '<div class="actions"><button type="button" class="btn primary" id="go">Set up an authenticator app</button></div>';
+          document.getElementById("go").onclick = start;
+          return;
+        }
+        body.innerHTML =
+          '<p class="ok">Signing in asks for your passcode and a code from your authenticator app.</p>' +
+          "<p>" + s.recovery_left + " recovery code" + (s.recovery_left === 1 ? "" : "s") + " left.</p>" +
+          (s.this_session_used_code
+            ? '<div class="actions"><button type="button" class="btn" id="fresh">Get new recovery codes</button>' +
+              '<button type="button" class="btn" id="move">Move to a new phone</button></div><p class="err" id="err" role="alert"></p>'
+            : '<p class="hint">Sign out and back in with a code to change any of this.</p>');
+        if (s.this_session_used_code) {
+          document.getElementById("fresh").onclick = function () {
+            if (!window.confirm("Your current recovery codes will stop working. Carry on?")) return;
+            call("POST", "/api/owner/security/recovery").then(function (r) { showCodes(r.recovery_codes, true); }).catch(failed);
+          };
+          document.getElementById("move").onclick = start;
+        }
+      }).catch(failed);
+    }
+
+    load();
+  })();
+  </script>
+</body>
+</html>

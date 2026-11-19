@@ -7,6 +7,7 @@ Versions are from `requirements.txt` and `template.yaml` at the time of writing.
 | Language | Python 3.11 | The Lambda runtime the app was migrated to. |
 | Web framework | Flask 3.1 | The app started as a Flask site and still is one. |
 | Lambda adapter | apig-wsgi 2.19 | Runs the Flask app behind a Lambda function URL without rewriting it. |
+| QR codes | segno 1.6 | Draws the authenticator setup QR code as SVG on the server, with no other dependencies. |
 | Data | DynamoDB, on-demand | No server to run; a personal site's traffic costs almost nothing. |
 | Static files and uploads | S3 behind CloudFront | Images and fonts never cost a Lambda invocation. |
 | Edge | CloudFront, plus one CloudFront Function and a KeyValueStore | HTTPS on the custom domain, and the off-switch holding page with its owner preview link. |
