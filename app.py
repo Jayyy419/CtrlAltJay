@@ -589,7 +589,7 @@ def build_profile():
         "now_building": [
             {
                 "title": "Sentrix",
-                "description": "Founder — TODO: one-line description of what Sentrix does.",
+                "description": "Founding a privacy-first fall detection system for elderly care, with no cameras or microphones, that alerts caregivers within seconds.",
             },
             {
                 "title": "NTU Computer Science",

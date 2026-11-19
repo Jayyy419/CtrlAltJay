@@ -2,6 +2,11 @@
 
 All notable changes to the CtrlAltJay portfolio are documented here.
 
+## 20 Nov 2026: Sentrix description
+
+### Fixed
+- The Now building entry for Sentrix shows a real one-line description instead of a placeholder.
+
 ## 19 Nov 2026: Casebook, step 7
 
 ### Added
