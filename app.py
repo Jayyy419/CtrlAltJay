@@ -1610,6 +1610,10 @@ def sitemap():
 
     urls = [
         {"loc": f"{base_url}/", "lastmod": now, "priority": "1.0"},
+    ]
+    if app.config.get("CITY_PUBLISHED_CHECK") and app.config["CITY_PUBLISHED_CHECK"]():
+        urls.append({"loc": f"{base_url}/city", "lastmod": now, "priority": "0.7"})
+    urls += [
         {"loc": f"{base_url}/#about", "lastmod": now, "priority": "0.8"},
         {"loc": f"{base_url}/#projects", "lastmod": now, "priority": "0.9"},
         {"loc": f"{base_url}/#experiences", "lastmod": now, "priority": "0.9"},
@@ -1658,7 +1662,7 @@ def robots():
 
 
 register_casebook(app, is_owner, dynamodb)
-register_townhall(app, is_owner, dynamodb)
+register_townhall(app, is_owner, dynamodb, _static_version)
 register_commit_city(app, dynamodb, _static_version)
 
 
