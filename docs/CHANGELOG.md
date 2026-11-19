@@ -2,6 +2,11 @@
 
 All notable changes to the CtrlAltJay portfolio are documented here.
 
+## 19 Nov 2026: Sitemap
+
+### Fixed
+- The sitemap no longer lists drafts or deleted items.
+
 ## 19 Nov 2026: Casebook, step 3
 
 ### Added

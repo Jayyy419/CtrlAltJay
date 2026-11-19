@@ -1386,7 +1386,7 @@ def sitemap():
     all_items = [
         dynamo_to_dict(i)
         for i in scan_all(table_items)
-        if not i.get("id", "").startswith("__")
+        if not i.get("id", "").startswith("__") and not i.get("deleted_at") and not i.get("is_draft")
     ]
     base_url = "https://ctrlaltjay.dev"
     now = datetime.utcnow().strftime("%Y-%m-%d")
