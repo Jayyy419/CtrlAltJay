@@ -2,6 +2,15 @@
 
 All notable changes to the CtrlAltJay portfolio are documented here.
 
+## 19 Nov 2026: Casebook, step 4
+
+### Added
+- Your evidence: each case has a list of what they look for (with defaults per occasion) and your portfolio items, resume rows and stories are matched and ranked against it. Every match shows the word and field that triggered it. Click a cell to correct it, or leave an item out of the case.
+- Questions on the table: add the usual questions for the occasion, labelled "Usual for this kind of role", or your own, labelled "Added by you". Each gets its best one or two pieces of evidence, which you can change or replace with a story.
+- STAR outlines filled only from stored fields. Results are never filled from an item; gaps show as `[your result here]`.
+- Story bank: stories in your own words, linked to the items and skills they draw on, showing which cases use them. A question's outline can be turned into a story.
+- Loose ends now lists questions with nothing to answer them, things nothing in your material shows, and stories with gaps.
+
 ## 19 Nov 2026: Sitemap
 
 ### Fixed

@@ -96,7 +96,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .cov { border-collapse: collapse; min-width: 560px; width: 100%; max-width: 860px; }
 .cov th, .cov td { border: 1px solid var(--line); padding: 8px; background: var(--soft); }
 .cov thead th { font-family: 'Plex Mono', monospace; font-size: 10px; font-weight: 400; color: var(--faint); text-align: center; line-height: 1.25; width: 72px; }
-.cov tbody th { text-align: left; font-weight: 400; color: var(--bright); font-size: 13px; }
+.cov tbody th { min-width: 250px; text-align: left; font-weight: 400; color: var(--bright); font-size: 13px; }
 .cov tbody th .rk { font-family: 'Plex Mono', monospace; color: var(--faint); font-size: 11px; margin-right: 8px; }
 .cov td { text-align: center; }
 .cov tfoot th, .cov tfoot td { font-family: 'Plex Mono', monospace; font-size: 11px; color: var(--dim); }
@@ -125,6 +125,43 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .err { color: var(--gap); font-family: 'Plex Mono', monospace; font-size: 12px; }
 .actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 
+.cb-list-note { text-transform: none; letter-spacing: 0; }
+.toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.qform { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 12px; max-width: 760px; }
+.qform input[type=text] { flex: 1 1 260px; min-width: 0; border: 1px solid var(--line); background: var(--input); border-radius: 5px; padding: 8px 10px; min-height: 40px; }
+.qform select { border: 1px solid var(--line); background: var(--input); border-radius: 5px; padding: 8px 10px; min-height: 40px; }
+.type { display: block; font-family: 'Plex Mono', monospace; font-size: 10px; color: var(--faint); letter-spacing: 0.04em; margin-top: 2px; }
+.from { font-family: 'Plex Mono', monospace; font-size: 10px; color: var(--faint); margin-left: 4px; }
+.why-line { display: block; font-family: 'Plex Mono', monospace; font-size: 10px; color: var(--dim); margin-top: 4px; line-height: 1.4; }
+.chooser { margin: -6px 0 22px; max-width: 720px; }
+.chooser summary { font-family: 'Plex Mono', monospace; font-size: 12px; color: var(--accent); cursor: pointer; min-height: 32px; display: inline-flex; align-items: center; }
+.chooser-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 8px; }
+.chooser label, .sb-ed label, .sb-ed .lbl { display: block; font-family: 'Plex Mono', monospace; font-size: 11px; color: var(--faint); margin-bottom: 4px; }
+.chooser select { width: 100%; border: 1px solid var(--line); background: var(--input); border-radius: 5px; padding: 8px; min-height: 40px; }
+.comp-ed { margin-bottom: 22px; max-width: 860px; }
+.chip-x { display: inline-flex; align-items: center; gap: 4px; padding-right: 2px; }
+.chip-x button { background: none; border: 0; color: var(--dim); cursor: pointer; font-size: 15px; line-height: 1; min-width: 26px; min-height: 26px; border-radius: 3px; }
+.chip-x button:hover { color: var(--gap); }
+.cov td { padding: 0; }
+.cov tfoot td { padding: 8px; }
+.cell { width: 100%; min-height: 40px; background: none; border: 0; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.cell:hover { background: var(--line-soft); }
+.cell.forced { box-shadow: inset 0 0 0 2px var(--posting); }
+.leave { background: none; border: 0; color: var(--dim); font-family: 'Plex Mono', monospace; font-size: 10px; cursor: pointer; padding: 8px; min-height: 40px; white-space: nowrap; }
+.leave:hover { color: var(--gap); }
+.seg { display: inline-flex; gap: 3px; vertical-align: middle; }
+.seg i { width: 14px; height: 6px; border-radius: 2px; background: var(--line); }
+.seg i.on { background: var(--reported); }
+.sb-ed .row { display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 10px; margin-bottom: 12px; }
+.sb-ed .row > label, .sb-ed .row > .lbl { color: var(--posting); padding-top: 10px; margin: 0; }
+.sb-ed input[type=text], .sb-ed textarea { width: 100%; border: 1px solid var(--line); background: var(--input); border-radius: 5px; padding: 8px 10px; min-height: 40px; }
+.sb-ed textarea { min-height: 72px; resize: vertical; }
+.sb-ed textarea.empty-f { border-style: dashed; border-color: var(--gap); }
+.sb-ed textarea::placeholder { color: var(--gap); opacity: 1; font-family: 'Plex Mono', monospace; font-size: 12px; }
+.link-row { margin: 8px 0 0; }
+.used { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 8px; }
+.linkish { background: none; border: 0; padding: 0; color: var(--accent); font-family: 'Plex Mono', monospace; font-size: 12px; cursor: pointer; text-decoration: underline; min-height: 24px; }
+
 .cb-status { position: fixed; bottom: 0; left: 0; right: 0; background: var(--accent-strong); color: var(--on-accent); font-family: 'Plex Mono', monospace; font-size: 11px; padding: 4px 12px; min-height: 22px; }
 .cb-status:empty { background: transparent; pointer-events: none; }
 
@@ -145,6 +182,14 @@ button, input, select, textarea { font: inherit; color: inherit; }
   .grid-wrap { display: none; }
   .cov-list { display: block; }
   .form { grid-template-columns: 1fr; }
+  .chooser-grid { grid-template-columns: 1fr; }
+  .chooser summary, .linkish { min-height: 44px; }
+  .chip-x button { min-width: 44px; min-height: 44px; }
+  .qform input[type=text], .qform select, .chooser select { min-height: 44px; }
+  .sb-ed .row { grid-template-columns: 1fr; gap: 2px; }
+  .sb-ed .row > label, .sb-ed .row > .lbl { padding-top: 0; }
+  .sb-ed input[type=text] { min-height: 44px; }
+  .bench .qitem { min-height: 44px; }
   .occ span { min-height: 44px; }
   .form input[type=text], .form input[type=url], .form input[type=date], .form select { min-height: 44px; }
 }
