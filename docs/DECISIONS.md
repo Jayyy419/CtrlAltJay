@@ -59,6 +59,16 @@ Significant choices about how CtrlAltJay works, newest first, with what was cons
 - Private buildings never show as boarded up, because the archived flag isn't on that list either.
 - Approving or moving a repo to the drawer republishes straight away, so hiding something takes effect at once. New daily stats wait for "Publish latest stats", so nothing changes on the public site without an owner action.
 
+## 19 Nov 2026: Drill has two modes and capped Claude feedback
+
+**Decided:** the owner liked both the Flashcards and the Interview room directions, so Drill has both behind a mode switch; the choice is remembered on the device. A third direction, a practice list, was set aside. Both modes share one rating scale and one order.
+
+**Ordering:** three boxes per question. Missed it goes back to the first box, Shaky steps back one, Got it steps up one. A round goes lowest box first, then the question practised longest ago. It's a light version of spaced repetition; there's no calendar, since a case usually has a date only days away.
+
+**Feedback:** the owner chose Claude feedback with a cap over rules-only checks or self-rating. It runs on Opus 5.5 at up to US$1 a month (`CasebookDrillModel`, `CasebookDrillMaxUsdPerMonth`) with the chat assistant's key, so no new secret or permission. It only runs on request, needs at least five words, and is told to judge only what was typed and never to suggest numbers or outcomes that aren't in the answer or the stored notes. Neither the answer nor the feedback is stored. Time taken and word count are worked out in the browser for free.
+
+**Set aside:** speech-to-text. The browser's built-in recognition sends audio to a third party in some browsers, and typing or answering out loud covers the practice.
+
 ## 19 Nov 2026: The Day-of sheet is a boarding pass, saved as PDF by printing
 
 **Decided:** the owner picked the bold "Boarding pass" direction over a two-column crib sheet and an answer grid. It's one card, phone first, since it's what's open on the day. The sheet only shows what the casebook already stores: the opening line is one the owner writes, stories are the first three questions with evidence and an outline, and empty STAR parts stay as "[your result here]" and the like.
