@@ -15,6 +15,13 @@ Everything under `/api/admin/*`, the admin panel and the owner preview link is f
 - Signing out deletes the row, so a copied cookie stops working at the same moment.
 - Rotating `SECRET_KEY` signs every session out.
 
+### Casebook
+- Every Casebook route checks the owner session on the server, and anyone else gets an empty 404, the same as for a route that doesn't exist.
+- Responses are `no-store` and `noindex`. The paths are disallowed in `robots.txt` and never appear in the sitemap or on any public page.
+- Casebook data is in its own encrypted tables with point-in-time recovery. Casebook never writes to the public tables.
+- Its Claude API key is a separate SecureString that only the research function's role can read; the main app cannot.
+- Pasted job postings are passed to a research run and never stored. A casebook keeps a summary and the link.
+
 ### How the origin is protected
 - The only public way in is CloudFront. The Lambda function URL refuses any request without the header CloudFront adds, so the app cannot be reached around it.
 - While the site is switched off, a CloudFront Function answers every request with a holding page before anything reaches the app. The owner preview link lets one browser through with a cookie matching a secret in a CloudFront KeyValueStore; minting a new link revokes the old one. The admin panel still needs the passcode.

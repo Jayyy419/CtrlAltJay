@@ -2,6 +2,19 @@
 
 All notable changes to the CtrlAltJay portfolio are documented here.
 
+## 19 Nov 2026: Casebook, step 2
+
+### Added
+- Owner-only Casebook API (`casebook.py`): casebooks and the story bank, behind the owner session, with an empty 404 for anyone else and `no-store` / `noindex` on every response.
+- `ctrlaltjay-casebooks` and `ctrlaltjay-stories` tables, encrypted, with point-in-time recovery, retained if removed from the stack.
+- `ctrlaltjay-casebook-research`, the research worker. For now it only confirms it can read its own key.
+- `docs/STACK.md`, `docs/OPERATIONS.md`, `docs/ROADMAP.md`, `PORTFOLIO.md`.
+
+### Changed
+- README rewritten for how the site runs today.
+- `docs/ARCHITECTURE.md`: infrastructure section brought up to date; account details removed.
+- `robots.txt` disallows the owner paths.
+
 ## 19 Nov 2026: Skill tree
 
 ### Added

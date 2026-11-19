@@ -38,6 +38,8 @@ from werkzeug.utils import secure_filename
 
 import json
 
+from casebook import register_casebook
+
 try:
     from PIL import Image as PILImage
     HAS_PILLOW = True
@@ -1431,9 +1433,14 @@ def robots():
     txt = (
         "User-agent: *\n"
         "Allow: /\n"
+        "Disallow: /api/owner/\n"
+        "Disallow: /owner/\n"
         "Sitemap: https://ctrlaltjay.dev/sitemap.xml\n"
     )
     return app.response_class(txt, mimetype="text/plain")
+
+
+register_casebook(app, is_owner, dynamodb)
 
 
 # ─── Error Pages ─────────────────────────────────────────────────────────────
