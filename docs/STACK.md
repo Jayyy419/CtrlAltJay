@@ -16,6 +16,8 @@ Versions are from `requirements.txt` and `template.yaml` at the time of writing.
 | Scheduling | EventBridge Scheduler | Runs the Town hall collector daily in Singapore time without a server. |
 | GitHub data | GitHub REST API, version 2022-11-28, through Python's standard library | Repo stats for Commit City; no extra dependency for a handful of calls. |
 | AI | Claude API (`anthropic` 0.119) | The site chat, Casebook research, Drill feedback and Town hall draft help. Model IDs are read from configuration. |
+| Spend reporting | Upkeep's usage endpoint, through Python's standard library | Each Claude response's token counts go to the owner's portal, which shows the month's spend across projects. No extra dependency for one POST. |
+| Tests | Python's `unittest` | Runs with no extra dependency; the deploy runs it before building. |
 | Front end | Vanilla JavaScript, custom CSS, Tailwind (CDN) | No build step. |
 | Fonts | IBM Plex Sans and Mono, self-hosted | Matches the code-editor look without a font request to a third party. |
 | CI/CD | GitHub Actions with OIDC into AWS | No long-lived AWS keys in GitHub. |

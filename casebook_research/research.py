@@ -15,6 +15,8 @@ from decimal import Decimal
 
 import boto3
 
+import upkeep_usage
+
 _ssm = boto3.client("ssm")
 _table = boto3.resource("dynamodb").Table(os.environ.get("CASEBOOKS_TABLE", "ctrlaltjay-casebooks"))
 
@@ -231,6 +233,7 @@ def _search(client, run, meta, posting_text):
         ) as stream:
             message = stream.get_final_message()
         run.charge(message.usage)
+        upkeep_usage.report(message)
         content = [_block_dict(b) for b in message.content]
         blocks += content
         queries = [b.get("input", {}).get("query") for b in content
@@ -302,6 +305,7 @@ def _write(client, run, meta, notes, sources, posting_text, fetched):
     ) as stream:
         message = stream.get_final_message()
     run.charge(message.usage)
+    upkeep_usage.report(message)
     if message.stop_reason == "refusal":
         raise RuntimeError("The model declined this research.")
     text = next((b.text for b in message.content if b.type == "text"), "")
