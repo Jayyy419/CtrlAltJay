@@ -2,6 +2,17 @@
 
 All notable changes to the CtrlAltJay portfolio are documented here.
 
+## 19 Nov 2026: Source Map, step 6
+
+### Added
+- Town hall Tours: plot a Source Map tour on the same night map visitors walk. Choose a district, open a file, pick up to 40 lines, mark the key ones, write a title and what to notice, and press "Plot a stop". The lines are copied on the server at the commit the file list came from.
+- Every excerpt is checked for secrets (key formats, tokens, passwords in code, .env lines, private addresses, emails, random-looking strings). A flagged stop blocks "Publish the map" until its lines change or the owner marks it as not a secret, which is logged.
+- Reorder stops by dragging the route pins, with Move earlier and Move later, or with Shift and the arrow keys on a pin.
+- Preview a tour exactly as visitors would see it, then "Publish the map". "Take the map down" removes it. Putting a repo in the drawer takes its tour down too.
+- Private repos get district names the owner chooses ("Area A" until then), and no paths, file names, commits or links on the public tour.
+- The daily collector run marks stops whose lines changed as "Needs a look". Visitors keep seeing the approved excerpt until the owner plots it again or keeps it as is.
+- Commit City buildings link to their tour with "Take the tour".
+
 ## 19 Nov 2026: Source Map, step 5
 
 ### Added
