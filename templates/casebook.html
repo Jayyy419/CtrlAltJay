@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <title>Casebook</title>
+  <link rel="stylesheet" href="/owner/casebook/app.css">
+  <script>
+    try {
+      var t = localStorage.getItem("ctrlaltjay-theme");
+      if (t === "light" || (!t && window.matchMedia("(prefers-color-scheme: light)").matches)) document.documentElement.classList.add("light-theme");
+    } catch (e) {}
+  </script>
+</head>
+<body>
+  <a class="skip" href="#cb-main">Skip to the casebook</a>
+  <div class="cb-shell">
+    <aside class="cb-side" aria-label="Casebooks">
+      <div class="cb-side-head"><span>CASEBOOK</span><a class="cb-home" href="/">ctrlaltjay.dev</a></div>
+      <button type="button" class="cb-new" id="cb-new">+ New case</button>
+      <nav id="cb-list" class="cb-list"></nav>
+    </aside>
+    <main id="cb-main" class="cb-main" tabindex="-1"></main>
+  </div>
+  <div class="cb-status" id="cb-status" aria-live="polite"></div>
+  <script src="/owner/casebook/app.js"></script>
+</body>
+</html>
