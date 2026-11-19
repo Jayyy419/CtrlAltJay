@@ -37,7 +37,7 @@ Environment variable names and what they do are in `.env.example`. Secrets are S
 | `ctrlaltjay-skills` | Skills | Created outside the stack |
 | `ctrlaltjay-casebooks` | Casebooks, their questions and sources, and the monthly research spend | Point-in-time recovery; retained if removed from the stack |
 | `ctrlaltjay-stories` | The private story bank | Point-in-time recovery; retained if removed from the stack |
-| `ctrlaltjay-town` | Town hall: every repo the token can see, dated stats snapshots, collector runs, and later tours and the approvals log | Point-in-time recovery; retained if removed from the stack |
+| `ctrlaltjay-town` | Town hall: every repo the token can see, dated stats snapshots, collector runs, tour drafts and the approvals log | Point-in-time recovery; retained if removed from the stack |
 | `ctrlaltjay-public-city` | Only what the owner has published for Commit City and Source Map. The only Town hall table public pages read | Point-in-time recovery; retained if removed from the stack |
 
 ## Town hall collector
@@ -45,6 +45,7 @@ Environment variable names and what they do are in `.env.example`. Secrets are S
 - `ctrlaltjay-town-collector` runs daily at 9:00 am Singapore time (EventBridge Scheduler, `ctrlaltjay-town-collector-daily`) and when the owner presses Refresh now in Town hall.
 - It reads the GitHub token from `/ctrlaltjay/github-token`. To replace the token, overwrite that parameter; the next run uses the new one. Repos the new token can't see stay in Town hall, marked "Token can't see it", so their settings aren't lost.
 - A run's outcome (done, rate limited, failed) and its GitHub call count are kept as `RUN` rows in `ctrlaltjay-town` and shown in Town hall. Runs make roughly four GitHub calls per repo, well inside GitHub's hourly limit for a personal token (inferred from GitHub's documented limits, not measured on a large account).
+- The same function answers two synchronous calls from the app while the owner plots a tour: the file list and one file's lines. Each daily run also checks plotted tours and marks stops whose lines changed as "Needs a look"; the run's `needs_look` count says how many were newly marked. A failure in that check is recorded on the run (`stale_check`) without failing the stats.
 - The schedule can't carry tags (EventBridge Scheduler schedules don't support them); everything else the stack creates is tagged `Project=CtrlAltJay`.
 
 ## Monitoring and cost

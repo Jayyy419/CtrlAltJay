@@ -5,7 +5,7 @@ The personal portfolio at [ctrlaltjay.dev](https://ctrlaltjay.dev): projects, ex
 ## Who uses it
 
 - **Visitors** (recruiters, collaborators): browse projects, experience, the resume and the skill tree, walk Commit City (`/city`, once projects are approved), follow Source Map tours through a codebase (`/map/sample` shows how), chat with an assistant that answers from the portfolio, and use the contact form.
-- **The owner**: signs in with a passcode and an authenticator app code to edit content, publish drafts, switch the site on or off, use Casebook, and run Town hall (Commit City and Source Map, in progress).
+- **The owner**: signs in with a passcode and an authenticator app code to edit content, publish drafts, switch the site on or off, use Casebook, and run Town hall (approving repos for Commit City and plotting Source Map tours).
 
 ## Run it locally
 

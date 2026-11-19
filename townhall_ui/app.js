@@ -206,7 +206,10 @@
 
   /* ---------- approvals log ---------- */
 
-  var ACTIONS = { approve: "Approved for the skyline", drawer: "Put in the drawer", publish: "Published latest stats", update: "Changed the words on" };
+  var ACTIONS = {
+    approve: "Approved for the skyline", drawer: "Put in the drawer", publish: "Published latest stats", update: "Changed the words on",
+    publish_map: "Published the map for", unpublish_map: "Took down the map for", not_a_secret: "Marked as not a secret in", keep_stop: "Kept a changed stop as is in",
+  };
 
   function renderLog() {
     var rows = state.log || [];
@@ -220,19 +223,21 @@
     return html + "</tbody></table>";
   }
 
-  function renderTours() {
-    return '<div class="cb-head"><div><h1 class="cb-title">Tours</h1><div class="cb-meta">Source Map tours, plotted stop by stop.</div></div></div>' +
-      '<div class="empty">No maps yet. Plotting a stop comes in a later step.</div>';
+  function markNav(view) {
+    nav.querySelectorAll("[data-view]").forEach(function (b) {
+      if (b.getAttribute("data-view") === view) b.setAttribute("aria-current", "true");
+      else b.removeAttribute("aria-current");
+    });
   }
 
   function render() {
     var navView = state.view === "repo" ? "skyline" : state.view;
+    main.setAttribute("data-owner", "app");
     nav.querySelectorAll("[data-view]").forEach(function (b) {
       if (b.getAttribute("data-view") === navView) b.setAttribute("aria-current", "true");
       else b.removeAttribute("aria-current");
     });
-    if (state.view === "tours") main.innerHTML = renderTours();
-    else if (state.view === "log") main.innerHTML = renderLog();
+    if (state.view === "log") main.innerHTML = renderLog();
     else if (state.view === "repo") main.innerHTML = renderRepo();
     else main.innerHTML = renderSkyline();
   }
@@ -270,6 +275,11 @@
     var b = e.target.closest("[data-view]");
     if (!b) return;
     state.view = b.getAttribute("data-view");
+    if (state.view === "tours") {
+      markNav("tours");
+      window.TownTours.show();
+      return;
+    }
     if (state.view === "log") {
       api("GET", "/api/owner/townhall/approvals").then(function (rows) { state.log = rows; render(); focusHeading(); }).catch(failed);
       return;
@@ -279,6 +289,7 @@
   });
 
   main.addEventListener("click", function (e) {
+    if (main.getAttribute("data-owner") === "tours") return;
     var open = e.target.closest("[data-repo]");
     if (open) return openRepo(open.getAttribute("data-repo"));
     var act = e.target.closest("[data-act]");
@@ -313,7 +324,7 @@
   });
 
   main.addEventListener("submit", function (e) {
-    if (e.target.id !== "repo-form") return;
+    if (main.getAttribute("data-owner") === "tours" || e.target.id !== "repo-form") return;
     e.preventDefault();
     var body = {
       public_name: document.getElementById("f-name").value,
@@ -326,5 +337,6 @@
       .catch(failed);
   });
 
+  window.TownTours.init({ api: api, esc: esc, say: say, sgStamp: sgStamp, failed: failed, focusHeading: focusHeading });
   load();
 })();
