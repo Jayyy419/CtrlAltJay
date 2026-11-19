@@ -24,6 +24,7 @@ CtrlAltJay is a single-page portfolio application built with Flask (Python) on t
 
 - **Entry point**: `app.py`
 - **WSGI server**: Gunicorn (configured in `Procfile`)
+- **Skill tree**: the Stack panel's Map view is built in the browser from `/api/public-data` (skills, plus each item's `skills` tags). It has no endpoint or table of its own, so it only shows skills that at least one published item is tagged with.
 - **Authentication**: Owner sign-in with a passcode, rate limited (5 attempts, 10-min lockout). Each sign-in creates a server-side session row; a session ends when it reaches `ADMIN_SESSION_HOURS` (default 12) or on sign-out, even if the cookie was copied. See `SECURITY.md`.
 - **File uploads**: Saved to `static/uploads/` with timestamp prefix
 - **Security**: 11 response headers including CSP, HSTS, X-Frame-Options
