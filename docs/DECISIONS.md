@@ -52,6 +52,14 @@ Significant choices about how CtrlAltJay works, newest first, with what was cons
 
 **Also decided:** pasted job postings are never stored, only passed to a run. The casebook keeps the link and a summary in my own words.
 
+## 19 Nov 2026: Commit City is drawn as an isometric night city
+
+**Decided:** the owner picked the bold "Night city" direction over a side-on dusk street and a blueprint drawing. It's drawn as SVG in the browser from the published numbers, so the page stays a single request and the picture is crisp at any size.
+
+**How it stays usable:** the frame is measured once with every building standing, so scrubbing never crops the picture. On phones the card moves under the city, and a row of 44px building buttons sits beside it, because the buildings themselves can be smaller than a fingertip. The table view carries every number for screen readers.
+
+**Set aside:** canvas or WebGL. They'd make the buildings unreachable by keyboard and screen readers without a second, parallel structure.
+
 ## 19 Nov 2026: Town hall keeps owner data and published data in separate tables
 
 **Decided:**
