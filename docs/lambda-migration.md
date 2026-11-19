@@ -145,6 +145,9 @@ Pillow is the one that bites — it is pinned to 12.2.0 because 12.3.0 ships no
 cp311 x86_64 manylinux wheel, so pip falls back to the sdist and tries to
 compile it in a build container with no toolchain. (EB's build image *does*
 have a compiler, which is why 12.3.0 worked there and hid the problem.)
+Pillow 13.0.0 has the same gap: its only Linux x86_64 wheels need glibc 2.27
+or later, and the python3.11 runtime image is Amazon Linux 2 (glibc 2.26). It
+needs the function on python3.12 or later first.
 
 The function is x86_64, matching the CI runner, so this builds natively. It
 was briefly arm64 — ~20% cheaper per GB-second — but that forces the build
