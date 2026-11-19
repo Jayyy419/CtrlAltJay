@@ -414,6 +414,9 @@
           <div class="panel-head-top flex items-center justify-between gap-3">
             <h2 class="font-display text-3xl font-bold text-white tracking-tight">Projects</h2>
             <div class="flex items-center gap-2">
+              {% if city_published %}<a href="/city" class="export-btn" title="Every project as a building, shaped by its history">
+                <ion-icon aria-hidden="true" name="business-outline"></ion-icon> Commit City
+              </a>{% endif %}
               <a href="/feed.xml" class="export-btn" title="Subscribe to project &amp; experience updates">
                 <ion-icon aria-hidden="true" name="logo-rss"></ion-icon> RSS Feed
               </a>

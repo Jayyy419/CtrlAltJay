@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Commit City</title>
+  {% if preview %}<meta name="robots" content="noindex, nofollow, noarchive">{% endif %}
   <meta name="description" content="A skyline of Jay's projects: one building per repo, shaped by its real history.">
   <link rel="stylesheet" href="/static/css/city.css?v={{ css_v }}">
   <script>
@@ -13,12 +14,13 @@
     } catch (e) {}
   </script>
 </head>
-<body>
+<body data-src="{{ data_src or '/api/city' }}">
   <a class="skip" href="#city-main">Skip to the city</a>
   <header class="city-top"><a href="/">ctrlaltjay.dev</a><span aria-hidden="true">/</span><span>commit-city</span></header>
   <main id="city-main" class="city-page" tabindex="-1">
     <h1>Commit City <span class="sample-badge" id="city-sample" hidden>SAMPLE</span></h1>
     <p class="city-sub">Every building is a project. Floors are commits, and a lit window is a week I worked on it.</p>
+    {% if preview %}<p class="city-sample-note">Preview from Town hall. This is exactly how the building will look once it's approved. Nobody else can see this page.</p>{% endif %}
     <p class="city-sample-note" id="city-sample-note">This is a sample city with invented projects, so you can see how it works. Real projects go up once they're approved.</p>
     <div class="city-hero" id="city-stage">
       <svg id="city-svg" role="group" aria-label="The skyline. Use the arrow keys to move between buildings and Enter to read about one." viewBox="0 0 1100 520"></svg>

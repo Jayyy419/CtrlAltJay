@@ -72,6 +72,23 @@ def sample_city():
 def register_commit_city(app, dynamodb, static_version):
     public = dynamodb.Table(os.getenv("PUBLIC_CITY_TABLE", "ctrlaltjay-public-city"))
 
+    def has_buildings():
+        # A failed check only hides the link; it must never break the page
+        # that asked.
+        try:
+            item = public.get_item(Key={"pk": "CITY", "sk": "CURRENT"}, ProjectionExpression="#c",
+                                   ExpressionAttributeNames={"#c": "count"}).get("Item")
+        except Exception:  # noqa: BLE001
+            return False
+        return bool(item and int(item.get("count", 0)) > 0)
+
+    # The site only links to the city once there's something real in it.
+    @app.context_processor
+    def city_flag():
+        return {"city_published": has_buildings()}
+
+    app.config["CITY_PUBLISHED_CHECK"] = has_buildings
+
     def published():
         item = public.get_item(Key={"pk": "CITY", "sk": "CURRENT"}).get("Item")
         if not item or not item.get("data"):

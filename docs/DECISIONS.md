@@ -52,6 +52,13 @@ Significant choices about how CtrlAltJay works, newest first, with what was cons
 
 **Also decided:** pasted job postings are never stored, only passed to a run. The casebook keeps the link and a summary in my own words.
 
+## 19 Nov 2026: What a private repo publishes
+
+**Decided:**
+- A private building's width comes from a size class (under 50 KB, under 250 KB, under 1 MB, larger) rather than its byte count. The owner chose this; the spec's list for private repos (weekly commit counts, language shares, last push date) has no size field.
+- Private buildings never show as boarded up, because the archived flag isn't on that list either.
+- Approving or moving a repo to the drawer republishes straight away, so hiding something takes effect at once. New daily stats wait for "Publish latest stats", so nothing changes on the public site without an owner action.
+
 ## 19 Nov 2026: Commit City is drawn as an isometric night city
 
 **Decided:** the owner picked the bold "Night city" direction over a side-on dusk street and a blueprint drawing. It's drawn as SVG in the browser from the published numbers, so the page stays a single request and the picture is crisp at any size.
