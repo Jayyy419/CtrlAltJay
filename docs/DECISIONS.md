@@ -52,6 +52,19 @@ Significant choices about how CtrlAltJay works, newest first, with what was cons
 
 **Also decided:** pasted job postings are never stored, only passed to a run. The casebook keeps the link and a summary in my own words.
 
+## 19 Nov 2026: Owner sign-in adds an authenticator app code
+
+**Decided:** sign-in becomes the passcode plus a 6-digit code from an authenticator app (TOTP), with eight one-time recovery codes. This replaces the single-passcode decision below, now that Town hall will be able to browse private repos and publish from them.
+
+**Why:** the owner chose an authenticator code over a passkey. It is simpler to build and use, though weaker against phishing.
+
+**How:**
+- The code check is written by hand from RFC 6238 and checked against its test vectors, rather than adding a library for about thirty lines. `segno` draws the QR code as SVG on the server.
+- The secret is an SSM SecureString that the app writes during setup, so the app role gained read, write and tag access to that one parameter.
+- The check only switches on once the parameter exists, so deploying it couldn't lock the owner out, and deleting the parameter is the way back in.
+
+**Set aside:** a passkey (WebAuthn), as the stronger option.
+
 ## 19 Nov 2026: Owner sign-in stays a single passcode, with server-side sessions
 
 **Decided:** keep the passcode as the only sign-in factor. Add a server-side session record so sessions expire (`ADMIN_SESSION_HOURS`, default 12) and signing out ends them everywhere.

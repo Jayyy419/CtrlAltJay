@@ -6,12 +6,18 @@ Everything under `/api/admin/*`, the admin panel and the owner preview link is f
 
 ### Signing in
 - Sign-in is a single passcode, stored as a hash (`ADMIN_PASSCODE_HASH`) or read from SSM Parameter Store as a SecureString.
-- Five wrong attempts from one address lock that address out for 10 minutes.
-- There is no second factor. That was the owner's decision on 19 Nov 2026; see `docs/DECISIONS.md`.
+- Once the owner has set up an authenticator app at `/owner/security`, sign-in takes the passcode and then a 6-digit code (RFC 6238, 30-second steps, one step of clock drift either way). The passcode alone only opens a five-minute window to enter the code; it starts no session.
+- Each code works once: the last accepted time step is stored and anything at or before it is refused.
+- Eight one-time recovery codes are shown once at setup. Only SHA-256 hashes of them are stored. A used one is removed.
+- The authenticator secret is an SSM SecureString (`/ctrlaltjay/admin-totp-secret`). The app is the only thing that can read or write it, and only that one parameter. While it's being set up, the not-yet-active secret sits in a table row for at most 10 minutes, tied to the session that started the setup.
+- Replacing the authenticator or getting new recovery codes needs a session that was itself signed in with a code, so a passcode alone can't change them.
+- Wrong passcodes and wrong codes count towards the same limit: five from one address lock it out for 10 minutes.
+- If the authenticator is lost along with every recovery code, deleting the SSM parameter in the AWS console turns the code step off, and sign-in goes back to the passcode alone until a new authenticator is set up.
 
 ### Sessions
 - A successful sign-in creates a random session ID. The browser holds it in a signed, `HttpOnly`, `Secure`, `SameSite=Lax` cookie; the server keeps a row for it, stored only as a SHA-256 hash.
 - Every owner request checks that the row still exists and that the session is younger than `ADMIN_SESSION_HOURS` (default 12). Either check failing ends the session and removes its row.
+- Once an authenticator is set up, sessions that were started with the passcode alone stop counting. Each app instance re-checks whether one is set up at most once a minute, so this can take up to a minute.
 - Signing out deletes the row, so a copied cookie stops working at the same moment.
 - Rotating `SECRET_KEY` signs every session out.
 
