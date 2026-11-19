@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ tour.title }}</title>
+  <meta name="description" content="A guided tour of {{ tour.repo_name }}, one stop at a time.">
+  {% if tour.sample %}<meta name="robots" content="noindex">{% endif %}
+  <link rel="stylesheet" href="/static/css/map.css?v={{ css_v }}">
+  <script>
+    try {
+      var t = localStorage.getItem("ctrlaltjay-theme");
+      if (t === "light" || (!t && window.matchMedia("(prefers-color-scheme: light)").matches)) document.documentElement.classList.add("light-theme");
+    } catch (e) {}
+  </script>
+</head>
+<body data-slug="{{ tour.slug }}" data-stop="{{ stop }}">
+  <a class="skip" href="#map-stop">Skip to the stop</a>
+  <header class="map-top"><a href="/">ctrlaltjay.dev</a><span aria-hidden="true">/</span>{% if tour.project_url %}<a href="{{ tour.project_url }}">{{ tour.repo_name }}</a>{% else %}<span>{{ tour.repo_name }}</span>{% endif %}<span aria-hidden="true">/</span><span>source-map</span></header>
+  <main class="map-page">
+    <h1>Source Map {% if tour.sample %}<span class="sample-badge">SAMPLE</span>{% endif %}</h1>
+    <p class="map-sub">{{ tour.title }}</p>
+    {% if tour.sample %}<p class="map-sample-note">A sample tour of an invented project, so you can see how a Source Map works. Real tours appear once I publish them.</p>{% endif %}
+    <div class="map-wrap">
+      <div class="map-side">
+        <svg id="map-svg" viewBox="0 0 700 520" role="img" aria-label="Map of the project's districts with the tour route. The current stop is marked You are here."></svg>
+      </div>
+      <section class="map-stop" id="map-stop" tabindex="-1" aria-live="polite" aria-labelledby="stop-title"></section>
+    </div>
+    <details class="map-all">
+      <summary>All stops</summary>
+      <ol id="map-list"></ol>
+    </details>
+  </main>
+  <script src="/static/js/map.js?v={{ js_v }}"></script>
+</body>
+</html>

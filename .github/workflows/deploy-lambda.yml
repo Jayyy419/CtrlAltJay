@@ -36,7 +36,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Sanity check Python syntax
-        run: python3 -m py_compile app.py lambda_handler.py casebook.py casebook_evidence.py owner_totp.py townhall.py casebook_research/research.py town_collector/collector.py
+        run: python3 -m py_compile app.py lambda_handler.py casebook.py casebook_evidence.py owner_totp.py townhall.py commit_city.py source_map.py casebook_research/research.py town_collector/collector.py
 
       - uses: actions/setup-python@v5
         with:

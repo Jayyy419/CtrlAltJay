@@ -313,6 +313,9 @@
         return;
       }
       prepare(city);
+      // A link like /city#b123 opens with that building picked.
+      var wanted = (location.hash || "").slice(1);
+      city.buildings.forEach(function (b, i) { if (wanted && b.slug === wanted) state.selected = i; });
       renderPicker();
       setTime(state.weeks.length - 1);
     })

@@ -59,6 +59,14 @@ Significant choices about how CtrlAltJay works, newest first, with what was cons
 - Private buildings never show as boarded up, because the archived flag isn't on that list either.
 - Approving or moving a repo to the drawer republishes straight away, so hiding something takes effect at once. New daily stats wait for "Publish latest stats", so nothing changes on the public site without an owner action.
 
+## 19 Nov 2026: Source Map is drawn as night districts
+
+**Decided:** the owner picked the bold "Night districts" direction, which matches Commit City's night look: top-level folders become lit districts sized by code, and the route between stops glows. A metro-line diagram and a printed field guide were the other two.
+
+**How it stays usable:** each stop has its own address, so the browser's back button and shared links land on the same stop. Arrow keys move along the route except inside the code, where they scroll. With reduced motion the marker jumps instead of travelling and stops pulsing. The full list of stops sits under the map as plain links.
+
+**Set aside:** a live file tree from GitHub on the public page. Public pages only ever read what the owner published, so the map is drawn from the district sizes stored with the tour.
+
 ## 19 Nov 2026: Commit City is drawn as an isometric night city
 
 **Decided:** the owner picked the bold "Night city" direction over a side-on dusk street and a blueprint drawing. It's drawn as SVG in the browser from the published numbers, so the page stays a single request and the picture is crisp at any size.
