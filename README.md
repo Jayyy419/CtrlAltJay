@@ -18,7 +18,7 @@ cp .env.example .env    # fill in SECRET_KEY and an admin passcode at minimum
 flask --app app run     # http://127.0.0.1:5000
 ```
 
-There is no test suite in the repo yet; changes have been checked with moto-backed scripts and Playwright (see `docs/ROADMAP.md`).
+Unit tests cover the Upkeep usage reporter so far: `python3 -m unittest discover -s tests`. Other changes have been checked with moto-backed scripts and Playwright (see `docs/ROADMAP.md`).
 
 ## Deploy
 

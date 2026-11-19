@@ -10,6 +10,7 @@
 - Casebook step 4: evidence matching and coverage, STAR outlines with gaps, the story bank.
 - Casebook step 5: research with web search in the background, provenance checked in code, caps and cost.
 - Casebook step 6: questions for them you can edit and pick, the Day-of sheet (Boarding pass direction, picked from three) and Save as PDF.
+- Claude spend reported to Upkeep (model and token counts only), switched on once the owner adds the URL and key.
 - Casebook step 7: Drill, with Flashcards and an Interview room (the owner picked both of three directions), self-rating that orders the next round, and capped Claude feedback.
 
 ## In progress: Commit City and Source Map
@@ -24,7 +25,7 @@
 ## Next
 - Optionally read PORTFOLIO.md, DECISIONS.md and CHANGELOG.md from listed repos as more evidence for Casebook, through the Town hall collector so the token stays with it.
 - Skill tags on older portfolio items, so the skill tree shows every skill that has evidence.
-- An automated test suite in the repo. Changes so far were checked with moto-backed scripts and Playwright outside the repo.
+- A fuller automated test suite. The repo has unit tests for Upkeep usage reporting only; other changes were checked with moto-backed scripts and Playwright outside the repo.
 
 ## Later
 - A passkey as a second sign-in factor (set aside on 19 Nov 2026; see `DECISIONS.md`).
