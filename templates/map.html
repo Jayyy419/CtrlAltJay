@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ tour.title }}</title>
   <meta name="description" content="A guided tour of {{ tour.repo_name }}, one stop at a time.">
-  {% if tour.sample %}<meta name="robots" content="noindex">{% endif %}
+  {% if tour.sample or preview %}<meta name="robots" content="noindex">{% endif %}
   <link rel="stylesheet" href="/static/css/map.css?v={{ css_v }}">
   <script>
     try {
@@ -14,12 +14,13 @@
     } catch (e) {}
   </script>
 </head>
-<body data-slug="{{ tour.slug }}" data-stop="{{ stop }}">
+<body data-slug="{{ tour.slug }}" data-stop="{{ stop }}"{% if data_src %} data-src="{{ data_src }}" data-base="{{ base }}"{% endif %}>
   <a class="skip" href="#map-stop">Skip to the stop</a>
   <header class="map-top"><a href="/">ctrlaltjay.dev</a><span aria-hidden="true">/</span>{% if tour.project_url %}<a href="{{ tour.project_url }}">{{ tour.repo_name }}</a>{% else %}<span>{{ tour.repo_name }}</span>{% endif %}<span aria-hidden="true">/</span><span>source-map</span></header>
   <main class="map-page">
     <h1>Source Map {% if tour.sample %}<span class="sample-badge">SAMPLE</span>{% endif %}</h1>
     <p class="map-sub">{{ tour.title }}</p>
+    {% if preview %}<p class="map-sample-note">Preview: only you can see this. Visitors see the map you last published.</p>{% endif %}
     {% if tour.sample %}<p class="map-sample-note">A sample tour of an invented project, so you can see how a Source Map works. Real tours appear once I publish them.</p>{% endif %}
     <div class="map-wrap">
       <div class="map-side">

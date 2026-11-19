@@ -18,9 +18,10 @@ from boto3.dynamodb.conditions import Key
 from flask import Blueprint, Response, abort, jsonify, render_template, request
 
 from commit_city import language_color
+from townhall_tours import register_tours
 
 UI_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "townhall_ui")
-UI_FILES = {"app.js": "text/javascript; charset=utf-8", "app.css": "text/css; charset=utf-8"}
+UI_FILES = {"app.js": "text/javascript; charset=utf-8", "tours.js": "text/javascript; charset=utf-8", "app.css": "text/css; charset=utf-8"}
 # A refresh that hasn't finished in this long has died; the collector's own
 # limit is 15 minutes.
 STALE_RUN = timedelta(minutes=20)
@@ -51,7 +52,7 @@ def _to_ts(iso):
         return 0
 
 
-def public_building(meta, stats, project_urls):
+def public_building(meta, stats, project_urls, tour_url=""):
     """Exactly what one approved repo puts on the public site.
 
     Private repos get the owner's name and description, weekly commit
@@ -67,7 +68,7 @@ def public_building(meta, stats, project_urls):
     private = bool(meta.get("private"))
     building = {
         "slug": f"b{meta['github_id']}",
-        "name": meta.get("public_name") or ("" if private else meta.get("full_name", "").split("/")[-1]),
+        "name": building_name(meta),
         "description": meta.get("description") or ("" if private else meta.get("gh_description", "")),
         "languages": shares[:6],
         "main_language": main,
@@ -78,7 +79,7 @@ def public_building(meta, stats, project_urls):
         "weeks_active": len(weeks),
         "last_push": _to_ts(meta.get("pushed_at")),
         "project_url": project_urls.get(meta.get("project_item_id") or "", ""),
-        "tour_url": "",
+        "tour_url": tour_url,
     }
     if private:
         building["size_class"] = size_class(total)
@@ -88,6 +89,12 @@ def public_building(meta, stats, project_urls):
         building["archived"] = bool(meta.get("archived"))
         building["github_url"] = meta.get("html_url", "")
     return building
+
+
+def building_name(meta):
+    if meta.get("public_name"):
+        return meta["public_name"]
+    return "" if meta.get("private") else meta.get("full_name", "").split("/")[-1]
 
 
 def _plain(value):
@@ -235,11 +242,13 @@ def register_townhall(app, is_owner, dynamodb, static_version=lambda path: ""):
 
     def _publish():
         urls, _ = _project_urls()
+        tours = tour_api["published_slugs"]()
         buildings = []
         for meta in _metas():
             if meta.get("mode") != "approved":
                 continue
-            buildings.append(public_building(meta, _latest_stats(meta["pk"]), urls))
+            slug = tours.get(int(meta["github_id"]))
+            buildings.append(public_building(meta, _latest_stats(meta["pk"]), urls, f"/map/{slug}" if slug else ""))
         buildings.sort(key=lambda b: -b["commits"])
         now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         snapshot = {"sample": False, "as_of": now, "buildings": buildings}
@@ -325,8 +334,10 @@ def register_townhall(app, is_owner, dynamodb, static_version=lambda path: ""):
         meta = _meta(repo_id)
         town.update_item(Key={"pk": meta["pk"], "sk": "META"}, UpdateExpression="SET #m = :h REMOVE approved_at",
                          ExpressionAttributeNames={"#m": "mode"}, ExpressionAttributeValues={":h": "hidden"})
+        # A repo in the drawer appears nowhere, so its tour comes down too.
+        took_down = tour_api["take_down"](meta)
         _publish()
-        _log("drawer", meta)
+        _log("drawer", meta, "tour taken down" if took_down else "")
         return jsonify({"ok": True})
 
     @bp.route("/api/owner/townhall/publish", methods=["POST"])
@@ -351,5 +362,15 @@ def register_townhall(app, is_owner, dynamodb, static_version=lambda path: ""):
         lambda_client.invoke(FunctionName=collector_fn, InvocationType="Event",
                              Payload=json.dumps({"action": "refresh", "trigger": "manual"}).encode())
         return jsonify({"ok": True}), 202
+
+    def _invoke_collector(payload):
+        resp = lambda_client.invoke(FunctionName=collector_fn, InvocationType="RequestResponse", Payload=json.dumps(payload).encode())
+        body = json.loads(resp["Payload"].read() or b"{}")
+        if resp.get("FunctionError"):
+            return {"error": "The collector stopped. Try again in a moment."}
+        return body
+
+    tour_api = register_tours(app, bp, town, public, _metas, _meta, building_name, _project_urls, _publish, _log,
+                              static_version, _invoke_collector)
 
     app.register_blueprint(bp)
