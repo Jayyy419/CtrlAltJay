@@ -57,6 +57,12 @@ Parameters:
   AdminPasscodeSsmParam:
     Type: String
     Default: /ctrlaltjay/admin-passcode
+  CasebookApiKeySsmParam:
+    Type: String
+    Default: /ctrlaltjay/casebook/anthropic-api-key
+    Description: >
+      SecureString holding the Claude API key Casebook research uses. Only
+      the CasebookResearchFunction role can read it; the main app cannot.
 
 Globals:
   Function:
@@ -135,6 +141,9 @@ Resources:
           ANTHROPIC_API_KEY_SSM_PARAM: !Ref AnthropicApiKeySsmParam
           SECRET_KEY_SSM_PARAM: !Ref SecretKeySsmParam
           ADMIN_PASSCODE_SSM_PARAM: !Ref AdminPasscodeSsmParam
+          CASEBOOKS_TABLE: !Ref CasebooksTable
+          STORIES_TABLE: !Ref StoriesTable
+          CASEBOOK_RESEARCH_FUNCTION: !Ref CasebookResearchFunction
       FunctionUrlConfig:
         # NONE, not AWS_IAM. CloudFront's OAC does not sign the request body
         # and Lambda function URLs reject UNSIGNED-PAYLOAD, so every POST is
@@ -147,6 +156,9 @@ Resources:
         - DynamoDBCrudPolicy: { TableName: ctrlaltjay-portfolio-items }
         - DynamoDBCrudPolicy: { TableName: ctrlaltjay-resume-items }
         - DynamoDBCrudPolicy: { TableName: ctrlaltjay-skills }
+        - DynamoDBCrudPolicy: { TableName: !Ref CasebooksTable }
+        - DynamoDBCrudPolicy: { TableName: !Ref StoriesTable }
+        - LambdaInvokePolicy: { FunctionName: !Ref CasebookResearchFunction }
         - S3CrudPolicy: { BucketName: !Sub "ctrlaltjay-static-${AWS::AccountId}" }
         - Statement:
             - Effect: Allow
@@ -168,6 +180,78 @@ Resources:
                 - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${AdminPasscodeSsmParam}"
             # SecureString values are KMS-encrypted; decrypting them via the
             # AWS-managed SSM key requires this alongside ssm:GetParameter.
+            - Effect: Allow
+              Action: kms:Decrypt
+              Resource: "*"
+              Condition:
+                StringEquals:
+                  kms:ViaService: !Sub "ssm.${AWS::Region}.amazonaws.com"
+
+  # ── Casebook (owner-only) ───────────────────────────────────────────────
+  # Retained on stack deletion or replacement: these hold the owner's own
+  # notes, and a template mistake must not be able to drop them.
+  CasebooksTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: ctrlaltjay-casebooks
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - { AttributeName: pk, AttributeType: S }
+        - { AttributeName: sk, AttributeType: S }
+      KeySchema:
+        - { AttributeName: pk, KeyType: HASH }
+        - { AttributeName: sk, KeyType: RANGE }
+      SSESpecification: { SSEEnabled: true }
+      PointInTimeRecoverySpecification: { PointInTimeRecoveryEnabled: true }
+      Tags:
+        - { Key: Project, Value: CtrlAltJay }
+        - { Key: Environment, Value: Production }
+
+  StoriesTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: ctrlaltjay-stories
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - { AttributeName: id, AttributeType: S }
+      KeySchema:
+        - { AttributeName: id, KeyType: HASH }
+      SSESpecification: { SSEEnabled: true }
+      PointInTimeRecoverySpecification: { PointInTimeRecoveryEnabled: true }
+      Tags:
+        - { Key: Project, Value: CtrlAltJay }
+        - { Key: Environment, Value: Production }
+
+  # Runs research outside the request path: the app invokes it asynchronously
+  # and it writes progress back to the casebook. It has its own role so it is
+  # the only thing that can read the Casebook API key.
+  CasebookResearchFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: ctrlaltjay-casebook-research
+      CodeUri: casebook_research/
+      Handler: research.handler
+      Timeout: 900
+      MemorySize: 512
+      Environment:
+        Variables:
+          CASEBOOKS_TABLE: !Ref CasebooksTable
+          STORIES_TABLE: !Ref StoriesTable
+          CASEBOOK_API_KEY_SSM_PARAM: !Ref CasebookApiKeySsmParam
+      Policies:
+        - DynamoDBCrudPolicy: { TableName: !Ref CasebooksTable }
+        - DynamoDBReadPolicy: { TableName: !Ref StoriesTable }
+        - DynamoDBReadPolicy: { TableName: ctrlaltjay-portfolio-items }
+        - DynamoDBReadPolicy: { TableName: ctrlaltjay-resume-items }
+        - DynamoDBReadPolicy: { TableName: ctrlaltjay-skills }
+        - Statement:
+            - Effect: Allow
+              Action: ssm:GetParameter
+              Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${CasebookApiKeySsmParam}"
             - Effect: Allow
               Action: kms:Decrypt
               Resource: "*"
