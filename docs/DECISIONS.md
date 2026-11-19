@@ -2,6 +2,21 @@
 
 Significant choices about how CtrlAltJay works, newest first, with what was considered and set aside.
 
+## 19 Nov 2026: Casebook evidence is worked out on read, from keywords
+
+**Decided:**
+- Matching uses a fixed keyword list per competency (and the words themselves for anything the owner adds), run over the stored text of items, resume rows and stories. Each match records which word in which field triggered it.
+- Evidence, coverage and STAR outlines are computed on every read. Only the owner's choices are stored: corrections to the grid and left-out items on `META`, chosen evidence and a linked story on each `Q#` row. The planned `EV#` rows were dropped.
+- Outlines copy stored fields as they are. The result is never filled from an item, only from a story the owner writes.
+- Questions added before research are either the usual ones for the occasion (a fixed list, labelled "Usual for this kind of role") or the owner's own, which carry a fourth label, "Added by you".
+
+**Why:**
+- Only 25 of the 119 items carry skill tags, so tags alone would miss most of the evidence. Text matching with a visible reason is easy to check and correct, and costs nothing per use.
+- Computing on read means an edit to a portfolio item shows up in every case straight away.
+
+**Set aside:**
+- Asking the Claude API to do the matching. It costs money on every view and its reasons are harder to check. Research in step 5 may still suggest what a case looks for.
+
 ## 19 Nov 2026: Casebook gets its own tables, function and key
 
 **Decided:**
