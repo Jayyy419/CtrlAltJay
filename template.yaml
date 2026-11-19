@@ -78,7 +78,7 @@ Parameters:
       Source Map. Only the TownCollectorFunction role can read it.
   UpkeepUsageUrl:
     Type: String
-    Default: ""
+    Default: https://upkeep.ctrlaltjay.dev
     Description: >
       Upkeep's origin, with no trailing slash. Each Claude response's model
       name and token counts are reported there so Upkeep can show the month's

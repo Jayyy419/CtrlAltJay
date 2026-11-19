@@ -63,9 +63,6 @@ Environment variable names and what they do are in `.env.example`. Secrets are S
 
 ## Claude spend in Upkeep
 
-Every Claude response's model name and token counts can be reported to Upkeep, which prices them and shows the month's spend for this site next to the owner's other projects. It's off until both of these are in place:
-
-1. Cut a usage key for CtrlAltJay in Upkeep and store it as a SecureString at `/ctrlaltjay/upkeep-usage-key` (the `UpkeepUsageKeySsmParam` stack parameter) in ap-southeast-1. Both functions' roles can already read that name.
-2. Set the `UpkeepUsageUrl` stack parameter to Upkeep's origin, with no trailing slash: change its default in `template.yaml`, or add `UpkeepUsageUrl=...` to the `--parameter-overrides` in the deploy workflow. Then deploy.
+Every Claude response's model name and token counts can be reported to Upkeep, which prices them and shows the month's spend for this site next to the owner's other projects. The `UpkeepUsageUrl` stack parameter defaults to Upkeep's origin, so reporting starts once the key exists: cut a usage key for CtrlAltJay in Upkeep and store it as a SecureString at `/ctrlaltjay/upkeep-usage-key` (the `UpkeepUsageKeySsmParam` stack parameter) in ap-southeast-1. Both functions' roles can already read that name. Until the parameter exists, nothing is sent.
 
 The key is read once per Lambda container, so a new or replaced key is picked up at the next cold start; redeploying forces one. To turn reporting off, set `UpkeepUsageUrl` back to empty and deploy, or delete the parameter. A report that fails logs one line with the error type and HTTP status (never the key) and is not retried; the app's own work carries on either way. Searches made by research aren't token counts, so Upkeep doesn't see them; the casebook's own cost figure still includes them.
