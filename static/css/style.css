@@ -2630,6 +2630,7 @@ body.zen-mode .ide-panel-scroll { padding: 48px max(32px, calc(50% - 380px)); }
   transition: all 0.2s ease;
 }
 .admin-tool-btn:hover { background: rgba(55,148,255,0.08); border-color: var(--ide-accent); color: var(--ide-accent); }
+a.admin-tool-btn { text-decoration: none; }
 .admin-tool-btn > ion-icon:first-child { font-size: 1.15rem; color: var(--ide-accent); flex-shrink: 0; }
 .admin-tool-btn-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
 .admin-tool-btn-title { font-weight: 600; color: var(--ide-text-bright); }
