@@ -910,6 +910,18 @@ def _owner_json(payload, status=200):
     return resp
 
 
+@app.route("/api/owner/tools", methods=["GET"])
+def owner_tools():
+    if not is_owner():
+        abort(404)
+    return _owner_json([
+        {"href": "/owner/security", "icon": "shield-checkmark-outline", "title": "Sign-in security",
+         "desc": "Authenticator app and recovery codes"},
+        {"href": "/owner/casebook", "icon": "briefcase-outline", "title": "Casebook",
+         "desc": "Interview and application prep"},
+    ])
+
+
 @app.route("/api/owner/security", methods=["GET"])
 def owner_security_status():
     if not is_owner():
