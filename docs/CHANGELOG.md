@@ -2,6 +2,11 @@
 
 All notable changes to the CtrlAltJay portfolio are documented here.
 
+## 19 Nov 2026: Commit City, step 3
+
+### Added
+- Commit City at `/city`: an isometric night city, one building per project, with a timeline you can scrub or play, a card per building, a table view, and keyboard use (arrow keys between buildings, Enter for the card). It shows a clearly marked sample city until real projects are approved, and isn't linked from the site or listed in the sitemap yet.
+
 ## 19 Nov 2026: Town hall, step 2
 
 ### Added
