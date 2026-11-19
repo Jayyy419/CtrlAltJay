@@ -51,7 +51,8 @@ Environment variable names and what they do are in `.env.example`. Secrets are S
 ## Monitoring and cost
 
 - A $25 AWS billing alarm covers the whole account.
-- Casebook research and Town hall draft help are the parts with a per-use cost (Claude API tokens, plus web searches for research). Each casebook shows what its runs cost, and the research panel shows the month's total.
+- Casebook research, Drill feedback and Town hall draft help are the parts with a per-use cost (Claude API tokens, plus web searches for research). Each casebook shows what its runs cost, and the research panel shows the month's total.
+- Drill feedback is capped by `CasebookDrillMaxUsdPerMonth` (default 1, 0 turns it off) on `CasebookDrillModel` (default `claude-opus-5-5`); the month's spend is `SPEND`/`DRILL#<YYYY-MM>` in `ctrlaltjay-casebooks` and shows under the button. A feedback request should cost about a cent (estimated from typical token counts, not measured).
 - Draft help is capped by `TownDraftMaxUsdPerMonth` (default 1, 0 turns it off) and runs on `TownDraftModel` (default `claude-opus-5-5`). The month's spend is the `SPEND`/`DRAFT#<YYYY-MM>` row in `ctrlaltjay-town` and shows under the button. A draft should cost about a cent (estimated from typical token counts, not yet measured).
 - The caps are stack parameters: `CasebookMaxUsdPerCase` (default 3), `CasebookMaxUsdPerMonth` (default 10), `CasebookMaxSearches` (default 25) and `CasebookModel` (default `claude-opus-5-5`). Change one with a parameter override on deploy; no code change is needed.
 - A run won't start once less than US$0.50 of the month's budget is left. Inside a run, searching stops once three quarters of its budget is spent and the rest goes to writing up, so a run can go slightly over its cap but not far. Months are calendar months in UTC.

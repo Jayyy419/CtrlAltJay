@@ -54,6 +54,7 @@
         if (!res.ok) {
           var e = new Error(data.error || "Request failed");
           e.fields = data.fields || [];
+          e.budget = data.budget || null;
           throw e;
         }
         return data;
@@ -95,7 +96,7 @@
 
   function fileButton(view, label) {
     var on = state.view === view || (view === "stories" && state.view && state.view.indexOf("stories") === 0) ||
-      (state.view === "sheet/" + view.replace(/^case\//, ""));
+      (state.view === "sheet/" + view.replace(/^case\//, "")) || (state.view === "drill/" + view.replace(/^case\//, ""));
     return '<button type="button" class="cb-file" data-open="' + esc(view) + '"' + (on ? ' aria-current="true"' : "") + ">" + esc(label) + "</button>";
   }
 
@@ -117,7 +118,9 @@
       sample: !!sample,
       casebook: raw.casebook,
       competencies: raw.competencies || [],
-      questions: raw.questions || [],
+      questions: (raw.questions || []).map(function (q, i) {
+        return Object.assign({}, q, { id: q.id || "s" + i, evidence: q.evidence || [], drill: q.drill || { box: 0, rating: "", last: "", count: 0 } });
+      }),
       evidence: raw.evidence || [],
       matched: raw.matched_total || (raw.evidence || []).length,
       hidden: raw.hidden || [],
@@ -126,6 +129,7 @@
       theirs: (raw.questions_for_them || []).map(function (t) { return typeof t === "string" ? { text: t, sources: [] } : t; }),
       brief: raw.brief && Object.keys(raw.brief).length ? raw.brief : null,
       research: raw.research || null,
+      drillHelp: raw.drill_help || null,
     };
   }
 
@@ -150,6 +154,7 @@
       '<div class="cb-side-actions"><div class="cb-cost">' + costLine(c) + "</div>" +
       '<div class="cb-row">' +
       '<button type="button" class="btn primary" data-open="sheet/' + (d.sample ? "sample" : esc(c.id)) + '">Day-of sheet</button>' +
+      '<button type="button" class="btn" data-open="drill/' + (d.sample ? "sample" : esc(c.id)) + '">Drill</button>' +
       (d.sample ? "" : '<button type="button" class="btn" data-act="edit">Edit details</button>') +
       "</div></div></div>";
 
@@ -853,8 +858,9 @@
       loadStories().then(function () { say(""); focusMain(); }).catch(failed);
       return;
     }
-    var sheet = /^sheet\/(sample|[0-9a-f]{12})$/.exec(view);
-    if (sheet) view = sheet[1] === "sample" ? "sample" : "case/" + sheet[1];
+    stopTimer();
+    var sheet = /^(sheet|drill)\/(sample|[0-9a-f]{12})$/.exec(view);
+    if (sheet) view = sheet[2] === "sample" ? "sample" : "case/" + sheet[2];
     var load;
     if (view === "sample") {
       load = api("GET", "/api/owner/casebooks/sample").then(function (raw) { return normalise(raw, true); });
@@ -874,6 +880,12 @@
       }
       state.data = data;
       state.editingTheirs = null;
+      if (sheet && sheet[1] === "drill") {
+        startDrill();
+        say("");
+        focusMain();
+        return;
+      }
       if (sheet) {
         renderSheet();
         say("");
@@ -960,6 +972,251 @@
     }).catch(failed);
   }
 
+  /* ---------- drill ---------- */
+
+  var RATINGS = [["missed", "Missed it", "1"], ["shaky", "Shaky", "2"], ["got", "Got it", "3"]];
+  var ANSWER_SECONDS = 120;
+
+  function drillMode() {
+    try { return localStorage.getItem("ctrlaltjay-drill-mode") === "room" ? "room" : "cards"; } catch (e) { return "cards"; }
+  }
+
+  // Weakest first: lowest box, then the one practised longest ago.
+  function drillOrder(qs) {
+    return qs.map(function (q, i) { return i; }).sort(function (a, b) {
+      var x = qs[a].drill, y = qs[b].drill;
+      return (x.box - y.box) || String(x.last).localeCompare(String(y.last)) || a - b;
+    });
+  }
+
+  function startDrill() {
+    var d = state.data;
+    state.drill = { mode: drillMode(), order: drillOrder(d.questions), pos: 0, turned: false, rated: {}, answer: "", started: 0, elapsed: 0, done: false, feedback: null, asking: false };
+    renderDrill();
+    if (state.drill.mode === "room") beginAnswer();
+  }
+
+  function stopTimer() {
+    if (state.timer) { clearInterval(state.timer); state.timer = null; }
+  }
+
+  function clock(s) {
+    s = Math.max(0, Math.round(s));
+    return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+  }
+
+  function beginAnswer() {
+    var dr = state.drill;
+    stopTimer();
+    dr.started = Date.now();
+    dr.elapsed = 0;
+    state.timer = setInterval(function () {
+      dr.elapsed = (Date.now() - dr.started) / 1000;
+      var left = ANSWER_SECONDS - dr.elapsed;
+      var el = document.getElementById("ir-left"), ring = document.getElementById("ir-ring");
+      if (el) el.textContent = left >= 0 ? clock(left) : "+" + clock(-left);
+      if (ring) ring.setAttribute("stroke-dashoffset", String(Math.min(1, Math.max(0, dr.elapsed / ANSWER_SECONDS)) * 339.3));
+      var whole = Math.round(left);
+      if (whole === 30) say("30 seconds left.");
+      if (whole === 0) say("Time's up. Finish your sentence.");
+    }, 1000);
+  }
+
+  function currentDrillQ() {
+    var dr = state.drill;
+    return state.data.questions[dr.order[dr.pos]];
+  }
+
+  function notesHtml(q) {
+    var html = "";
+    if (q.evidence.length) {
+      html += '<p class="dr-use">Use: ' + esc(q.evidence[0].title) + (q.evidence[1] ? ' <span>· backup ' + esc(q.evidence[1].title) + "</span>" : "") + "</p>";
+    } else {
+      html += '<p class="dr-none">Nothing on file for this yet. Structure it out loud.</p>';
+    }
+    if (q.star) {
+      html += '<dl class="pass-star">' + STAR.map(function (f) {
+        var v = q.star[f[0]];
+        return "<dt>" + f[1].charAt(0) + '<span class="sr"> ' + f[1].slice(1) + "</span></dt><dd" + (v ? ">" + esc(v) : ' class="gap">[your ' + f[1].toLowerCase() + " here]") + "</dd>";
+      }).join("") + "</dl>";
+    }
+    if (q.why) html += '<p class="dr-why">Why they ask: ' + esc(q.why) + "</p>";
+    return html;
+  }
+
+  function rateButtons() {
+    return '<div class="dr-rate" role="group" aria-label="How did that go?">' + RATINGS.map(function (r) {
+      return '<button type="button" class="btn r-' + r[0] + '" data-rate="' + r[0] + '" aria-keyshortcuts="' + r[2] + '">' + r[1] + "</button>";
+    }).join("") + '</div><p class="hint dr-keys">Keys 1, 2 and 3 work too. Missed and shaky ones come back sooner.</p>';
+  }
+
+  function drillHead() {
+    var d = state.data, dr = state.drill, c = d.casebook;
+    var back = d.sample ? "sample" : "case/" + c.id;
+    return '<div class="cb-head"><div><h1 class="cb-title">Drill: ' + esc(c.organisation) + (d.sample ? '<span class="sample">SAMPLE</span>' : "") + "</h1>" +
+      '<div class="cb-meta">' + plural(d.questions.length, "question") + " · weakest first</div></div>" +
+      '<div class="cb-side-actions"><div class="dr-mode" role="group" aria-label="Drill mode">' +
+      '<button type="button" class="btn" data-mode="cards" aria-pressed="' + (dr.mode === "cards") + '">Flashcards</button>' +
+      '<button type="button" class="btn" data-mode="room" aria-pressed="' + (dr.mode === "room") + '">Interview room</button></div>' +
+      '<button type="button" class="btn" data-open="' + back + '">Back to the case</button></div></div>';
+  }
+
+  function drillSummary() {
+    var dr = state.drill, counts = { missed: 0, shaky: 0, got: 0 };
+    Object.keys(dr.rated).forEach(function (k) { counts[dr.rated[k]]++; });
+    return '<section class="dr-done" aria-labelledby="dr-done-h"><h2 id="dr-done-h">That\'s the round.</h2>' +
+      '<p>' + counts.got + " got it, " + counts.shaky + " shaky, " + counts.missed + " missed." +
+      (counts.missed + counts.shaky ? " Those come first next time." : "") + "</p>" +
+      '<div class="actions"><button type="button" class="btn primary" data-drill="again">Go again</button></div></section>';
+  }
+
+  function renderDrill() {
+    var d = state.data, dr = state.drill;
+    var html = drillHead();
+    if (!d.questions.length) {
+      main.innerHTML = html + '<div class="empty">No questions on the table to drill yet. Add some in the case first.</div>';
+      return;
+    }
+    if (dr.done) {
+      main.innerHTML = html + drillSummary();
+      return;
+    }
+    html += dr.mode === "room" ? roomHtml() : cardsHtml();
+    main.innerHTML = html;
+    document.title = "Drill: " + caseTitle(d.casebook);
+  }
+
+  function cardsHtml() {
+    var d = state.data, dr = state.drill, q = currentDrillQ();
+    var dots = dr.order.map(function (qi, k) {
+      var r = dr.rated[d.questions[qi].id];
+      return '<li class="' + (r ? "r-" + r : "") + (k === dr.pos ? " on" : "") + '"><span class="sr">Card ' + (k + 1) + (r ? ", " + r : k === dr.pos ? ", this one" : "") + "</span></li>";
+    }).join("");
+    var html = '<div class="fc-wrap"><div class="fc-top"><span>Card ' + (dr.pos + 1) + " of " + dr.order.length + '</span><ol class="fc-dots">' + dots + "</ol></div>" +
+      '<section class="fc-card" aria-labelledby="fc-q"><span class="kind">' + esc(kindLabel(q.kind)) + '</span><h2 id="fc-q" tabindex="-1">' + esc(q.text) + "</h2>";
+    if (dr.turned) html += '<div class="fc-back">' + notesHtml(q) + "</div>";
+    html += "</section>";
+    html += dr.turned ? rateButtons() : '<div class="fc-turn"><button type="button" class="btn primary" data-drill="turn">Turn the card</button></div><p class="hint dr-keys">Say it out loud first, then turn the card.</p>';
+    return html + "</div>";
+  }
+
+  function roomHtml() {
+    var d = state.data, dr = state.drill, q = currentDrillQ(), help = d.drillHelp;
+    var answered = dr.answered;
+    var html = '<div class="ir-room"><section class="ir-stage" aria-labelledby="ir-q"><p class="ir-who">Question ' + (dr.pos + 1) + " of " + dr.order.length + " · " + esc(kindLabel(q.kind)) + "</p>" +
+      '<h2 id="ir-q" tabindex="-1">' + esc(q.text) + "</h2>";
+    if (!answered) {
+      html += '<div class="ir-clock" aria-hidden="true"><svg viewBox="0 0 120 120" width="150" height="150"><circle cx="60" cy="60" r="54" fill="none" stroke="#262b36" stroke-width="10"/>' +
+        '<circle id="ir-ring" cx="60" cy="60" r="54" fill="none" stroke="#3794ff" stroke-width="10" stroke-linecap="round" stroke-dasharray="339.3" stroke-dashoffset="0" transform="rotate(-90 60 60)"/></svg>' +
+        '<div class="ir-time"><span id="ir-left">' + clock(ANSWER_SECONDS) + "</span><small>OF " + clock(ANSWER_SECONDS) + "</small></div></div>" +
+        '<p class="sr">You have two minutes. The time left is announced at 30 seconds.</p>' +
+        '<label for="ir-answer" class="ir-lab">Your answer</label><textarea id="ir-answer" maxlength="4000" placeholder="Type it as you\'d say it">' + esc(dr.answer) + "</textarea>" +
+        '<div class="ir-row"><button type="button" class="btn" data-drill="skip">Skip</button><button type="button" class="btn primary" data-drill="done">I\'m done</button></div>';
+    } else {
+      html += '<div class="ir-answer"><p class="ir-lab">Your answer</p><p>' + (dr.answer ? esc(dr.answer) : "<em>Answered out loud.</em>") + "</p></div>" + rateButtons();
+    }
+    html += "</section>";
+    html += '<aside class="ir-side" aria-label="How it went">';
+    if (!answered) {
+      html += '<h2>How it works</h2><p>Answer as you would in the room, out loud or typed. When you\'re done, you\'ll see your notes for this question' +
+        (help && help.enabled ? ", and you can ask Claude for feedback on what you typed." : ".") + "</p>";
+    } else {
+      var words = dr.answer ? dr.answer.trim().split(/\s+/).length : 0;
+      html += '<h2>How it went</h2><ul class="ir-facts"><li>' + clock(dr.elapsed) + " taken" + (dr.elapsed > ANSWER_SECONDS ? ", over the two minutes" : "") + "</li>" +
+        (words ? "<li>" + plural(words, "word") + "</li>" : "") + "</ul>";
+      if (dr.feedback) {
+        var f = dr.feedback;
+        html += '<div class="ir-star">' + STAR.map(function (s) {
+          var ok = f.star[s[0]];
+          return '<div class="' + (ok ? "ok" : "miss") + '">' + s[1] + '<b aria-hidden="true">' + (ok ? "\u2713" : "?") + '</b><span class="sr">' + (ok ? " is there" : " isn't clear") + "</span></div>";
+        }).join("") + "</div>" +
+          (f.went_well.length ? '<h3>Went well</h3><ul class="ir-fb ok">' + f.went_well.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul>" : "") +
+          (f.to_work_on.length ? '<h3>To work on</h3><ul class="ir-fb warn">' + f.to_work_on.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul>" : "");
+      } else if (help && help.enabled && words >= 5) {
+        html += '<button type="button" class="btn" data-drill="feedback"' + (dr.asking || help.cap - help.spent < 0.03 ? " disabled" : "") + ">" + (dr.asking ? "Asking Claude..." : "Get feedback from Claude") + "</button>" +
+          '<p class="hint">Sends what you typed and your notes for this question. Nothing is kept. This month: US$' + Number(help.spent).toFixed(2) + " of US$" + Number(help.cap).toFixed(2) + ".</p>";
+      }
+      html += '<h2 class="ir-notes-h">Your notes</h2>' + notesHtml(q);
+    }
+    return html + "</aside></div>";
+  }
+
+  function nextCard() {
+    var dr = state.drill;
+    stopTimer();
+    dr.pos += 1;
+    dr.turned = false;
+    dr.answered = false;
+    dr.answer = "";
+    dr.feedback = null;
+    if (dr.pos >= dr.order.length) {
+      dr.done = true;
+      renderDrill();
+      refocus("#dr-done-h");
+      var h = main.querySelector("#dr-done-h");
+      if (h) { h.setAttribute("tabindex", "-1"); h.focus(); }
+      return;
+    }
+    renderDrill();
+    if (dr.mode === "room") beginAnswer();
+    refocus(dr.mode === "room" ? "#ir-q" : "#fc-q");
+  }
+
+  function rate(rating) {
+    var d = state.data, dr = state.drill, q = currentDrillQ();
+    dr.rated[q.id] = rating;
+    var box = q.drill.box;
+    q.drill = { box: rating === "missed" ? 0 : rating === "shaky" ? Math.max(0, box - 1) : Math.min(3, box + 1), rating: rating, last: new Date().toISOString(), count: q.drill.count + 1 };
+    if (!d.sample) {
+      api("POST", "/api/owner/casebooks/" + d.casebook.id + "/questions/" + q.id + "/drill", { rating: rating }).catch(failed);
+    }
+    nextCard();
+  }
+
+  function finishAnswer(skip) {
+    var dr = state.drill, box = document.getElementById("ir-answer");
+    dr.answer = box && !skip ? box.value.trim() : "";
+    dr.elapsed = dr.started ? (Date.now() - dr.started) / 1000 : 0;
+    stopTimer();
+    if (skip) return nextCard();
+    dr.answered = true;
+    renderDrill();
+    refocus(".ir-side h2");
+    var h = main.querySelector(".ir-side h2");
+    if (h) { h.setAttribute("tabindex", "-1"); h.focus(); }
+  }
+
+  function askFeedback() {
+    var d = state.data, dr = state.drill, q = currentDrillQ();
+    dr.asking = true;
+    renderDrill();
+    say("Asking Claude...");
+    api("POST", "/api/owner/casebooks/" + (d.sample ? "sample" : d.casebook.id) + "/drill/feedback", { qid: q.id, answer: dr.answer, seconds: Math.round(dr.elapsed) })
+      .then(function (r) {
+        dr.asking = false;
+        dr.feedback = r;
+        d.drillHelp = Object.assign({}, d.drillHelp, r.budget);
+        renderDrill();
+        say("Feedback is in." + (r.check_words && r.check_words.length ? " It used a word to check: " + r.check_words.join(", ") + "." : ""));
+        var h = main.querySelector(".ir-star");
+        if (h) { h.setAttribute("tabindex", "-1"); h.focus(); }
+      })
+      .catch(function (err) {
+        dr.asking = false;
+        if (err.budget) d.drillHelp = Object.assign({}, d.drillHelp, err.budget);
+        renderDrill();
+        failed(err);
+      });
+  }
+
+  document.addEventListener("keydown", function (e) {
+    if (!state.drill || !/^drill\//.test(state.view || "") || e.altKey || e.ctrlKey || e.metaKey) return;
+    var tag = (e.target.tagName || "").toLowerCase();
+    if (tag === "input" || tag === "textarea" || tag === "select") return;
+    var r = { "1": "missed", "2": "shaky", "3": "got" }[e.key];
+    if (r && main.querySelector("[data-rate]")) { e.preventDefault(); rate(r); }
+  });
+
   function theirsCall(method, tid, body, message, focusSel) {
     say("Saving...");
     var url = "/api/owner/casebooks/" + state.data.casebook.id + "/theirs" + (tid ? "/" + tid : "");
@@ -989,6 +1246,39 @@
       state.tab = el.getAttribute("data-tab");
       renderCase();
       return refocus("#tab-" + state.tab);
+    }
+    if ((el = t.closest("[data-mode]"))) {
+      var mode = el.getAttribute("data-mode");
+      if (state.drill.mode === mode) return;
+      try { localStorage.setItem("ctrlaltjay-drill-mode", mode); } catch (err) {}
+      stopTimer();
+      if (state.drill.done) {
+        startDrill();
+        return refocus('[data-mode="' + mode + '"]');
+      }
+      state.drill.mode = mode;
+      state.drill.turned = false;
+      state.drill.answered = false;
+      state.drill.feedback = null;
+      renderDrill();
+      if (mode === "room" && !state.drill.done) beginAnswer();
+      return refocus('[data-mode="' + mode + '"]');
+    }
+    if ((el = t.closest("[data-rate]"))) return rate(el.getAttribute("data-rate"));
+    if ((el = t.closest("[data-drill]"))) {
+      var dact = el.getAttribute("data-drill");
+      if (dact === "turn") {
+        state.drill.turned = true;
+        renderDrill();
+        return refocus(".fc-back");
+      }
+      if (dact === "done") return finishAnswer(false);
+      if (dact === "skip") return finishAnswer(true);
+      if (dact === "feedback") return askFeedback();
+      if (dact === "again") {
+        startDrill();
+        return refocus(state.drill.mode === "room" ? "#ir-q" : "#fc-q");
+      }
     }
     if ((el = t.closest("[data-theirs-ask]"))) {
       var tid = el.getAttribute("data-theirs-ask");
