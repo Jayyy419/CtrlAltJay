@@ -6,9 +6,9 @@
 - Owner sessions that expire and end on sign-out.
 - Skill tree in the Stack panel.
 - Casebook step 2: tables, owner-only API, research worker shell, key separation.
+- Casebook step 3: the case form and casebook view, with a marked sample casebook.
 
 ## In progress: Casebook
-3. The case form and casebook view, with clearly marked sample data. Design directions first.
 4. Evidence mapping from existing portfolio data, coverage view, STAR outlines with visible gaps, story bank.
 5. Research with web search as a background job, with provenance labels, sources, caps and cost.
 6. Questions for them, the day-of sheet and PDF export.
