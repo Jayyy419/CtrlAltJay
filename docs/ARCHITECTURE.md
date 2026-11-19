@@ -134,6 +134,13 @@ const state = {
 - **Edge**: a CloudFront Function serves the holding page while the site is off; a KeyValueStore holds the owner preview secret.
 - **Domain**: ctrlaltjay.dev in Route 53, aliased to CloudFront.
 - **Data**: DynamoDB, on-demand.
+- **Town hall** (`townhall.py`, owner-only): the page at `/owner/townhall` (template `templates/townhall.html`, script and styles in `townhall_ui/`) and the API under `/api/owner/townhall/`. Same guard and headers as Casebook. It reads and writes `ctrlaltjay-town`; publishing (step 4) will be the only path into `ctrlaltjay-public-city`.
+- **Town hall collector** (`town_collector/collector.py`, Lambda `ctrlaltjay-town-collector`): the only code that holds the GitHub token. Each run lists the repos the token can see and records them (new ones hidden), then writes a dated stats snapshot per repo. GitHub endpoints used, checked against GitHub's published OpenAPI description (API version 2022-11-28):
+  - `GET /user/repos` (paged, 100 at a time): the repos, with `pushed_at`, `archived`, `private` and `default_branch`.
+  - `GET /repos/{owner}/{repo}/stats/contributors`: weekly commit counts per contributor over the repo's whole history, summed into one weekly series. It answers 202 while GitHub computes it; the collector asks again up to five times, 12 seconds apart.
+  - `GET /repos/{owner}/{repo}/commits?sha={default branch}` (paged, up to 5,000 commits): the fallback when the stats never finish, bucketing commit dates into the same Sunday-start weeks. `/stats/commit_activity` was set aside because it only covers the last year.
+  - `GET /repos/{owner}/{repo}/languages`: bytes of code per language.
+  - Rate limits: a 403 or 429 with `x-ratelimit-remaining: 0` stops the run and records the reset time; other 403/429s wait for `retry-after` (up to two minutes) and try again; 5xx is retried twice.
 - **Casebook research**: a separate Lambda function (`ctrlaltjay-casebook-research`, up to 15 minutes per run) that the app starts asynchronously. `POST /api/owner/casebooks/<id>/research` checks the month's budget, marks the case `queued` with a run ID and invokes the function. The run:
   1. Claims the run (`queued` to `running`, conditional on the run ID), so a retried invocation never runs or charges twice.
   2. Searches with the Claude API and the `web_search_20260318` tool (plus `web_fetch_20260318` when the case has a posting link), continuing paused turns until it finishes or spends three quarters of its budget. Progress is written to the case after each request; the page polls it.

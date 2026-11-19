@@ -1,0 +1,24 @@
+.th-run { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin: 0 0 22px; }
+.th-run .cb-meta { margin: 0; }
+.th-run .err { margin: 0; }
+.th-table { border-collapse: collapse; width: 100%; max-width: 1100px; }
+.th-table th, .th-table td { text-align: left; padding: 10px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.th-table thead th { font-family: 'Plex Mono', monospace; font-size: 10px; font-weight: 400; letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); }
+.th-table th.num, .th-table td.num { font-family: 'Plex Mono', monospace; text-align: right; white-space: nowrap; }
+.th-name { color: var(--bright); font-weight: 600; }
+.th-real { display: block; font-family: 'Plex Mono', monospace; font-size: 11px; color: var(--dim); margin-top: 2px; word-break: break-all; }
+.badge { display: inline-block; font-family: 'Plex Mono', monospace; font-size: 10px; border: 1px solid currentColor; border-radius: 3px; padding: 1px 6px; margin: 4px 6px 0 0; white-space: nowrap; }
+.badge.private { color: var(--posting); }
+.badge.public { color: var(--reported); }
+.badge.mode-hidden { color: var(--dim); }
+.badge.mode-approved { color: var(--accent); }
+.badge.gone { color: var(--gap); }
+.th-cards { display: none; }
+.th-card { border: 1px solid var(--line-soft); background: var(--soft); border-radius: 6px; padding: 12px 14px; margin-bottom: 10px; }
+.th-card dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 14px; margin: 10px 0 0; }
+.th-card dt { font-family: 'Plex Mono', monospace; font-size: 10px; color: var(--faint); text-transform: uppercase; letter-spacing: 0.06em; }
+.th-card dd { margin: 0; font-family: 'Plex Mono', monospace; font-size: 13px; color: var(--bright); }
+@media (max-width: 760px) {
+  .th-table { display: none; }
+  .th-cards { display: block; }
+}

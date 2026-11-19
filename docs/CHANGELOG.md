@@ -2,6 +2,13 @@
 
 All notable changes to the CtrlAltJay portfolio are documented here.
 
+## 19 Nov 2026: Town hall, step 2
+
+### Added
+- Town hall at `/owner/townhall`, owner-only: lists every repo the GitHub token can see with Floors, Lights on, Built with and Last built, and whether it's public or private, on the skyline or in the drawer.
+- The Town hall collector, run daily at 9:00 am Singapore time and from Refresh now. It's the only thing that can read the GitHub token.
+- Tables `ctrlaltjay-town` (owner-side) and `ctrlaltjay-public-city` (published only, empty until step 4).
+
 ## 19 Nov 2026: Recovery code download, turning the authenticator off
 
 ### Added

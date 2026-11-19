@@ -31,6 +31,12 @@ Everything under `/api/admin/*`, the admin panel and the owner preview link is f
 - Research stores sources as title, link, date and a short note. Text cited from sources is not stored.
 - Starting research is an owner-only route; a run can only spend up to the per-run and monthly caps, and a retried invocation is refused so it can't charge twice.
 
+### Town hall (Commit City and Source Map)
+- Town hall (`/owner/townhall` and `/api/owner/townhall/*`) checks the owner session on the server like Casebook: an empty 404 for anyone else, `no-store` and `noindex` on every response, its script and styles served from behind the check, disallowed in `robots.txt`, never in the sitemap. The Admin Tools link to it comes from an owner-only endpoint, so the address isn't in any public file.
+- The GitHub token is read only by the collector's Lambda role. The app's role can't read it, and nothing the public site runs calls GitHub.
+- The collector writes only to `ctrlaltjay-town`. Public pages will read only `ctrlaltjay-public-city`, which only an owner action in Town hall writes.
+- Every repo the token can see starts hidden. Real repo names, branches and paths stay in `ctrlaltjay-town`.
+
 ### How the origin is protected
 - The only public way in is CloudFront. The Lambda function URL refuses any request without the header CloudFront adds, so the app cannot be reached around it.
 - While the site is switched off, a CloudFront Function answers every request with a holding page before anything reaches the app. The owner preview link lets one browser through with a cookie matching a secret in a CloudFront KeyValueStore; minting a new link revokes the old one. The admin panel still needs the passcode.
