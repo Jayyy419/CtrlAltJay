@@ -7,6 +7,9 @@
   var stopEl = document.getElementById("map-stop");
   var listEl = document.getElementById("map-list");
   var slug = document.body.getAttribute("data-slug");
+  // The owner's preview serves the same page from Town hall with its own data.
+  var base = document.body.getAttribute("data-base") || "/map/" + slug;
+  var src = document.body.getAttribute("data-src") || "/api/map/" + encodeURIComponent(slug);
   var state = { tour: null, i: Math.max(0, Number(document.body.getAttribute("data-stop") || 1) - 1), pins: [], marker: null, anim: null };
   var COLORS = ["#3794ff", "#c586c0", "#4ec9b0", "#dcdcaa", "#ce9178", "#9cdcfe", "#d7ba7d", "#b5cea8"];
 
@@ -94,7 +97,9 @@
         for (var gy = b.y + 40; gy < b.y + b.h - 14; gy += 18) el("rect", { x: gx, y: gy, width: 10, height: 10, fill: c, "fill-opacity": 0.07 });
       }
       var label = el("text", { x: b.x + 14, y: b.y + 26, class: "d-label", fill: c }, null);
-      label.textContent = b.d.name + (t.private ? "" : "/");
+      var room = Math.floor((b.w - 22) / 8.5), text = dname(b.d.name);
+      // Cut to fit the district; the stop text always names it in full.
+      label.textContent = b.h < 34 || room < 2 ? "" : text.length > room ? text.slice(0, Math.max(1, room - 1)) + "\u2026" : text;
     });
     var seen = {};
     state.pins = t.stops.map(function (s, i) {
@@ -121,6 +126,12 @@
     var lab = el("text", { x: 0, y: -24, "text-anchor": "middle", class: "here-label" }, state.marker);
     lab.textContent = "You are here";
     placeMarker(state.pins[state.i]);
+  }
+
+  // Public repos show folder names as paths; owner-written labels stay as written.
+  function dname(name) {
+    var t = state.tour;
+    return t.private || /[\s/.]/.test(name) ? name : name + "/";
   }
 
   function placeMarker(p) {
@@ -150,7 +161,7 @@
         "</td><td>" + highlight(line, s.lang) + "</td></tr>";
     }).join("");
     var last = state.i === t.stops.length - 1;
-    var html = '<p class="stop-n">Stop ' + (state.i + 1) + " of " + t.stops.length + " · " + esc(s.district) + (t.private ? "" : "/") + "</p>" +
+    var html = '<p class="stop-n">Stop ' + (state.i + 1) + " of " + t.stops.length + " · " + esc(dname(s.district)) + "</p>" +
       '<h2 id="stop-title">' + esc(s.title) + "</h2><p class=\"stop-ex\">" + esc(s.explanation) + "</p>" +
       '<div class="code" role="region" tabindex="0" aria-label="Code for this stop, lines ' + ex.start + " to " + (ex.start + ex.lines.length - 1) + '"><table>' + rows + "</table></div>";
     if (s.permalink) html += '<a class="perma" href="' + esc(s.permalink) + '" rel="noopener">See these lines on GitHub</a>';
@@ -163,7 +174,7 @@
     }
     stopEl.innerHTML = html;
     listEl.innerHTML = t.stops.map(function (q, k) {
-      return '<li><a href="/map/' + esc(slug) + "/" + (k + 1) + '"' + (k === state.i ? ' aria-current="step"' : "") + ">" + esc(q.title) + "</a></li>";
+      return '<li><a href="' + esc(base) + "/" + (k + 1) + '"' + (k === state.i ? ' aria-current="step"' : "") + ">" + esc(q.title) + "</a></li>";
     }).join("");
     document.title = s.title + " · " + t.title;
   }
@@ -175,7 +186,7 @@
     state.i = to;
     moveMarker(from, to);
     renderStop();
-    if (push) history.pushState({ stop: to }, "", "/map/" + slug + "/" + (to + 1));
+    if (push) history.pushState({ stop: to }, "", base + "/" + (to + 1));
     if (focus) {
       var h = document.getElementById("stop-title");
       if (h) { h.setAttribute("tabindex", "-1"); h.focus({ preventScroll: true }); }
@@ -211,14 +222,14 @@
     if (n >= 1) go(n - 1, false, true);
   });
 
-  fetch("/api/map/" + encodeURIComponent(slug), { credentials: "same-origin" })
+  fetch(src, { credentials: "same-origin" })
     .then(function (r) { return r.json(); })
     .then(function (tour) {
       state.tour = tour;
       state.i = Math.min(state.i, tour.stops.length - 1);
       drawMap();
       renderStop();
-      history.replaceState({ stop: state.i }, "", "/map/" + slug + "/" + (state.i + 1));
+      history.replaceState({ stop: state.i }, "", base + "/" + (state.i + 1));
     })
     .catch(function () { stopEl.innerHTML = '<p>The map didn\'t load. Try again in a moment.</p>'; });
 })();

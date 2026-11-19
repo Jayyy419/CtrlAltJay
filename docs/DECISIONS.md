@@ -59,6 +59,18 @@ Significant choices about how CtrlAltJay works, newest first, with what was cons
 - Private buildings never show as boarded up, because the archived flag isn't on that list either.
 - Approving or moving a repo to the drawer republishes straight away, so hiding something takes effect at once. New daily stats wait for "Publish latest stats", so nothing changes on the public site without an owner action.
 
+## 19 Nov 2026: Tours are plotted on the map itself
+
+**Decided:** the owner picked the bold "Plot on the map" direction over an editor-style workbench and a storyboard of cards. Districts on the night map open their files, the route sits in a row of pins under the map, and the stop editor sits beside it (below it on phones).
+
+**How it stays usable:** every map action also works from the keyboard: districts are focusable and open with Enter, the drawer lists districts as buttons, lines can be typed as First line and Last line instead of tapped, and pins move with Shift and the arrow keys or the Move earlier and Move later buttons. The plotting map evens out folder sizes (square roots) so a small folder is still big enough to tap; the public map keeps true proportions.
+
+**Also decided:**
+- Excerpts are copied on the server through the collector at the commit the file list came from. The browser only sends a path and line numbers, so what's published is always the real code at a known commit.
+- A tour's draft lives in one `TOUR#<repo id>`/`DRAFT` row in `ctrlaltjay-town`, with the stops as a list, so reordering is one write. 20 stops of 40 lines stay well under DynamoDB's item limit.
+- The secret check runs when a stop is plotted and again at publish. It reports a line number and a kind, never the value, so findings are safe to show and log.
+- "Keep as is" on a changed stop remembers the code it was checked against, so it's only flagged again if the lines change once more.
+
 ## 19 Nov 2026: Source Map is drawn as night districts
 
 **Decided:** the owner picked the bold "Night districts" direction, which matches Commit City's night look: top-level folders become lit districts sized by code, and the route between stops glows. A metro-line diagram and a printed field guide were the other two.

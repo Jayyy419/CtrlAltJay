@@ -20,7 +20,7 @@
 3. ~~Commit City with seeded, clearly marked sample data.~~ Done in the Night city direction (picked from three); live at `/city`, unlinked until step 4.
 4. ~~Real stats, repo modes, approval and the public snapshot.~~ Done.
 5. ~~Source Map with a sample tour.~~ Done in the Night districts direction (picked from three); live at `/map/sample`.
-6. Plotting tours in Town hall, the secret scan, publishing, stale checks.
+6. ~~Plotting tours in Town hall, the secret scan, publishing, stale checks.~~ Done in the Plot on the map direction (picked from three).
 7. Draft help from the Claude API, only once the owner says go.
 
 ## Next

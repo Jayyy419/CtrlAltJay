@@ -4,8 +4,10 @@ Runs daily on a schedule and when the owner presses "Refresh now". It is the
 only thing that can read the GitHub token. It never writes the public table:
 nothing reaches the public site until the owner publishes from Town hall.
 """
+import base64
 import json
 import os
+import re
 import time
 import urllib.error
 import urllib.parse
@@ -25,6 +27,12 @@ STATS_WAIT_SECONDS = 12
 # Paging commit dates is the fallback when stats never become ready.
 MAX_COMMIT_PAGES = 50
 WEEK = 7 * 24 * 3600
+# Plotting a tour lists files and reads one at a time; both are capped so a
+# huge repo can't blow the Lambda response limit.
+MAX_TREE_FILES = 5000
+MAX_FILE_BYTES = 400_000
+MAX_FILE_LINES = 5000
+SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 
 
 class RateLimited(Exception):
@@ -198,6 +206,114 @@ def _collect_stats(gh, repos, today):
     return errors
 
 
+def _repo_meta(repo_id):
+    if not re.fullmatch(r"\d{1,15}", str(repo_id)):
+        return None
+    return _table.get_item(Key={"pk": f"REPO#{repo_id}", "sk": "META"}).get("Item")
+
+
+def _safe_path(path):
+    path = str(path or "")
+    parts = path.split("/")
+    if not path or len(path) > 400 or path.startswith("/") or any(p in ("", ".", "..") for p in parts):
+        return None
+    return path
+
+
+def _head(gh, meta):
+    branch = meta.get("default_branch") or "main"
+    status, data = gh.get(f"/repos/{meta['full_name']}/branches/{urllib.parse.quote(branch, safe='')}")
+    if status != 200 or not data:
+        return None, None
+    commit = data.get("commit") or {}
+    return commit.get("sha"), ((commit.get("commit") or {}).get("tree") or {}).get("sha")
+
+
+def tree(repo_id):
+    """The files in a repo's default branch, at its latest commit."""
+    meta = _repo_meta(repo_id)
+    if not meta:
+        return {"error": "unknown repo"}
+    gh = GitHub(_token())
+    sha, tree_sha = _head(gh, meta)
+    if not sha:
+        return {"error": "The branch couldn't be read."}
+    status, data = gh.get(f"/repos/{meta['full_name']}/git/trees/{tree_sha}", {"recursive": "1"})
+    if status != 200 or not data:
+        return {"error": "The file list couldn't be read."}
+    files = [[e["path"], int(e.get("size") or 0)] for e in data.get("tree") or [] if e.get("type") == "blob"]
+    return {"sha": sha, "branch": meta.get("default_branch") or "main", "truncated": bool(data.get("truncated")) or len(files) > MAX_TREE_FILES,
+            "files": files[:MAX_TREE_FILES]}
+
+
+def _read(gh, meta, sha, path):
+    status, data = gh.get(f"/repos/{meta['full_name']}/contents/{urllib.parse.quote(path)}", {"ref": sha})
+    if status == 404:
+        return None, "That file isn't there at this commit."
+    if status != 200 or not isinstance(data, dict) or data.get("type") != "file":
+        return None, "The file couldn't be read."
+    if int(data.get("size") or 0) > MAX_FILE_BYTES or data.get("encoding") != "base64":
+        return None, "That file is too big to plot from."
+    raw = base64.b64decode(data.get("content") or "")
+    if b"\0" in raw[:8000]:
+        return None, "That isn't a text file."
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return None, "That isn't a text file."
+    return text.replace("\r\n", "\n").split("\n")[:MAX_FILE_LINES], None
+
+
+def read_file(repo_id, sha, path):
+    meta = _repo_meta(repo_id)
+    path = _safe_path(path)
+    if not meta or not path or not SHA_RE.match(str(sha or "")):
+        return {"error": "bad request"}
+    lines, error = _read(GitHub(_token()), meta, sha, path)
+    return {"error": error} if error else {"lines": lines}
+
+
+def stale_check(gh):
+    """Mark tour stops whose lines have changed on the default branch.
+
+    Only the owner-side draft is touched. The public tour keeps the excerpt
+    the owner approved until they publish again.
+    """
+    drafts = _table.scan(FilterExpression="sk = :d AND begins_with(pk, :t)",
+                         ExpressionAttributeValues={":d": "DRAFT", ":t": "TOUR#"}).get("Items", [])
+    marked = 0
+    for draft in drafts:
+        stops = json.loads(draft.get("stops") or "[]")
+        meta = _repo_meta(draft.get("repo_id"))
+        if not stops or not meta or not meta.get("visible_to_token"):
+            continue
+        head, _ = _head(gh, meta)
+        if not head:
+            continue
+        cache, changed = {}, False
+        for stop in stops:
+            if stop.get("sha") == head:
+                continue
+            if stop["path"] not in cache:
+                cache[stop["path"]] = _read(gh, meta, head, stop["path"])[0]
+            current = cache[stop["path"]]
+            window = current[stop["start"] - 1: stop["start"] - 1 + len(stop["lines"])] if current is not None else None
+            # "Keep as is" accepts the code as it stood then; only a further
+            # change flags the stop again.
+            if window != stop["lines"] and window != stop.get("accepted_window"):
+                if not stop.get("needs_look") or stop["needs_look"].get("window") != window:
+                    stop["needs_look"] = {"since": _now(), "head": head, "gone": current is None, "window": window}
+                    changed = True
+                    marked += 1
+            elif stop.get("needs_look"):
+                stop["needs_look"] = None
+                changed = True
+        if changed:
+            _table.update_item(Key={"pk": draft["pk"], "sk": "DRAFT"}, UpdateExpression="SET stops = :s",
+                               ExpressionAttributeValues={":s": json.dumps(stops)})
+    return marked
+
+
 def refresh(trigger):
     started = _now()
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -219,6 +335,14 @@ def refresh(trigger):
                                    ExpressionAttributeValues={":f": False})
         errors = _collect_stats(gh, repos, today)
         outcome = {"status": "done", "repos": len(repos), "errors": len(errors)}
+        # Stats are already saved; a failed tour check shouldn't mark the
+        # whole run as failed.
+        try:
+            outcome["needs_look"] = stale_check(gh)
+        except RateLimited:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            outcome["stale_check"] = exc.__class__.__name__
     except RateLimited as limited:
         reset = datetime.fromtimestamp(limited.args[0], tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ") if limited.args and limited.args[0] else ""
         outcome = {"status": "rate_limited", "reset_at": reset}
@@ -239,4 +363,13 @@ def handler(event, context):
     action = event.get("action") or ("refresh" if event.get("source") == "schedule" else "")
     if action == "refresh":
         return refresh(event.get("trigger") or "schedule")
+    try:
+        if action == "tree":
+            return tree(event.get("repo_id"))
+        if action == "file":
+            return read_file(event.get("repo_id"), event.get("sha"), event.get("path"))
+    except RateLimited:
+        return {"error": "GitHub asked us to slow down. Try again in a few minutes."}
+    except urllib.error.URLError:
+        return {"error": "GitHub couldn't be reached."}
     return {"error": "unknown action"}
