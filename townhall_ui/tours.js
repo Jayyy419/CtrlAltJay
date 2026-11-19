@@ -300,11 +300,23 @@
       '<label class="tt-lab" for="tt-sexp">What to notice</label><textarea id="tt-sexp" class="tt-input" maxlength="600" rows="4">' + esc(s.explanation) + "</textarea>" +
       '<div class="tt-two"><div><label class="tt-lab" for="tt-mfrom">Highlight from</label><input type="number" id="tt-mfrom" class="tt-input" min="' + s.start + '" max="' + s.end + '" value="' + s.mark[0] + '"></div>' +
       '<div><label class="tt-lab" for="tt-mto">Highlight to</label><input type="number" id="tt-mto" class="tt-input" min="' + s.start + '" max="' + s.end + '" value="' + s.mark[1] + '"></div></div>' +
+      draftHelp() +
       '<div class="tt-actions"><button type="submit" class="btn primary">Save the stop</button>' +
       '<button type="button" class="btn" data-tt="earlier"' + (i === 0 ? " disabled" : "") + ">Move earlier</button>" +
       '<button type="button" class="btn" data-tt="later"' + (i === t.tour.stops.length - 1 ? " disabled" : "") + ">Move later</button>" +
       '<button type="button" class="btn danger" data-tt="remove">Remove the stop</button></div></form>';
     return html;
+  }
+
+  function money(v) { return "US$" + Number(v || 0).toFixed(2); }
+
+  function draftHelp() {
+    var h = t.tour.draft_help;
+    if (!h || !h.enabled) return "";
+    var left = Math.max(0, h.cap - h.spent);
+    return '<div class="tt-draft"><button type="button" class="btn" data-tt="draft"' + (left < 0.04 ? " disabled" : "") + ">Draft with Claude</button>" +
+      '<p class="tt-hint" id="tt-budget">Suggests a title and explanation from these lines. Nothing is saved until you press Save the stop. This month: ' +
+      money(h.spent) + " of " + money(h.cap) + ".</p></div>";
   }
 
   /* ---------- actions ---------- */
@@ -456,6 +468,22 @@
     if (name === "notsecret" && s) {
       if (!window.confirm("Mark stop " + (stopIndex(s.id) + 1) + " as not a secret? This is logged, and the lines can then be published.")) return;
       return H.api("POST", base() + "/stops/" + s.id + "/not-a-secret").then(function (d) { applied(d, "Marked as not a secret."); }).catch(H.failed);
+    }
+    if (name === "draft" && s) {
+      var ti = document.getElementById("tt-stitle"), ex = document.getElementById("tt-sexp");
+      if ((ti.value.trim() || ex.value.trim()) && !window.confirm("Replace the title and explanation in the form with a draft? Nothing is saved until you press Save the stop.")) return;
+      act.disabled = true;
+      H.say("Drafting...");
+      return H.api("POST", base() + "/stops/" + s.id + "/draft").then(function (r) {
+        ti.value = r.title;
+        ex.value = r.explanation;
+        t.tour.draft_help = Object.assign({}, t.tour.draft_help, r.budget);
+        var b = document.getElementById("tt-budget");
+        if (b) b.textContent = "Suggests a title and explanation from these lines. Nothing is saved until you press Save the stop. This month: " + money(r.budget.spent) + " of " + money(r.budget.cap) + ".";
+        act.disabled = r.budget.cap - r.budget.spent < 0.04;
+        H.say("Draft filled in. Edit it, then Save the stop." + (r.check_words && r.check_words.length ? " Check the wording: " + r.check_words.join(", ") + "." : ""));
+        ti.focus();
+      }).catch(function (err) { act.disabled = false; H.failed(err); });
     }
     if (name === "earlier" && s) return move(s.id, -1);
     if (name === "later" && s) return move(s.id, 1);

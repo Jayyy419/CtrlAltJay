@@ -68,7 +68,7 @@
 .tt-d-label { font-family: 'Plex Mono', monospace; font-size: 13px; }
 .tt-pin-n { font-family: 'Plex Mono', monospace; font-size: 11px; fill: #ffffff; pointer-events: none; }
 .tt-mpin { pointer-events: none; }
-.tt-drawer { background: #0d1030; border-left: 1px solid var(--n-line); padding: 16px 18px 20px; min-width: 0; max-height: 760px; overflow-y: auto; }
+.tt-drawer { background: #0d1030; border-left: 1px solid var(--n-line); padding: 16px 18px 20px; min-width: 0; }
 .tt-drawer p { margin: 0 0 10px; }
 .tt-h { font-family: 'Plex Mono', monospace; color: #ffffff; font-size: 15px; margin: 0 0 6px; word-break: break-all; }
 .tt-crumb, .tt-hint { font-family: 'Plex Mono', monospace; font-size: 12px; color: var(--n-dim); }
@@ -115,8 +115,10 @@ textarea.tt-input { min-height: 90px; resize: vertical; }
 .tt-strip-actions a.btn { text-decoration: none; display: inline-flex; align-items: center; }
 @media (max-width: 900px) {
   .tt-stage { grid-template-columns: minmax(0, 1fr); }
-  .tt-drawer { border-left: 0; border-top: 1px solid var(--n-line); max-height: none; }
+  .tt-drawer { border-left: 0; border-top: 1px solid var(--n-line); }
   .tt-strip { grid-row: 2; }
   .tt-strip-actions { margin-left: 0; }
   .tt-settings { grid-template-columns: minmax(0, 1fr); }
 }
+.tt-draft { border-top: 1px solid var(--n-line, #23284a); margin-top: 14px; padding-top: 12px; }
+.tt-draft .tt-hint { margin: 8px 0 0; }
