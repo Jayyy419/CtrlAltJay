@@ -575,10 +575,24 @@
       <article id="stack" class="tab-panel animate-fade-up" role="tabpanel" aria-labelledby="tab-stack" tabindex="0">
         <header class="panel-head mb-6">
           <h2 class="font-display text-3xl font-bold text-white tracking-tight">Stack</h2>
-          <p class="mt-2 text-ink-muted">Tools and technologies I build with, browsable like a marketplace.</p>
+          <p class="mt-2 text-ink-muted">Tools and technologies I build with. Pick one to see where I've used it.</p>
         </header>
-        <input type="text" id="stack-search" class="stack-search-input" placeholder="Search the marketplace..." autocomplete="off" spellcheck="false">
-        <div id="skills-grid" class="mt-4"></div>
+        <div class="stack-view-switch" role="group" aria-label="Stack view">
+          <button type="button" class="stack-view-btn" data-stack-view="map" aria-pressed="true">Map</button>
+          <button type="button" class="stack-view-btn" data-stack-view="list" aria-pressed="false">List</button>
+        </div>
+        <section id="skill-map" class="skill-map" aria-label="Skill tree">
+          <p id="skill-map-status" class="skill-map-status" aria-live="polite"></p>
+          <div id="skill-map-graph" class="skill-map-graph">
+            <div id="skill-map-skills" class="skill-map-col skill-map-skills"></div>
+            <div id="skill-map-items" class="skill-map-col skill-map-items"></div>
+            <svg id="skill-map-lines" class="skill-map-lines" aria-hidden="true" focusable="false"></svg>
+          </div>
+        </section>
+        <div id="stack-list" hidden>
+          <input type="text" id="stack-search" class="stack-search-input" placeholder="Search the marketplace..." autocomplete="off" spellcheck="false">
+          <div id="skills-grid" class="mt-4"></div>
+        </div>
       </article>
 
       <!-- Skill Item Viewer: opened when a stack sidebar entry is clicked -->
