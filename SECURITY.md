@@ -9,8 +9,9 @@ Everything under `/api/admin/*`, the admin panel and the owner preview link is f
 - Once the owner has set up an authenticator app at `/owner/security`, sign-in takes the passcode and then a 6-digit code (RFC 6238, 30-second steps, one step of clock drift either way). The passcode alone only opens a five-minute window to enter the code; it starts no session.
 - Each code works once: the last accepted time step is stored and anything at or before it is refused.
 - Eight one-time recovery codes are shown once at setup. Only SHA-256 hashes of them are stored. A used one is removed.
-- The authenticator secret is an SSM SecureString (`/ctrlaltjay/admin-totp-secret`). The app is the only thing that can read or write it, and only that one parameter. While it's being set up, the not-yet-active secret sits in a table row for at most 10 minutes, tied to the session that started the setup.
-- Replacing the authenticator or getting new recovery codes needs a session that was itself signed in with a code, so a passcode alone can't change them.
+- The authenticator secret is an SSM SecureString (`/ctrlaltjay/admin-totp-secret`). The app is the only thing that can read, write or delete it, and only that one parameter. While it's being set up, the not-yet-active secret sits in a table row for at most 10 minutes, tied to the session that started the setup.
+- Replacing the authenticator, getting new recovery codes or turning the authenticator off needs a session that was itself signed in with a code, so a passcode alone can't change them. Turning it off also asks for a fresh code or recovery code, then deletes the SSM parameter and the stored recovery hashes.
+- Recovery codes can be downloaded as a text file. The file is built in the browser from the codes already on screen, so they aren't sent a second time.
 - Wrong passcodes and wrong codes count towards the same limit: five from one address lock it out for 10 minutes.
 - If the authenticator is lost along with every recovery code, deleting the SSM parameter in the AWS console turns the code step off, and sign-in goes back to the passcode alone until a new authenticator is set up.
 

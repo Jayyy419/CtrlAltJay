@@ -109,6 +109,14 @@ def save_secret(secret):
     _cache.update(at=time.time(), secret=secret)
 
 
+def delete_secret():
+    try:
+        _client().delete_parameter(Name=PARAM)
+    except _client().exceptions.ParameterNotFound:
+        pass
+    _cache.update(at=time.time(), secret=None)
+
+
 def current_secret():
     return _read_secret(force=True)
 

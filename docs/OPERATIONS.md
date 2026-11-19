@@ -25,7 +25,7 @@ Environment variable names and what they do are in `.env.example`. Secrets are S
 | `/ctrlaltjay/anthropic-api-key` | App (site chat) |
 | `/ctrlaltjay/mail-password` | App (legacy SMTP fallback) |
 | `/ctrlaltjay/casebook/anthropic-api-key` | Casebook research function only |
-| `/ctrlaltjay/admin-totp-secret` | App (read and written during authenticator setup). Delete it to turn the code step off if the authenticator and every recovery code are lost. |
+| `/ctrlaltjay/admin-totp-secret` | App (read, written and deleted from the sign-in security page). Delete it to turn the code step off if the authenticator and every recovery code are lost. |
 
 ## Data
 
