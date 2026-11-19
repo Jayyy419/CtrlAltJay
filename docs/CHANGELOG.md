@@ -2,6 +2,12 @@
 
 All notable changes to the CtrlAltJay portfolio are documented here.
 
+## 19 Nov 2026: Recovery code download, turning the authenticator off
+
+### Added
+- Recovery codes can be downloaded as a text file.
+- "Turn off the authenticator" on the sign-in security page. It needs a session signed in with a code and a fresh code to confirm, and sign-in goes back to the passcode alone.
+
 ## 19 Nov 2026: Owner links
 
 ### Added

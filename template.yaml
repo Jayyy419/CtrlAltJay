@@ -204,10 +204,10 @@ Resources:
                 - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${AnthropicApiKeySsmParam}"
                 - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${SecretKeySsmParam}"
                 - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${AdminPasscodeSsmParam}"
-            # The one parameter the app may also write: the owner sets up
-            # their authenticator from the site.
+            # The one parameter the app may also write and delete: the owner
+            # sets up, replaces and turns off their authenticator from the site.
             - Effect: Allow
-              Action: [ssm:GetParameter, ssm:PutParameter, ssm:AddTagsToResource]
+              Action: [ssm:GetParameter, ssm:PutParameter, ssm:AddTagsToResource, ssm:DeleteParameter]
               Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${AdminTotpSsmParam}"
             # SecureString values are KMS-encrypted; reading and writing them
             # via the AWS-managed SSM key requires these alongside the SSM calls.
