@@ -4,9 +4,9 @@ Versions are from `requirements.txt` and `template.yaml` at the time of writing.
 
 | Piece | What | Why |
 |---|---|---|
-| Language | Python 3.11 | The Lambda runtime the app was migrated to. |
+| Language | Python 3.14 | The newest generally available Lambda Python runtime, on Amazon Linux 2023. Moved from 3.11 (Amazon Linux 2) so Pillow 13 installs from a wheel. |
 | Web framework | Flask 3.1 | The app started as a Flask site and still is one. |
-| Lambda adapter | apig-wsgi 2.19 | Runs the Flask app behind a Lambda function URL without rewriting it. |
+| Lambda adapter | apig-wsgi 2.20 | Runs the Flask app behind a Lambda function URL without rewriting it. |
 | QR codes | segno 1.6 | Draws the authenticator setup QR code as SVG on the server, with no other dependencies. |
 | Data | DynamoDB, on-demand | No server to run; a personal site's traffic costs almost nothing. |
 | Static files and uploads | S3 behind CloudFront | Images and fonts never cost a Lambda invocation. |
