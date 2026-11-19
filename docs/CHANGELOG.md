@@ -2,6 +2,11 @@
 
 All notable changes to the CtrlAltJay portfolio are documented here.
 
+## 20 Nov 2026: Dependency updates
+
+### Changed
+- apig-wsgi 2.20.0, boto3 1.43.111, click 8.5.0, gunicorn 26.2.0, MarkupSafe 3.0.4, packaging 26.3 and python-dotenv 1.2.4, in place of seven Dependabot pull requests that were based on the history before the rewrite.
+
 ## 20 Nov 2026: Dependency security update
 
 ### Security
