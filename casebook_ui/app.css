@@ -211,3 +211,70 @@ a.src { font-family: 'Plex Mono', monospace; font-size: 11px; color: var(--accen
   .form input[type=text], .form input[type=url], .form input[type=date], .form select { min-height: 44px; }
 }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } .spin { animation: none; } }
+
+/* Questions for them */
+.qft-edit { max-width: 820px; padding-left: 22px; }
+.qft-edit li { margin-bottom: 14px; }
+.qft-row { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: flex-start; justify-content: space-between; }
+.qft-text { flex: 1 1 320px; min-width: 0; padding-top: 6px; }
+.qft-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.qft-row .qform { flex: 1 1 100%; margin: 0; }
+.pv.own { color: var(--kind); margin-left: 6px; }
+.btn.toggle[aria-pressed="true"] { border-color: var(--reported); color: var(--reported); }
+.btn.toggle[aria-pressed="true"]::before { content: "\2713\00a0"; }
+
+/* Day-of sheet: the boarding pass. Phone first; it's what's open on the day. */
+.pass-bar { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; max-width: 760px; margin: 0 auto 12px; }
+.pass { max-width: 760px; margin: 0 auto; }
+.pass-band { background: #0b52a8 linear-gradient(120deg, #0e63c4, #0a3f80); color: #ffffff; border-radius: 14px 14px 0 0; padding: 22px 24px 18px; }
+.pass-org { font-family: 'Plex Mono', monospace; font-size: 30px; font-weight: 700; margin: 0; line-height: 1.2; overflow-wrap: anywhere; outline: none; }
+.pass-org .sample { font-size: 10px; }
+.pass-role { font-size: 16px; margin: 4px 0 0; }
+.pass-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 16px 0 0; font-family: 'Plex Mono', monospace; }
+.pass-row dt { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; }
+.pass-row dd { margin: 2px 0 0; font-size: 15px; font-weight: 700; }
+.pass-stub { background: var(--soft); border: 1px solid var(--line); border-top: 2px dashed var(--line); border-radius: 0 0 14px 14px; padding: 6px 24px 24px; }
+.pass-stub h2 { font-family: 'Plex Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); margin: 22px 0 10px; }
+.pass-open { font-size: 18px; color: var(--bright); line-height: 1.45; margin: 0; }
+.pass-empty, .pass-hint { color: var(--dim); margin: 0; }
+.pass-hint { font-family: 'Plex Mono', monospace; font-size: 11px; margin-top: 6px; }
+.pass-story { border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; background: var(--bg); break-inside: avoid; }
+.pass-for { font-family: 'Plex Mono', monospace; font-size: 12px; color: var(--dim); margin: 0; }
+.pass-story h3 { color: var(--bright); font-size: 16px; margin: 4px 0 8px; }
+.pass-star { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 4px 8px; margin: 0; font-size: 14px; }
+.pass-star dt { font-family: 'Plex Mono', monospace; color: var(--accent); }
+.pass-star dd { margin: 0; }
+.pass-star dd.gap { color: var(--gap); font-family: 'Plex Mono', monospace; font-size: 13px; }
+.pass-ask { margin: 0; padding-left: 22px; } .pass-ask li { color: var(--bright); margin-bottom: 8px; font-size: 15px; }
+.pass-know { margin: 0; padding-left: 20px; } .pass-know li { margin-bottom: 6px; }
+.pass-checks { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.pass-checks li { border: 1px solid var(--line); border-radius: 18px; padding: 7px 14px; font-size: 13px; }
+.pass-notes { margin: 12px 0 0; } .pass-notes span { display: block; font-family: 'Plex Mono', monospace; font-size: 11px; color: var(--dim); }
+@media (max-width: 760px) {
+  .pass-band { padding: 18px 16px; }
+  .pass-org { font-size: 24px; }
+  .pass-row { gap: 6px; } .pass-row dd { font-size: 13px; }
+  .pass-stub { padding: 4px 16px 18px; }
+  .qft-actions .btn { min-height: 44px; }
+  .cb-home { min-height: 44px; display: inline-flex; align-items: center; }
+}
+
+/* Save as PDF prints the pass on its own, in ink-friendly colours. */
+@media print {
+  @page { margin: 14mm; }
+  html, body { background: #ffffff !important; color: #000000; font-size: 12px; }
+  .cb-side, .cb-status, .skip, .pass-bar, .pass-hint, .cb-mobile-bar { display: none !important; }
+  .cb-shell { display: block; min-height: 0; }
+  .cb-main { padding: 0; }
+  .pass { max-width: none; }
+  .pass-band { background: none; color: #000000; border: 2px solid #000000; border-radius: 10px 10px 0 0; padding: 12px 16px; }
+  .pass-stub { background: none; border: 2px solid #000000; border-top: 2px dashed #000000; border-radius: 0 0 10px 10px; padding: 2px 16px 14px; }
+  .pass-stub h2 { color: #000000; margin-top: 14px; }
+  .pass-open, .pass-story h3, .pass-ask li { color: #000000; }
+  .pass-story { background: none; border-color: #777777; }
+  .pass-for, .pass-notes span, .pass-row dt { color: #444444; }
+  .pass-star dt { color: #000000; }
+  .pass-star dd.gap { color: #000000; font-style: italic; }
+  .pass-checks li { border-color: #777777; }
+  .sample { border: 1px solid #000000; background: none; color: #000000; }
+}

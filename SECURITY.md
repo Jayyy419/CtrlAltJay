@@ -27,6 +27,7 @@ Everything under `/api/admin/*`, the admin panel and the owner preview link is f
 - Responses are `no-store` and `noindex`, and CloudFront's default behaviour doesn't cache app routes. The paths are disallowed in `robots.txt` and never appear in the sitemap or on any public page.
 - Casebook data is in its own encrypted tables with point-in-time recovery. Casebook only scans the public tables to match evidence and never writes to them.
 - Its Claude API key is a separate SecureString that only the research function's role can read; the main app cannot.
+- The Day-of sheet and its PDF are made in the owner's browser from the case they already have open; nothing new is stored or sent anywhere.
 - Pasted job postings are passed to a research run in the invocation payload and never written to a table. A casebook keeps a short summary in plain words, the link, and at most a short phrase quoted from a requirement.
 - Research stores sources as title, link, date and a short note. Text cited from sources is not stored.
 - Starting research is an owner-only route; a run can only spend up to the per-run and monthly caps, and a retried invocation is refused so it can't charge twice.
