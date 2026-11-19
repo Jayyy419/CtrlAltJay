@@ -92,6 +92,14 @@ Parameters:
     Type: Number
     Default: 10
     Description: Most all research may spend in a calendar month (UTC), in US dollars.
+  TownDraftModel:
+    Type: String
+    Default: claude-opus-5-5
+    Description: Claude model that drafts Source Map stop text in Town hall.
+  TownDraftMaxUsdPerMonth:
+    Type: Number
+    Default: 1
+    Description: Most Source Map draft help may spend in a calendar month (UTC), in US dollars. 0 switches it off.
 
 Globals:
   Function:
@@ -179,6 +187,12 @@ Resources:
           TOWN_COLLECTOR_FUNCTION: !Ref TownCollectorFunction
           CASEBOOK_MAX_USD_PER_CASE: !Ref CasebookMaxUsdPerCase
           CASEBOOK_MAX_USD_PER_MONTH: !Ref CasebookMaxUsdPerMonth
+          TOWN_DRAFT_MODEL: !Ref TownDraftModel
+          TOWN_DRAFT_MAX_USD_PER_MONTH: !Ref TownDraftMaxUsdPerMonth
+          # US dollars per million tokens for the draft model, from Anthropic's
+          # pricing page as checked on 19 Nov 2026 for Opus 5.5.
+          TOWN_DRAFT_PRICE_INPUT: "4"
+          TOWN_DRAFT_PRICE_OUTPUT: "20"
       FunctionUrlConfig:
         # NONE, not AWS_IAM. CloudFront's OAC does not sign the request body
         # and Lambda function URLs reject UNSIGNED-PAYLOAD, so every POST is

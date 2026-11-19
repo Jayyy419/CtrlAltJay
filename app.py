@@ -1663,6 +1663,8 @@ def robots():
 
 
 register_casebook(app, is_owner, dynamodb)
+# Draft help in Town hall uses the same key as the site's chat assistant.
+app.config["TOWN_DRAFT_API_KEY"] = ANTHROPIC_API_KEY if HAS_ANTHROPIC else ""
 register_townhall(app, is_owner, dynamodb, _static_version)
 register_commit_city(app, dynamodb, _static_version)
 register_source_map(app, dynamodb, _static_version)
