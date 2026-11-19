@@ -14,6 +14,7 @@ from decimal import Decimal
 import boto3
 from flask import Blueprint, Response, abort, jsonify, render_template, request
 
+import casebook_drill
 import casebook_evidence as ce
 
 OCCASIONS = {
@@ -36,6 +37,8 @@ FORMATS = {
 STAR_FIELDS = ("situation", "task", "action", "result")
 TEXT_LIMITS = {"organisation": 120, "role": 160, "notes": 4000, "posting_url": 500, "title": 160, "opener": 400}
 THEIRS_LIMIT = 300
+DRILL_RATINGS = ("missed", "shaky", "got")
+DRILL_TOP_BOX = 3
 MAX_THEIRS = 12
 STORY_FIELD_LIMIT = 2000
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -290,6 +293,8 @@ def register_casebook(app, is_owner, dynamodb):
                 "evidence": [{"ref": r, "title": by_ref[r]["title"], "type": by_ref[r]["type"],
                               "role": "lead" if i == 0 else "backup"} for i, r in enumerate(refs)],
                 "star": star,
+                "drill": {"box": int(q.get("drill_box") or 0), "rating": q.get("drill_rating", ""),
+                          "last": q.get("drill_last", ""), "count": int(q.get("drill_count") or 0)},
             })
             if not refs:
                 loose.append({"kind": "question", "text": f"Nothing answers \u201c{q.get('text')}\u201d yet."})
@@ -320,7 +325,11 @@ def register_casebook(app, is_owner, dynamodb):
                           if k in ("values", "format", "recent") else v)
                       for k, v in meta["research_brief"].items()} if meta.get("research_brief") else None,
             "research": _research_state(meta),
+            "drill_help": _drill_help(),
         }
+
+    def _drill_help():
+        return dict(casebook_drill.budget(casebooks), enabled=bool(app.config.get("OWNER_CLAUDE_API_KEY")) and casebook_drill.MAX_USD_PER_MONTH > 0)
 
     @bp.before_request
     def owner_only():
@@ -368,9 +377,56 @@ def register_casebook(app, is_owner, dynamodb):
         with open(os.path.join(UI_DIR, name), encoding="utf-8") as fh:
             return Response(fh.read(), mimetype=UI_FILES[name].split(";")[0], content_type=UI_FILES[name])
 
+    @bp.route("/api/owner/casebooks/<case_id>/questions/<qid>/drill", methods=["POST"])
+    def question_drill(case_id, qid):
+        if not ID_RE.match(case_id) or not ID_RE.match(qid):
+            abort(404)
+        rating = (request.get_json(silent=True) or {}).get("rating")
+        if rating not in DRILL_RATINGS:
+            return jsonify({"error": "Rate it Missed it, Shaky or Got it."}), 400
+        key = {"pk": f"CASE#{case_id}", "sk": f"Q#{qid}"}
+        row = casebooks.get_item(Key=key).get("Item")
+        if not row:
+            abort(404)
+        box = int(row.get("drill_box") or 0)
+        # Three boxes: a miss starts over, shaky steps back, got it moves on.
+        box = 0 if rating == "missed" else max(0, box - 1) if rating == "shaky" else min(DRILL_TOP_BOX, box + 1)
+        casebooks.update_item(Key=key, UpdateExpression="SET drill_box = :b, drill_rating = :r, drill_last = :t ADD drill_count :one",
+                              ExpressionAttributeValues={":b": box, ":r": rating, ":t": _now(), ":one": 1})
+        return jsonify({"box": box, "rating": rating})
+
+    @bp.route("/api/owner/casebooks/<case_id>/drill/feedback", methods=["POST"])
+    def drill_feedback(case_id):
+        payload = request.get_json(silent=True) or {}
+        qid = str(payload.get("qid") or "")
+        if case_id == "sample":
+            m = re.fullmatch(r"s(\d{1,2})", qid)
+            questions = SAMPLE_CASEBOOK["questions"]
+            if not m or int(m.group(1)) >= len(questions):
+                abort(404)
+            question = questions[int(m.group(1))]
+        else:
+            if not ID_RE.match(case_id) or not ID_RE.match(qid):
+                abort(404)
+            meta = _plain(_meta(case_id))
+            question = next((q for q in _view(meta, [_plain(r) for r in _rows(case_id)])["questions"] if q["id"] == qid), None)
+            if not question:
+                abort(404)
+        try:
+            seconds = max(0, min(3600, int(payload.get("seconds") or 0)))
+        except (TypeError, ValueError):
+            seconds = 0
+        try:
+            result = casebook_drill.feedback(casebooks, app.config.get("OWNER_CLAUDE_API_KEY", ""), question, payload.get("answer"),
+                                             seconds, client_factory=app.config.get("CASEBOOK_DRILL_CLIENT"))
+        except casebook_drill.DrillError as err:
+            return jsonify({"error": str(err), "budget": _drill_help()}), 400
+        result["budget"] = _drill_help()
+        return jsonify(result)
+
     @bp.route("/api/owner/casebooks/sample", methods=["GET"])
     def casebook_sample():
-        return jsonify(SAMPLE_CASEBOOK)
+        return jsonify(dict(SAMPLE_CASEBOOK, drill_help=_drill_help()))
 
     @bp.route("/api/owner/casebook/options", methods=["GET"])
     def options():

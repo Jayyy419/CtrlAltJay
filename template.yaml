@@ -92,6 +92,14 @@ Parameters:
     Type: Number
     Default: 10
     Description: Most all research may spend in a calendar month (UTC), in US dollars.
+  CasebookDrillModel:
+    Type: String
+    Default: claude-opus-5-5
+    Description: Claude model that gives Casebook Drill feedback.
+  CasebookDrillMaxUsdPerMonth:
+    Type: Number
+    Default: 1
+    Description: Most Drill feedback may spend in a calendar month (UTC), in US dollars. 0 switches it off.
   TownDraftModel:
     Type: String
     Default: claude-opus-5-5
@@ -187,6 +195,10 @@ Resources:
           TOWN_COLLECTOR_FUNCTION: !Ref TownCollectorFunction
           CASEBOOK_MAX_USD_PER_CASE: !Ref CasebookMaxUsdPerCase
           CASEBOOK_MAX_USD_PER_MONTH: !Ref CasebookMaxUsdPerMonth
+          CASEBOOK_DRILL_MODEL: !Ref CasebookDrillModel
+          CASEBOOK_DRILL_MAX_USD_PER_MONTH: !Ref CasebookDrillMaxUsdPerMonth
+          CASEBOOK_DRILL_PRICE_INPUT: "4"
+          CASEBOOK_DRILL_PRICE_OUTPUT: "20"
           TOWN_DRAFT_MODEL: !Ref TownDraftModel
           TOWN_DRAFT_MAX_USD_PER_MONTH: !Ref TownDraftMaxUsdPerMonth
           # US dollars per million tokens for the draft model, from Anthropic's
