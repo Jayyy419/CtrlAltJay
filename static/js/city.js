@@ -83,7 +83,12 @@
     var sky = skyFor(sgNow());
     skyNote.textContent = (sky.name === "day" ? "Daytime" : sky.name.charAt(0).toUpperCase() + sky.name.slice(1)) + " sky, Singapore time";
 
-    var widths = buildings.map(function (b) { return Math.max(30, Math.min(110, 26 + Math.sqrt(b.bytes || 0) / 12)); });
+    // Private buildings carry only a size class, never a byte count.
+    var CLASS_WIDTHS = [40, 60, 82, 106];
+    var widths = buildings.map(function (b) {
+      if (b.size_class) return CLASS_WIDTHS[Math.min(4, Math.max(1, b.size_class)) - 1];
+      return Math.max(30, Math.min(110, 26 + Math.sqrt(b.bytes || 0) / 12));
+    });
     var gap = 34, total = widths.reduce(function (a, w) { return a + w + gap; }, 0) - gap;
     var maxCommits = Math.max.apply(null, buildings.map(function (b) { return b.commits || 1; }).concat([1]));
     var maxH = 300;
@@ -176,6 +181,7 @@
     var langs = (b.languages || []).slice(0, 3).map(function (l) { return esc(l[0]) + " " + Math.round(l[1] * 100) + "%"; }).join(" · ");
     var links = "";
     if (b.project_url) links += '<a href="' + esc(b.project_url) + '">Project page</a>';
+    if (b.github_url) links += '<a href="' + esc(b.github_url) + '" rel="noopener">On GitHub</a>';
     if (b.tour_url) links += '<a href="' + esc(b.tour_url) + '">Take the tour</a>';
     card.innerHTML = '<div class="k">You picked</div><h2 id="city-card-title">' + esc(b.name) + "</h2>" +
       (b.description ? "<p>" + esc(b.description) + "</p>" : "") +
@@ -296,7 +302,7 @@
   }
   if (wideQuery.addEventListener) wideQuery.addEventListener("change", refit);
 
-  fetch("/api/city", { credentials: "same-origin" })
+  fetch(document.body.getAttribute("data-src") || "/api/city", { credentials: "same-origin" })
     .then(function (r) { return r.json(); })
     .then(function (city) {
       state.city = city;
