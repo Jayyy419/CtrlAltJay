@@ -134,5 +134,10 @@ const state = {
 - **Edge**: a CloudFront Function serves the holding page while the site is off; a KeyValueStore holds the owner preview secret.
 - **Domain**: ctrlaltjay.dev in Route 53, aliased to CloudFront.
 - **Data**: DynamoDB, on-demand.
-- **Casebook research**: a separate Lambda function (`ctrlaltjay-casebook-research`, up to 15 minutes per run) that the app starts asynchronously.
+- **Casebook research**: a separate Lambda function (`ctrlaltjay-casebook-research`, up to 15 minutes per run) that the app starts asynchronously. `POST /api/owner/casebooks/<id>/research` checks the month's budget, marks the case `queued` with a run ID and invokes the function. The run:
+  1. Claims the run (`queued` to `running`, conditional on the run ID), so a retried invocation never runs or charges twice.
+  2. Searches with the Claude API and the `web_search_20260318` tool (plus `web_fetch_20260318` when the case has a posting link), continuing paused turns until it finishes or spends three quarters of its budget. Progress is written to the case after each request; the page polls it.
+  3. Numbers every source it saw, then makes a second call with a JSON schema that turns the notes into findings, questions, questions for them and topics to revise.
+  4. Checks provenance in code: "Reported" needs a real cited source, "From the posting" needs its phrase to appear in the posting, otherwise both become "Usual". Only cited sources are kept, as title, link, date and a short note.
+  5. Replaces the last run's research questions and sources, keeps the owner's own questions, and adds the run's cost to the case and to the month's `SPEND` row, even when the run fails.
 - **Deploys**: GitHub Actions with OIDC; see `OPERATIONS.md`.

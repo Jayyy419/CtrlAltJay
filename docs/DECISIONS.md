@@ -2,6 +2,24 @@
 
 Significant choices about how CtrlAltJay works, newest first, with what was considered and set aside.
 
+## 19 Nov 2026: Casebook research runs in two passes and checks its own labels
+
+**Decided:**
+- Research runs on Claude Opus 5.5 with the `web_search_20260318` tool. Model and caps are stack parameters: US$3 per run, US$10 per month, 25 searches per run. The owner chose these on 19 Nov 2026, expecting about three researched cases a month.
+- Pass one searches and takes notes; pass two turns the notes into JSON against a schema. One pass with structured output would also carry the search results and citations, and splitting keeps each request simple.
+- Provenance labels are enforced in code after the model replies, not left to the prompt.
+- Sources are stored as title, link, the page's own date and a few words on what they support. Cited text from sources is never stored. Pasted posting text travels only in the invocation payload.
+- Spend is tracked from each response's usage at configured prices, per case and in a monthly row.
+- No refusal fallback to another model. Cost tracking assumes one model's prices, and a declined run stops, is marked failed and records what it cost.
+
+**Why:**
+- The spec says never to claim an organisation asks something without a source; a check in code holds even when the model gets it wrong.
+- Async Lambda invocations can be retried; claiming the run first means a retry can't double the bill.
+
+**Set aside:**
+- Sonnet 5.5 at about half the token cost. The owner preferred quality over price.
+- Server-side refusal fallbacks (see above).
+
 ## 19 Nov 2026: Casebook evidence is worked out on read, from keywords
 
 **Decided:**

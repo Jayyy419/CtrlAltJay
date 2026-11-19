@@ -162,6 +162,20 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .used { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 8px; }
 .linkish { background: none; border: 0; padding: 0; color: var(--accent); font-family: 'Plex Mono', monospace; font-size: 12px; cursor: pointer; text-decoration: underline; min-height: 24px; }
 
+.research { display: flex; gap: 12px; align-items: flex-start; border: 1px solid var(--line); background: var(--soft); border-radius: 6px; padding: 14px 16px; margin: 0 0 18px; max-width: 860px; }
+.research b { color: var(--bright); }
+.research label { display: block; font-family: 'Plex Mono', monospace; font-size: 11px; color: var(--faint); margin-bottom: 4px; }
+.research textarea { width: 100%; border: 1px solid var(--line); background: var(--input); border-radius: 5px; padding: 8px 10px; min-height: 96px; resize: vertical; }
+.research-bar { margin: 0 0 18px; }
+.research-err { color: var(--gap); margin: 0 0 12px; max-width: 860px; }
+.spin { width: 14px; height: 14px; margin-top: 3px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--accent); animation: spin 0.9s linear infinite; flex-shrink: 0; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.brief { border: 1px solid var(--line-soft); background: var(--soft); border-radius: 6px; padding: 12px 16px; margin: 0 0 20px; }
+.brief summary { font-family: 'Plex Mono', monospace; font-size: 12px; color: var(--bright); cursor: pointer; min-height: 28px; display: flex; align-items: center; }
+.brief-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 6px 24px; margin-top: 10px; }
+.brief ul { margin: 0 0 10px; padding-left: 18px; } .brief li { margin-bottom: 6px; } .brief p { margin: 0 0 10px; }
+a.src { font-family: 'Plex Mono', monospace; font-size: 11px; color: var(--accent); margin-left: 4px; }
+
 .cb-status { position: fixed; bottom: 0; left: 0; right: 0; background: var(--accent-strong); color: var(--on-accent); font-family: 'Plex Mono', monospace; font-size: 11px; padding: 4px 12px; min-height: 22px; }
 .cb-status:empty { background: transparent; pointer-events: none; }
 
@@ -183,6 +197,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
   .cov-list { display: block; }
   .form { grid-template-columns: 1fr; }
   .chooser-grid { grid-template-columns: 1fr; }
+  .brief summary { min-height: 44px; }
+  a.src { display: flex; align-items: center; min-height: 44px; margin-left: 0; }
   .chooser summary, .linkish { min-height: 44px; }
   .chip-x button { min-width: 44px; min-height: 44px; }
   .qform input[type=text], .qform select, .chooser select { min-height: 44px; }
@@ -193,4 +209,4 @@ button, input, select, textarea { font: inherit; color: inherit; }
   .occ span { min-height: 44px; }
   .form input[type=text], .form input[type=url], .form input[type=date], .form select { min-height: 44px; }
 }
-@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } .spin { animation: none; } }
