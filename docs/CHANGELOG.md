@@ -2,6 +2,13 @@
 
 All notable changes to the CtrlAltJay portfolio are documented here.
 
+## 19 Nov 2026: Source Map, step 5
+
+### Added
+- Source Map at `/map/<tour>`: a guided walk through a codebase drawn as a night map, with districts sized by code, numbered pins on a route, and "You are here". Each stop has a title, an explanation and a highlighted excerpt with the key lines marked. Next stop and Back a stop, or the arrow keys, move along the route, and each stop has its own address. On phones the map sits above the stop and code scrolls sideways.
+- A clearly marked sample tour at `/map/sample` of an invented project, kept out of search results. Real tours come with step 6.
+- Commit City opens a building's card when its address ends in `#` and the building's name, so a tour can link straight to it.
+
 ## 19 Nov 2026: Commit City, step 4
 
 ### Added

@@ -42,6 +42,7 @@ Everything under `/api/admin/*`, the admin panel and the owner preview link is f
   - **Private repo, approved:** only a public name and description the owner writes, weekly commit counts, language shares, the last push date and a size class (one of four). No real name, owner, branch, file name, commit message, link, byte count or archived flag.
 - `/api/city` is built field by field from an allow-list (`public_building` in `townhall.py`), so a new field in the owner-side data can't reach the public site by accident.
 - Approving, moving to the drawer and changing an approved building's words each republish the snapshot at once; the daily collector never does. Every one of those actions is logged with its time in `ctrlaltjay-town` (`APPROVAL` rows) and shown in Town hall's approvals log.
+- `/api/map/<slug>` serves only published tour rows from `ctrlaltjay-public-city` (or the built-in sample); it never reads `ctrlaltjay-town`, so a tour still being plotted can't be fetched by guessing its name. Slugs are checked against a strict pattern before any lookup.
 - The owner-only building preview (`/owner/townhall/preview/<id>`) renders the public page template against an owner-only endpoint, so it shows exactly what would publish without publishing it.
 
 ### How the origin is protected
