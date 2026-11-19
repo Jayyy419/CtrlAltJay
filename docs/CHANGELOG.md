@@ -2,6 +2,12 @@
 
 All notable changes to the CtrlAltJay portfolio are documented here.
 
+## 19 Nov 2026: Skill tree
+
+### Added
+- The Stack panel opens on a Map view: each skill is wired to the projects and experience entries tagged with it. Picking a skill redraws the links; picking a project opens it. On phones the skills scroll sideways and the linked projects branch below.
+- A Map / List switch keeps the original marketplace list, and remembers the choice.
+
 ## 19 Nov 2026: Owner sessions
 
 ### Changed

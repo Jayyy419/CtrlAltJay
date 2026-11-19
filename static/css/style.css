@@ -1576,6 +1576,49 @@ body.zen-mode .ide-panel-scroll { padding: 48px max(32px, calc(50% - 380px)); }
   flex-shrink: 0;
 }
 .ext-publisher { font-family: 'Plex Mono', monospace; font-size: 0.72rem; color: var(--ide-text-faint); margin-top: 2px; }
+/* ===== Skill tree (Stack panel, Map view) ===== */
+.stack-view-switch { display: inline-flex; border: 1px solid var(--ide-border); border-radius: 6px; overflow: hidden; margin-bottom: 18px; }
+.stack-view-btn {
+  font-family: 'Plex Mono', monospace; font-size: 0.78rem; padding: 6px 16px; min-height: 32px;
+  background: transparent; color: var(--ide-text-dim); border: none; cursor: pointer;
+}
+.stack-view-btn + .stack-view-btn { border-left: 1px solid var(--ide-border); }
+.stack-view-btn[aria-pressed="true"] { background: var(--ide-accent-strong); color: #fff; }
+.stack-view-btn:focus-visible { outline: 2px solid var(--ide-accent); outline-offset: -2px; }
+/* The phone chip row is wider than the screen; containment keeps that width
+   from stretching the panel layout, so the row scrolls on its own. */
+.skill-map { contain: inline-size; }
+.skill-map-status { font-family: 'Plex Mono', monospace; font-size: 0.78rem; color: var(--ide-text-dim); margin: 0 0 14px; }
+.skill-map-graph { position: relative; display: grid; grid-template-columns: minmax(0, 240px) minmax(60px, 1fr) minmax(0, 300px); }
+.skill-map-skills { grid-column: 1; }
+.skill-map-items { grid-column: 3; }
+.skill-map-col { display: flex; flex-direction: column; gap: 8px; position: relative; z-index: 1; min-width: 0; }
+.skill-map-skills { align-items: flex-start; }
+.skill-map-node {
+  font-family: 'Plex Mono', monospace; font-size: 0.78rem; text-align: left; line-height: 1.3;
+  padding: 6px 10px; min-height: 32px; border-radius: 5px; cursor: pointer; max-width: 100%;
+  background: var(--ide-editor-bg-soft); color: var(--ide-text-dim); border: 1px solid var(--ide-border-soft);
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+.skill-map-node:hover { border-color: var(--ide-accent); color: var(--ide-text-bright); }
+.skill-map-node:focus-visible { outline: 2px solid var(--ide-accent); outline-offset: 2px; }
+.skill-map-skill.is-selected { background: var(--ide-accent-strong); border-color: var(--ide-accent-strong); color: #fff; }
+.skill-map-item.is-linked { border-color: var(--ide-accent); color: var(--ide-text-bright); }
+.skill-map-lines { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.skill-map-lines path { fill: none; stroke: var(--ide-accent); stroke-width: 1.5; opacity: 0.8; }
+@media (prefers-reduced-motion: reduce) { .skill-map-node { transition: none; } }
+@media (max-width: 760px) {
+  .stack-view-btn { min-height: 44px; padding: 8px 20px; }
+  .skill-map-graph { display: block; }
+  .skill-map-lines { display: none; }
+  .skill-map-skills { flex-direction: row; overflow-x: auto; padding-bottom: 10px; scroll-snap-type: x proximity; }
+  .skill-map-skill { flex-shrink: 0; white-space: nowrap; min-height: 44px; scroll-snap-align: start; }
+  .skill-map-items { border-left: 2px solid var(--ide-accent); margin: 8px 0 0 14px; padding-left: 16px; gap: 10px; }
+  .skill-map-item { display: none; min-height: 44px; padding: 10px 12px; position: relative; }
+  .skill-map-item.is-linked { display: block; }
+  .skill-map-item::before { content: ""; position: absolute; left: -18px; top: 50%; width: 16px; border-top: 2px solid var(--ide-accent); }
+}
+
 .stack-search-input {
   width: 100%;
   max-width: 420px;
