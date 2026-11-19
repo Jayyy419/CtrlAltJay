@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 
 from flask import abort, jsonify, render_template, request
 
+import townhall_draft
 from secret_scan import scan_lines
 from source_map import SLUG_RE
 
@@ -235,6 +236,7 @@ def register_tours(app, bp, town, public, metas, meta_of, building_name, project
             "stops": [stop_view(s) for s in draft["stops"]],
             "published_slug": draft["published_slug"], "published_at": draft["published_at"],
             "problems": tour_problems(meta, draft, slug_taken(meta["github_id"], draft["slug"])),
+            "draft_help": dict(townhall_draft.spend(town), enabled=bool(app.config.get("TOWN_DRAFT_API_KEY")) and townhall_draft.MAX_USD_PER_MONTH > 0),
         }
 
     def tour_for_public(meta, draft):
@@ -436,6 +438,20 @@ def register_tours(app, bp, town, public, metas, meta_of, building_name, project
         save_draft(draft)
         log("keep_stop", meta, f"stop {n + 1}")
         return jsonify(draft_view(meta, draft))
+
+    @bp.route("/api/owner/townhall/tours/<repo_id>/stops/<stop_id>/draft", methods=["POST"])
+    def tour_draft(repo_id, stop_id):
+        meta = meta_of(repo_id)
+        draft = load_draft(repo_id)
+        n, s = find_stop(draft, stop_id)
+        try:
+            result = townhall_draft.draft_stop(
+                town, app.config.get("TOWN_DRAFT_API_KEY", ""), building_name(meta) or "A project", meta.get("description") or meta.get("gh_description") or "",
+                s, n + 1, [x.get("title", "") for x in draft["stops"]], client_factory=app.config.get("TOWN_DRAFT_CLIENT"))
+        except townhall_draft.DraftError as err:
+            return jsonify({"error": str(err), "budget": townhall_draft.spend(town)}), 400
+        result["budget"] = townhall_draft.spend(town)
+        return jsonify(result)
 
     @bp.route("/api/owner/townhall/tours/<repo_id>/preview-tour", methods=["GET"])
     def tour_preview_data(repo_id):

@@ -59,6 +59,18 @@ Significant choices about how CtrlAltJay works, newest first, with what was cons
 - Private buildings never show as boarded up, because the archived flag isn't on that list either.
 - Approving or moving a repo to the drawer republishes straight away, so hiding something takes effect at once. New daily stats wait for "Publish latest stats", so nothing changes on the public site without an owner action.
 
+## 19 Nov 2026: Draft help for tour stops
+
+**Decided:** a "Draft with Claude" button on each plotted stop suggests a title and explanation, on Opus 5.5, with a cap of US$1 a month, both chosen by the owner and set as stack parameters (`TownDraftModel`, `TownDraftMaxUsdPerMonth`). It uses the site chat assistant's API key, which the app can already read, so no new secret or permission was needed.
+
+**How the cap holds:** each request first reserves its worst-case cost (4,000 input and 1,000 output tokens) on the month's `SPEND`/`DRAFT#<month>` row with a conditional write, then swaps the reservation for the real cost when the answer comes back, or refunds it if the call fails. Two drafts at once can't take the month over the cap. Prices are in the stack (US$4 and US$20 per million input and output tokens, checked 19 Nov 2026).
+
+**What's sent:** the stop's lines with the marked ones flagged, the public name and description, and the other stop titles. Not the file path, folder or real repo name. For a private repo that means its code excerpt goes to the Claude API, which the owner accepted when choosing the feature.
+
+**Writing rules:** the prompt asks for plain sentences in the owner's voice with no dashes, emoji or marketing words. The app also swaps any dash for a comma and names any banned word that slips through, so the owner can fix it before saving.
+
+**Set aside:** drafting before a stop is plotted. The excerpt is only copied on the server at plot time, and drafting from a copy the browser holds would send unchecked text.
+
 ## 19 Nov 2026: Tours are plotted on the map itself
 
 **Decided:** the owner picked the bold "Plot on the map" direction over an editor-style workbench and a storyboard of cards. Districts on the night map open their files, the route sits in a row of pins under the map, and the stop editor sits beside it (below it on phones).

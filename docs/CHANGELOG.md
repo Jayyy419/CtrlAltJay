@@ -2,6 +2,14 @@
 
 All notable changes to the CtrlAltJay portfolio are documented here.
 
+## 19 Nov 2026: Source Map, step 7
+
+### Added
+- "Draft with Claude" on each plotted stop in Town hall. It fills in a suggested title and "What to notice" from the stop's lines; nothing is saved until the owner edits it and presses Save the stop. The stop editor shows the month's draft spending against its cap (US$1 by default).
+
+### Changed
+- The stop editor grows with its content on wide screens instead of scrolling inside a fixed-height box.
+
 ## 19 Nov 2026: Source Map, step 6
 
 ### Added
