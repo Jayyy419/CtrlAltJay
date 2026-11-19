@@ -32,6 +32,7 @@ Everything under `/api/admin/*`, the admin panel and the owner preview link is f
 - Starting research is an owner-only route; a run can only spend up to the per-run and monthly caps, and a retried invocation is refused so it can't charge twice.
 
 ### Town hall (Commit City and Source Map)
+- Every response under `/owner/` and `/api/owner/`, including the 404 anyone else gets, is sent with `no-store` and `noindex`, set in one place in `app.py`.
 - Town hall (`/owner/townhall` and `/api/owner/townhall/*`) checks the owner session on the server like Casebook: an empty 404 for anyone else, `no-store` and `noindex` on every response, its script and styles served from behind the check, disallowed in `robots.txt`, never in the sitemap. The Admin Tools link to it comes from an owner-only endpoint, so the address isn't in any public file.
 - The GitHub token is read only by the collector's Lambda role. The app's role can't read it, and nothing the public site runs calls GitHub.
 - The collector writes only to `ctrlaltjay-town`. Public pages will read only `ctrlaltjay-public-city`, which only an owner action in Town hall writes.

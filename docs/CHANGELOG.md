@@ -10,6 +10,9 @@ All notable changes to the CtrlAltJay portfolio are documented here.
 ### Changed
 - The stop editor grows with its content on wide screens instead of scrolling inside a fixed-height box.
 
+### Fixed
+- Every owner route, including the 404 others get, now sends `no-store` and `noindex`. Sign-in security and the owner tools list had been missing them.
+
 ## 19 Nov 2026: Source Map, step 6
 
 ### Added
