@@ -2,6 +2,17 @@
 
 All notable changes to the CtrlAltJay portfolio are documented here.
 
+## 19 Nov 2026: Commit City, step 4
+
+### Added
+- Town hall: open any repo to give it a public name and description, link a project page, see exactly what would go public, preview the building, and choose "Approve for the skyline" or "Keep it in the drawer".
+- "Publish latest stats" copies the newest approved stats to the public city.
+- Approvals log in Town hall.
+- The Projects panel links to Commit City, and the sitemap lists it, once at least one building is published.
+
+### Fixed
+- Approvals logged within the same second now keep their order.
+
 ## 19 Nov 2026: Commit City, step 3
 
 ### Added
