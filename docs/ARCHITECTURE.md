@@ -24,6 +24,7 @@ CtrlAltJay is a single-page portfolio application built with Flask (Python) on t
 
 - **Entry point**: `app.py`
 - **WSGI server**: Gunicorn (configured in `Procfile`)
+- **Casebook** (`casebook.py`, owner-only): routes under `/api/owner/`. A blueprint guard returns an empty 404 to anyone but the signed-in owner, and every response is `Cache-Control: no-store` and `X-Robots-Tag: noindex`. Data lives in `ctrlaltjay-casebooks` (one partition per casebook: `META`, plus `SRC#`, `Q#` and `EV#` rows) and `ctrlaltjay-stories`. Research runs in its own Lambda function, which alone can read the Casebook API key. The public tables are only read, never written.
 - **Skill tree**: the Stack panel's Map view is built in the browser from `/api/public-data` (skills, plus each item's `skills` tags). It has no endpoint or table of its own, so it only shows skills that at least one published item is tagged with.
 - **Authentication**: Owner sign-in with a passcode, rate limited (5 attempts, 10-min lockout). Each sign-in creates a server-side session row; a session ends when it reaches `ADMIN_SESSION_HOURS` (default 12) or on sign-out, even if the cookie was copied. See `SECURITY.md`.
 - **File uploads**: Saved to `static/uploads/` with timestamp prefix
@@ -127,10 +128,11 @@ const state = {
 
 ## Infrastructure
 
-- **AWS Account**: 140023398409
-- **Region**: ap-southeast-1 (Singapore)
-- **EB Environment**: `ctrlaltjay-prod` (single instance, t3.micro, AL2023, Python 3.11)
-- **Elastic IP**: 54.179.127.71
-- **Domain**: ctrlaltjay.dev (Route 53)
-- **SSL**: Let's Encrypt
-- **Billing mode**: DynamoDB PAY_PER_REQUEST
+- **Region**: ap-southeast-1 (Singapore); the certificate is in us-east-1, as CloudFront requires.
+- **App**: one Lambda function running Flask through apig-wsgi, reached only through CloudFront. The function URL rejects requests without CloudFront's origin header.
+- **Static files**: S3, served by CloudFront under `/static/*`.
+- **Edge**: a CloudFront Function serves the holding page while the site is off; a KeyValueStore holds the owner preview secret.
+- **Domain**: ctrlaltjay.dev in Route 53, aliased to CloudFront.
+- **Data**: DynamoDB, on-demand.
+- **Casebook research**: a separate Lambda function (`ctrlaltjay-casebook-research`, up to 15 minutes per run) that the app starts asynchronously.
+- **Deploys**: GitHub Actions with OIDC; see `OPERATIONS.md`.
