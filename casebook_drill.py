@@ -11,6 +11,7 @@ import os
 import re
 
 import claude_budget
+from casebook_research import upkeep_usage
 
 MODEL = os.getenv("CASEBOOK_DRILL_MODEL", "claude-opus-5-5")
 MAX_USD_PER_MONTH = float(os.getenv("CASEBOOK_DRILL_MAX_USD_PER_MONTH", "1"))
@@ -108,6 +109,7 @@ def feedback(table, api_key, question, answer, seconds, client_factory=None):
             messages=[{"role": "user", "content": brief(question, answer, seconds)}],
         ) as stream:
             message = stream.get_final_message()
+        upkeep_usage.report(message)
         usage = message.usage
         cost = ((usage.input_tokens or 0) * PRICE_INPUT + (usage.output_tokens or 0) * PRICE_OUTPUT) / 1_000_000
         if message.stop_reason == "refusal":

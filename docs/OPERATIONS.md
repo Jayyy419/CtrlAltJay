@@ -26,6 +26,7 @@ Environment variable names and what they do are in `.env.example`. Secrets are S
 | `/ctrlaltjay/mail-password` | App (legacy SMTP fallback) |
 | `/ctrlaltjay/casebook/anthropic-api-key` | Casebook research function only |
 | `/ctrlaltjay/github-token` | Town hall collector only. A fine-grained GitHub token with read-only Contents and Metadata on the repos the owner picked. |
+| `/ctrlaltjay/upkeep-usage-key` | App and Casebook research function. Optional: the usage key Upkeep issued for this site. |
 | `/ctrlaltjay/admin-totp-secret` | App (read, written and deleted from the sign-in security page). Delete it to turn the code step off if the authenticator and every recovery code are lost. |
 
 ## Data
@@ -59,3 +60,12 @@ Environment variable names and what they do are in `.env.example`. Secrets are S
 - Token and search prices are environment variables on the research function (`CASEBOOK_PRICE_*`), set from Anthropic's pricing page as checked on 19 Nov 2026: Opus 5.5 at US$4 per million input tokens and US$20 per million output tokens, web search at US$10 per 1,000 searches. Update them if Anthropic's prices change, or the costs shown will drift from the bill.
 - The cost shown is worked out from each response's token and search counts. It is an estimate of the bill, not read from Anthropic's billing (inferred, not verified against an invoice).
 - Month-to-date spend is the `SPEND` / `YYYY-MM` row in `ctrlaltjay-casebooks`.
+
+## Claude spend in Upkeep
+
+Every Claude response's model name and token counts can be reported to Upkeep, which prices them and shows the month's spend for this site next to the owner's other projects. It's off until both of these are in place:
+
+1. Cut a usage key for CtrlAltJay in Upkeep and store it as a SecureString at `/ctrlaltjay/upkeep-usage-key` (the `UpkeepUsageKeySsmParam` stack parameter) in ap-southeast-1. Both functions' roles can already read that name.
+2. Set the `UpkeepUsageUrl` stack parameter to Upkeep's origin, with no trailing slash: change its default in `template.yaml`, or add `UpkeepUsageUrl=...` to the `--parameter-overrides` in the deploy workflow. Then deploy.
+
+The key is read once per Lambda container, so a new or replaced key is picked up at the next cold start; redeploying forces one. To turn reporting off, set `UpkeepUsageUrl` back to empty and deploy, or delete the parameter. A report that fails logs one line with the error type and HTTP status (never the key) and is not retried; the app's own work carries on either way. Searches made by research aren't token counts, so Upkeep doesn't see them; the casebook's own cost figure still includes them.

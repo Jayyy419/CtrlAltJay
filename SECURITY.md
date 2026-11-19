@@ -33,6 +33,11 @@ Everything under `/api/admin/*`, the admin panel and the owner preview link is f
 - Research stores sources as title, link, date and a short note. Text cited from sources is not stored.
 - Starting research is an owner-only route; a run can only spend up to the per-run and monthly caps, and a retried invocation is refused so it can't charge twice.
 
+### Claude spend reporting
+- After each Claude response the app sends Upkeep, the owner's portal, only the model name and token counts (input, output, cache reads and writes, and the processing region and speed when the response gives them). Never prompts, answers, casebook or repo content, visitor details or IDs.
+- The usage key is an SSM SecureString (`/ctrlaltjay/upkeep-usage-key`) that only the app and research function roles can read. It's sent only in the `X-Upkeep-Key` header over HTTPS and never logged; a failed report logs the error type and HTTP status alone.
+- Reporting is off until the owner sets the URL and the key.
+
 ### Town hall (Commit City and Source Map)
 - Every response under `/owner/` and `/api/owner/`, including the 404 anyone else gets, is sent with `no-store` and `noindex`, set in one place in `app.py`.
 - Town hall (`/owner/townhall` and `/api/owner/townhall/*`) checks the owner session on the server like Casebook: an empty 404 for anyone else, `no-store` and `noindex` on every response, its script and styles served from behind the check, disallowed in `robots.txt`, never in the sitemap. The Admin Tools link to it comes from an owner-only endpoint, so the address isn't in any public file.
