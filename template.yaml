@@ -120,7 +120,7 @@ Globals:
     # free tier, so 20% of ~nothing is not worth an emulated build on every
     # deploy. Revisit only if invocation cost ever becomes material.
     Architectures: [x86_64]
-    Runtime: python3.11
+    Runtime: python3.14
     Tags:
       Project: CtrlAltJay
       Environment: Production
