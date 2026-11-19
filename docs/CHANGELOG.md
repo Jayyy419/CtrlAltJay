@@ -2,6 +2,17 @@
 
 All notable changes to the CtrlAltJay portfolio are documented here.
 
+## 19 Nov 2026: Owner sessions
+
+### Changed
+- Owner sign-ins now expire after `ADMIN_SESSION_HOURS` (default 12). Flask also rejects any session cookie older than that.
+- Signing out ends the session on the server. A copy of the session cookie stops working at the same moment.
+- Sessions signed in before this change are signed out once and need one fresh sign-in.
+
+### Added
+- `SECURITY.md`, covering the owner-only area.
+- `docs/DECISIONS.md`, starting with the sign-in decision.
+
 ## QOL Batch 6 — UX Polish & Admin Productivity
 
 ### Added
