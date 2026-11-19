@@ -399,6 +399,15 @@ def _store(run, meta, checked):
             break
         if c.lower() not in {x.lower() for x in comps}:
             comps.append(c)
+    # Keep the owner's own questions for them and their picks for the sheet;
+    # don't bring back ones they took off.
+    previous = meta.get("questions_for_them") or []
+    previous = [p if isinstance(p, dict) else {"text": p} for p in previous]
+    picked = {p.get("text") for p in previous if p.get("ask")}
+    dismissed = set(meta.get("theirs_dismissed") or [])
+    theirs = [dict(q, ask=q.get("text") in picked) for q in checked["questions_for_them"] if q.get("text") not in dismissed]
+    theirs += [p for p in previous if p.get("own")]
+    checked["questions_for_them"] = theirs[:12]
     _table.update_item(
         Key=run.key,
         UpdateExpression=(

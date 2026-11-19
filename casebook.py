@@ -3,6 +3,7 @@
 Everything here sits behind the owner session. Signed-out requests get an
 empty 404, so the routes look the same as ones that don't exist.
 """
+import hashlib
 import json
 import os
 import re
@@ -33,7 +34,9 @@ FORMATS = {
     "unknown": "Not known yet",
 }
 STAR_FIELDS = ("situation", "task", "action", "result")
-TEXT_LIMITS = {"organisation": 120, "role": 160, "notes": 4000, "posting_url": 500, "title": 160}
+TEXT_LIMITS = {"organisation": 120, "role": 160, "notes": 4000, "posting_url": 500, "title": 160, "opener": 400}
+THEIRS_LIMIT = 300
+MAX_THEIRS = 12
 STORY_FIELD_LIMIT = 2000
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 ID_RE = re.compile(r"^[0-9a-f]{12}$")
@@ -58,6 +61,7 @@ SAMPLE_CASEBOOK = {
         "id": "sample", "sample": True, "occasion": "interview", "organisation": "Accenture",
         "role": "Technology Analyst Intern", "date": "2026-12-03", "format": "video",
         "posting_url": "", "notes": "They said there'll be a case study.", "research_status": "done",
+        "opener": "I like building things people use, and client work puts those people right in front of you.",
         "cost_usd": 0.42, "searches": 9, "researched_at": "2026-11-19T09:03:00Z",
     },
     "competencies": ["Process change", "Client-facing", "Cloud", "Teamwork", "Stakeholders", "Ownership"],
@@ -94,9 +98,9 @@ SAMPLE_CASEBOOK = {
         {"kind": "revise", "text": "Read up on the firm's latest annual results and its AI practice."},
     ],
     "questions_for_them": [
-        "What does a first client project usually look like for an intern?",
-        "How do analysts get feedback during a project?",
-        "Which teams would this role work with most?",
+        {"id": "s1", "text": "What does a first client project usually look like for an intern?", "sources": [], "own": False, "ask": True},
+        {"id": "s2", "text": "How do analysts get feedback during a project?", "sources": [], "own": False, "ask": True},
+        {"id": "s3", "text": "Which teams would this role work with most?", "sources": [], "own": True, "ask": False},
     ],
 }
 
@@ -134,7 +138,7 @@ def _casebook_fields(payload, partial=False):
         if not org:
             errors.append("organisation")
         fields["organisation"] = org
-    for key in ("role", "notes"):
+    for key in ("role", "notes", "opener"):
         if key in payload or not partial:
             fields[key] = _clean(payload.get(key), TEXT_LIMITS[key])
     if "date" in payload or not partial:
@@ -165,6 +169,25 @@ def _casebook_fields(payload, partial=False):
             errors.append("posting_url")
         fields["posting_url"] = url
     return fields, errors
+
+
+def theirs_list(meta):
+    """Questions for them, each with a stable id.
+
+    Research writes them without ids; an id is derived from the text so the
+    same question keeps it until it's edited.
+    """
+    out = []
+    for item in meta.get("questions_for_them") or []:
+        if isinstance(item, str):
+            item = {"text": item}
+        text = item.get("text", "")
+        out.append({
+            "id": item.get("id") or "r" + hashlib.sha1(text.encode("utf-8")).hexdigest()[:9],
+            "text": text, "source_ids": list(item.get("source_ids") or []),
+            "own": bool(item.get("own")), "ask": bool(item.get("ask")),
+        })
+    return out
 
 
 def _story_fields(payload):
@@ -291,8 +314,8 @@ def register_casebook(app, is_owner, dynamodb):
             "hidden": [{"ref": r, "title": by_ref[r]["title"]} for r in hidden if r in by_ref],
             "stories": [{"id": e["id"], "title": e["title"]} for e in pool if e["type"] == "story"],
             "loose_ends": loose,
-            "questions_for_them": [{"text": t.get("text", ""), "sources": cite(t.get("source_ids"))}
-                                   for t in meta.get("questions_for_them") or []],
+            "questions_for_them": [{"id": t["id"], "text": t["text"], "sources": cite(t["source_ids"]), "own": t["own"], "ask": t["ask"]}
+                                   for t in theirs_list(meta)],
             "brief": {k: ([{"text": f.get("text", ""), "sources": cite(f.get("source_ids"))} for f in v]
                           if k in ("values", "format", "recent") else v)
                       for k, v in meta["research_brief"].items()} if meta.get("research_brief") else None,
@@ -564,6 +587,63 @@ def register_casebook(app, is_owner, dynamodb):
             return jsonify({"error": "Check these fields.", "fields": errors}), 400
         casebooks.put_item(Item={**row, **fields, "updated_at": _now()})
         return jsonify({"ok": True})
+
+    def _save_theirs(meta, items, dismissed=None):
+        expr, values = "SET questions_for_them = :q, updated_at = :t", {":q": items, ":t": _now()}
+        if dismissed is not None:
+            expr += ", theirs_dismissed = :d"
+            values[":d"] = dismissed[-50:]
+        casebooks.update_item(Key={"pk": meta["pk"], "sk": "META"}, UpdateExpression=expr, ExpressionAttributeValues=values)
+
+    def _theirs_case(case_id):
+        if not ID_RE.match(case_id):
+            abort(404)
+        meta = _plain(_meta(case_id))
+        return meta, theirs_list(meta)
+
+    def _theirs_view(case_id):
+        meta = _plain(_meta(case_id))
+        return jsonify(_view(meta, [_plain(r) for r in _rows(case_id)]))
+
+    @bp.route("/api/owner/casebooks/<case_id>/theirs", methods=["POST"])
+    def theirs_add(case_id):
+        meta, items = _theirs_case(case_id)
+        text = _clean((request.get_json(silent=True) or {}).get("text"), THEIRS_LIMIT)
+        if not text:
+            return jsonify({"error": "Write the question first."}), 400
+        if len(items) >= MAX_THEIRS:
+            return jsonify({"error": f"Keep it to {MAX_THEIRS} questions for them."}), 400
+        items.append({"id": uuid.uuid4().hex[:10], "text": text, "source_ids": [], "own": True, "ask": True})
+        _save_theirs(meta, items)
+        return _theirs_view(case_id), 201
+
+    @bp.route("/api/owner/casebooks/<case_id>/theirs/<tid>", methods=["PATCH", "DELETE"])
+    def theirs_item(case_id, tid):
+        meta, items = _theirs_case(case_id)
+        hit = [i for i in items if i["id"] == tid]
+        if not hit:
+            abort(404)
+        item = hit[0]
+        if request.method == "DELETE":
+            items.remove(item)
+            # Research shouldn't bring back a question the owner took off.
+            dismissed = list(meta.get("theirs_dismissed") or [])
+            if not item["own"]:
+                dismissed.append(item["text"])
+            _save_theirs(meta, items, dismissed)
+            return _theirs_view(case_id)
+        payload = request.get_json(silent=True) or {}
+        if "text" in payload:
+            text = _clean(payload.get("text"), THEIRS_LIMIT)
+            if not text:
+                return jsonify({"error": "The question can't be empty."}), 400
+            if text != item["text"]:
+                item["text"], item["own"], item["source_ids"] = text, True, []
+                item["id"] = uuid.uuid4().hex[:10] if item["id"].startswith("r") else item["id"]
+        if "ask" in payload:
+            item["ask"] = bool(payload.get("ask"))
+        _save_theirs(meta, items)
+        return _theirs_view(case_id)
 
     @bp.route("/api/owner/evidence/pool", methods=["GET"])
     def evidence_pool():

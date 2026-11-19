@@ -94,7 +94,8 @@
   /* ---------- sidebar ---------- */
 
   function fileButton(view, label) {
-    var on = state.view === view || (view === "stories" && state.view && state.view.indexOf("stories") === 0);
+    var on = state.view === view || (view === "stories" && state.view && state.view.indexOf("stories") === 0) ||
+      (state.view === "sheet/" + view.replace(/^case\//, ""));
     return '<button type="button" class="cb-file" data-open="' + esc(view) + '"' + (on ? ' aria-current="true"' : "") + ">" + esc(label) + "</button>";
   }
 
@@ -148,7 +149,7 @@
       '<div class="cb-meta">' + esc(meta.join(" · ")) + "</div></div>" +
       '<div class="cb-side-actions"><div class="cb-cost">' + costLine(c) + "</div>" +
       '<div class="cb-row">' +
-      '<button type="button" class="btn primary" data-act="sheet">Day-of sheet</button>' +
+      '<button type="button" class="btn primary" data-open="sheet/' + (d.sample ? "sample" : esc(c.id)) + '">Day-of sheet</button>' +
       (d.sample ? "" : '<button type="button" class="btn" data-act="edit">Edit details</button>') +
       "</div></div></div>";
 
@@ -446,8 +447,109 @@
   }
 
   function renderTheirs(d) {
-    if (!d.theirs.length) return '<div class="empty">No questions for them yet. These get drafted from what research finds about the team and the role.</div>';
-    return '<ol class="qft">' + d.theirs.map(function (t) { return "<li>" + esc(t.text) + sourceLinks(t.sources) + "</li>"; }).join("") + "</ol>";
+    var html = "";
+    if (!d.sample) {
+      html += '<form class="qform" id="t-form"><label for="t-text" class="sr">A question for them</label>' +
+        '<input type="text" id="t-text" maxlength="300" placeholder="Something you want to ask them" autocomplete="off">' +
+        '<button type="submit" class="btn primary">Add</button></form>';
+    }
+    if (!d.theirs.length) return html + '<div class="empty">No questions for them yet. Research drafts some from what it finds about the team and the role, or add your own.</div>';
+    html += '<p class="hint" style="margin:0 0 12px">Questions marked On the sheet go on your Day-of sheet.</p><ol class="qft qft-edit">';
+    d.theirs.forEach(function (t, i) {
+      html += '<li><div class="qft-row">';
+      if (state.editingTheirs === t.id) {
+        html += '<form class="qform" id="t-edit-form" data-tid="' + esc(t.id) + '"><label for="t-edit" class="sr">Edit the question</label>' +
+          '<input type="text" id="t-edit" maxlength="300" value="' + esc(t.text) + '" autocomplete="off">' +
+          '<button type="submit" class="btn primary">Save</button><button type="button" class="btn" data-theirs-cancel="1">Cancel</button></form>';
+      } else {
+        html += '<div class="qft-text" id="t-' + i + '">' + esc(t.text) + (t.own ? ' <span class="pv own">Yours</span>' : "") + sourceLinks(t.sources) + "</div>";
+      }
+      if (d.sample) {
+        if (t.ask) html += '<span class="pv reported">On the sheet</span>';
+      } else if (state.editingTheirs !== t.id) {
+        html += '<div class="qft-actions"><button type="button" class="btn toggle" data-theirs-ask="' + esc(t.id) + '" aria-pressed="' + (t.ask ? "true" : "false") + '" aria-describedby="t-' + i + '">On the sheet</button>' +
+          '<button type="button" class="btn" data-theirs-edit="' + esc(t.id) + '" aria-describedby="t-' + i + '">Edit</button>' +
+          '<button type="button" class="btn danger" data-theirs-drop="' + esc(t.id) + '" aria-describedby="t-' + i + '">Remove</button></div>';
+      }
+      html += "</div></li>";
+    });
+    return html + "</ol>";
+  }
+
+  /* ---------- day-of sheet ---------- */
+
+  var WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+  // The countdown counts days in Singapore, whatever the device is set to.
+  function sgToday() { return new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10); }
+
+  function countdown(iso) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(iso || "")) return "Not set";
+    var days = Math.round((Date.parse(iso + "T00:00:00Z") - Date.parse(sgToday() + "T00:00:00Z")) / 86400000);
+    if (days === 0) return "Today";
+    if (days === 1) return "Tomorrow";
+    return days > 1 ? days + " days" : "Done";
+  }
+
+  function shortDate(iso) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(iso || "")) return "Not set";
+    var d = new Date(iso + "T00:00:00Z");
+    return WEEKDAYS[d.getUTCDay()] + " " + d.getUTCDate() + " " + MONTHS[d.getUTCMonth()];
+  }
+
+  function sheetStories(d) {
+    return d.questions.filter(function (q) { return q.kind !== "motivation" && q.evidence.length && q.star; }).slice(0, 3);
+  }
+
+  function renderSheet() {
+    var d = state.data, c = d.casebook;
+    var back = d.sample ? "sample" : "case/" + c.id;
+    var fmt = state.options && state.options.formats[c.format];
+    var stories = sheetStories(d);
+    var asks = d.theirs.filter(function (t) { return t.ask; });
+    var picked = asks.length > 0;
+    if (!picked) asks = d.theirs.slice(0, 3);
+    var html = '<div class="pass-bar"><button type="button" class="btn" data-open="' + back + '">Back to the case</button>' +
+      '<button type="button" class="btn primary" data-act="print">Save as PDF</button></div>';
+    html += '<article class="pass" aria-labelledby="pass-org">';
+    html += '<header class="pass-band"><h1 class="pass-org" id="pass-org">' + esc(c.organisation) + (d.sample ? '<span class="sample">SAMPLE</span>' : "") + "</h1>" +
+      (c.role ? '<p class="pass-role">' + esc(c.role) + "</p>" : "") +
+      '<dl class="pass-row"><div><dt>When</dt><dd>' + esc(shortDate(c.date)) + "</dd></div>" +
+      "<div><dt>Format</dt><dd>" + esc(fmt && c.format !== "unknown" ? fmt : "Not known") + "</dd></div>" +
+      "<div><dt>In</dt><dd>" + esc(countdown(c.date)) + "</dd></div></dl></header>";
+    html += '<div class="pass-stub">';
+    html += '<section aria-labelledby="ps-open"><h2 id="ps-open">Open with</h2>' + (c.opener
+      ? '<p class="pass-open">' + esc(c.opener) + "</p>"
+      : '<p class="pass-empty">Write the line you\'ll open with' + (d.sample ? "." : ' under <button type="button" class="linkish" data-act="edit-opener">Edit details</button>.') + "</p>") + "</section>";
+    html += '<section aria-labelledby="ps-stories"><h2 id="ps-stories">' + (stories.length === 3 ? "Your three stories" : "Your stories") + "</h2>";
+    if (!stories.length) html += '<p class="pass-empty">No stories matched yet. Pick evidence for your questions in the case.</p>';
+    stories.forEach(function (q) {
+      html += '<div class="pass-story"><p class="pass-for">For: ' + esc(q.text) + '</p><h3>' + esc(q.evidence[0].title) + '</h3><dl class="pass-star">' +
+        STAR.map(function (f) {
+          var v = q.star[f[0]];
+          return "<dt>" + f[1].charAt(0) + '<span class="sr"> ' + f[1].slice(1) + "</span></dt><dd" + (v ? ">" + esc(v) : ' class="gap">[your ' + f[1].toLowerCase() + " here]") + "</dd>";
+        }).join("") + "</dl></div>";
+    });
+    html += "</section>";
+    html += '<section aria-labelledby="ps-ask"><h2 id="ps-ask">Ask them</h2>';
+    if (!asks.length) html += '<p class="pass-empty">No questions for them yet.</p>';
+    else html += '<ol class="pass-ask">' + asks.map(function (t) { return "<li>" + esc(t.text) + "</li>"; }).join("") + "</ol>" +
+      (picked ? "" : '<p class="pass-hint">Showing the first few. Mark the ones you want with On the sheet.</p>');
+    html += "</section>";
+    var brief = d.brief || {};
+    var know = [].concat((brief.format || []).slice(0, 2), (brief.recent || []).slice(0, 2), (brief.values || []).slice(0, 1));
+    if (know.length) {
+      html += '<section aria-labelledby="ps-know"><h2 id="ps-know">Know before you go</h2><ul class="pass-know">' +
+        know.map(function (k) { return "<li>" + esc(k.text) + "</li>"; }).join("") + "</ul></section>";
+    }
+    var checks = d.loose.slice(0, 6);
+    html += '<section aria-labelledby="ps-checks"><h2 id="ps-checks">Last checks</h2>';
+    if (!checks.length && !c.notes) html += '<p class="pass-empty">Nothing left to check.</p>';
+    if (checks.length) html += '<ul class="pass-checks">' + checks.map(function (l) { return "<li>" + esc(l.text) + "</li>"; }).join("") + "</ul>";
+    if (c.notes) html += '<p class="pass-notes"><span>Your notes</span>' + esc(c.notes) + "</p>";
+    html += "</section></div></article>";
+    main.innerHTML = html;
+    document.title = "Day-of sheet: " + caseTitle(c);
   }
 
   function reloadCase(keepQuestionId) {
@@ -657,6 +759,8 @@
       html += field("posting_text", "Or paste the posting", '<textarea id="f-posting_text" name="posting_text" rows="5"></textarea>', "full",
         "Read once when research runs and never kept. Research isn't on yet, so a link is the safer bet for now.");
     }
+    html += field("opener", "Open with", '<textarea id="f-opener" name="opener" rows="2" maxlength="400">' + esc(c.opener || "") + "</textarea>", "full",
+      "A line or two you'll open with. It goes at the top of your Day-of sheet.");
     html += field("notes", "Anything else you know", '<textarea id="f-notes" name="notes" rows="3" maxlength="4000">' + esc(c.notes || "") + "</textarea>", "full");
     html += '<div class="full actions"><button type="submit" class="btn primary">' + (existing ? "Save changes" : "Build the case") + "</button>" +
       (existing ? '<button type="button" class="btn" data-act="cancel-edit">Cancel</button>' : "") +
@@ -749,6 +853,8 @@
       loadStories().then(function () { say(""); focusMain(); }).catch(failed);
       return;
     }
+    var sheet = /^sheet\/(sample|[0-9a-f]{12})$/.exec(view);
+    if (sheet) view = sheet[1] === "sample" ? "sample" : "case/" + sheet[1];
     var load;
     if (view === "sample") {
       load = api("GET", "/api/owner/casebooks/sample").then(function (raw) { return normalise(raw, true); });
@@ -760,12 +866,20 @@
     }
     say("Opening...");
     load.then(function (data) {
-      if (state.view !== view) return;
+      if (state.view !== (sheet ? sheet[0] : view)) return;
+      document.title = "Casebook";
       if (!state.data || state.data.casebook.id !== data.casebook.id) {
         state.tab = "questions";
         state.q = 0;
       }
       state.data = data;
+      state.editingTheirs = null;
+      if (sheet) {
+        renderSheet();
+        say("");
+        focusMain();
+        return;
+      }
       renderCase();
       say("");
       focusMain();
@@ -846,6 +960,18 @@
     }).catch(failed);
   }
 
+  function theirsCall(method, tid, body, message, focusSel) {
+    say("Saving...");
+    var url = "/api/owner/casebooks/" + state.data.casebook.id + "/theirs" + (tid ? "/" + tid : "");
+    return api(method, url, body).then(function (raw) {
+      state.data = normalise(raw, false);
+      state.editingTheirs = null;
+      renderCase();
+      say(message);
+      if (focusSel) refocus(focusSel);
+    }).catch(failed);
+  }
+
   /* ---------- events ---------- */
 
   document.getElementById("cb-new").addEventListener("click", function () { go("new"); });
@@ -863,6 +989,27 @@
       state.tab = el.getAttribute("data-tab");
       renderCase();
       return refocus("#tab-" + state.tab);
+    }
+    if ((el = t.closest("[data-theirs-ask]"))) {
+      var tid = el.getAttribute("data-theirs-ask");
+      return theirsCall("PATCH", tid, { ask: el.getAttribute("aria-pressed") !== "true" },
+        el.getAttribute("aria-pressed") === "true" ? "Off the sheet." : "On the sheet.", '[data-theirs-ask="' + tid + '"]');
+    }
+    if ((el = t.closest("[data-theirs-edit]"))) {
+      state.editingTheirs = el.getAttribute("data-theirs-edit");
+      renderCase();
+      return refocus("#t-edit");
+    }
+    if ((el = t.closest("[data-theirs-cancel]"))) {
+      var was = state.editingTheirs;
+      state.editingTheirs = null;
+      renderCase();
+      return refocus('[data-theirs-edit="' + was + '"]');
+    }
+    if ((el = t.closest("[data-theirs-drop]"))) {
+      var item = state.data.theirs.filter(function (x) { return x.id === el.getAttribute("data-theirs-drop"); })[0];
+      if (!item || !window.confirm("Remove \u201c" + item.text + "\u201d?")) return;
+      return theirsCall("DELETE", item.id, undefined, "Removed.", "#t-text");
     }
     if ((el = t.closest("[data-q]"))) {
       state.q = parseInt(el.getAttribute("data-q"), 10);
@@ -910,8 +1057,12 @@
       state.researchOpen = false;
       renderCase();
       refocus('[data-act="research-open"]');
-    } else if (name === "sheet") {
-      say("The day-of sheet arrives in a later update.");
+    } else if (name === "print") {
+      window.print();
+    } else if (name === "edit-opener") {
+      renderForm(state.data.casebook);
+      focusMain();
+      refocus("#f-opener");
     } else if (name === "edit") {
       renderForm(state.data.casebook);
       focusMain();
@@ -1018,6 +1169,15 @@
       var v = document.getElementById("comp-new").value.trim();
       if (!v) return;
       setCompetencies(state.data.competencies.concat([v]), "#comp-new");
+    } else if (form.id === "t-form") {
+      e.preventDefault();
+      var tt = document.getElementById("t-text").value.trim();
+      if (!tt) { say("Write the question first."); return refocus("#t-text"); }
+      theirsCall("POST", "", { text: tt }, "Added, and put on the sheet.", "#t-text");
+    } else if (form.id === "t-edit-form") {
+      e.preventDefault();
+      var tidE = form.getAttribute("data-tid");
+      theirsCall("PATCH", tidE, { text: document.getElementById("t-edit").value }, "Saved.", '[data-theirs-edit="' + tidE + '"]');
     } else if (form.id === "story-form") {
       e.preventDefault();
       saveStory();
