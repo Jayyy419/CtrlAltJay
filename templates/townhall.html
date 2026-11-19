@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <title>Town hall</title>
+  <link rel="stylesheet" href="/owner/casebook/app.css">
+  <link rel="stylesheet" href="/owner/townhall/app.css">
+  <script>
+    try {
+      var t = localStorage.getItem("ctrlaltjay-theme");
+      if (t === "light" || (!t && window.matchMedia("(prefers-color-scheme: light)").matches)) document.documentElement.classList.add("light-theme");
+    } catch (e) {}
+  </script>
+</head>
+<body>
+  <a class="skip" href="#th-main">Skip to Town hall</a>
+  <div class="cb-shell">
+    <aside class="cb-side" aria-label="Town hall">
+      <div class="cb-side-head"><span>TOWN HALL</span><a class="cb-home" href="/">ctrlaltjay.dev</a></div>
+      <nav class="cb-list" id="th-nav">
+        <div class="cb-list-label">Commit City</div>
+        <button type="button" class="cb-file" data-view="skyline" aria-current="true">The skyline</button>
+        <div class="cb-list-label">Source Map</div>
+        <button type="button" class="cb-file" data-view="tours">Tours</button>
+      </nav>
+    </aside>
+    <main id="th-main" class="cb-main" tabindex="-1"></main>
+  </div>
+  <div class="cb-status" id="th-status" aria-live="polite"></div>
+  <script src="/owner/townhall/app.js"></script>
+</body>
+</html>
