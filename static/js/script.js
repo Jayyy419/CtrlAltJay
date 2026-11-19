@@ -3273,17 +3273,29 @@ function initAdminAuth() {
     document.getElementById("admin-login-form").addEventListener("submit", async (e) => {
       e.preventDefault();
       const feedback = document.getElementById("admin-login-feedback");
+      const codeWrap = document.getElementById("admin-login-code-wrap");
+      const askingForCode = !codeWrap.hidden;
       const passcode = document.getElementById("admin-login-passcode").value.trim();
-      if (!passcode) { feedback.textContent = "Passcode is required."; return; }
+      const code = document.getElementById("admin-login-code").value.trim();
+      if (!askingForCode && !passcode) { feedback.textContent = "Passcode is required."; return; }
+      if (askingForCode && !code) { feedback.textContent = "Enter the code from your authenticator app."; return; }
       feedback.textContent = "Verifying...";
       feedback.style.color = "#94a3b8";
       try {
-        const res = await fetch("/admin/auth", {
+        const res = await fetch(askingForCode ? "/admin/auth/code" : "/admin/auth", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ passcode }),
+          body: JSON.stringify(askingForCode ? { code } : { passcode }),
         });
         const data = await res.json();
+        if (res.ok && data.needs_code) {
+          document.getElementById("admin-login-passcode").hidden = true;
+          codeWrap.hidden = false;
+          feedback.style.color = "#94a3b8";
+          feedback.textContent = "Passcode accepted. Now the 6-digit code.";
+          document.getElementById("admin-login-code").focus();
+          return;
+        }
         if (res.ok) {
           closeAdminLoginModal();
           setAdminMode(true);
@@ -3292,6 +3304,7 @@ function initAdminAuth() {
         } else {
           feedback.style.color = "#f87171";
           feedback.textContent = data.error || "Authentication failed.";
+          if (data.restart) resetAdminLoginForm();
         }
       } catch (_) {
         feedback.style.color = "#f87171";
@@ -3304,11 +3317,17 @@ function initAdminAuth() {
 function openAdminLoginModal() {
   const modal = document.getElementById("admin-login-modal");
   if (!modal) return;
-  document.getElementById("admin-login-form").reset();
+  resetAdminLoginForm();
   document.getElementById("admin-login-feedback").textContent = "";
   modal.classList.add("active");
   modal.setAttribute("aria-hidden", "false");
   document.getElementById("admin-login-passcode").focus();
+}
+
+function resetAdminLoginForm() {
+  document.getElementById("admin-login-form").reset();
+  document.getElementById("admin-login-passcode").hidden = false;
+  document.getElementById("admin-login-code-wrap").hidden = true;
 }
 
 function closeAdminLoginModal() {

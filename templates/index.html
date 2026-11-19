@@ -1193,7 +1193,13 @@
       <p class="text-sm mb-5">Enter passcode to manage content.</p>
       <form id="admin-login-form" class="grid gap-3">
         <input type="password" id="admin-login-passcode" name="passcode" placeholder="Passcode" required autocomplete="current-password"
-          class="ide-control w-full">
+          class="ide-control w-full" aria-label="Passcode">
+        <div id="admin-login-code-wrap" class="grid gap-2" hidden>
+          <label for="admin-login-code" class="text-sm">Code from your authenticator app</label>
+          <input type="text" id="admin-login-code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="12"
+            class="ide-control w-full" aria-describedby="admin-login-code-hint">
+          <p id="admin-login-code-hint" class="text-xs">Lost your phone? Enter one of your recovery codes instead.</p>
+        </div>
         <button type="submit" class="contact-submit-btn">Sign In</button>
       </form>
       <p id="admin-login-feedback" class="text-xs mt-3" style="color:#f87171" aria-live="polite"></p>

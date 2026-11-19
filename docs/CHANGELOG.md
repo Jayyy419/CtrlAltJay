@@ -2,6 +2,15 @@
 
 All notable changes to the CtrlAltJay portfolio are documented here.
 
+## 19 Nov 2026: Authenticator app sign-in
+
+### Added
+- Sign-in security page at `/owner/security`: set up an authenticator app with a QR code, get eight one-time recovery codes, replace either later.
+- Once set up, signing in asks for the passcode and then a 6-digit code. A recovery code works in place of the code, once each.
+
+### Changed
+- Sessions started with the passcode alone stop counting once an authenticator is set up.
+
 ## 19 Nov 2026: Casebook, step 5
 
 ### Added

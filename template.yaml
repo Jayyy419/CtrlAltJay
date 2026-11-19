@@ -63,6 +63,13 @@ Parameters:
     Description: >
       SecureString holding the Claude API key Casebook research uses. Only
       the CasebookResearchFunction role can read it; the main app cannot.
+  AdminTotpSsmParam:
+    Type: String
+    Default: /ctrlaltjay/admin-totp-secret
+    Description: >
+      SecureString holding the owner's authenticator secret. The app writes it
+      when the owner sets up an authenticator; until it exists, sign-in is the
+      passcode alone.
   CasebookModel:
     Type: String
     Default: claude-opus-5-5
@@ -157,6 +164,7 @@ Resources:
           ANTHROPIC_API_KEY_SSM_PARAM: !Ref AnthropicApiKeySsmParam
           SECRET_KEY_SSM_PARAM: !Ref SecretKeySsmParam
           ADMIN_PASSCODE_SSM_PARAM: !Ref AdminPasscodeSsmParam
+          ADMIN_TOTP_SSM_PARAM: !Ref AdminTotpSsmParam
           CASEBOOKS_TABLE: !Ref CasebooksTable
           STORIES_TABLE: !Ref StoriesTable
           CASEBOOK_RESEARCH_FUNCTION: !Ref CasebookResearchFunction
@@ -196,10 +204,15 @@ Resources:
                 - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${AnthropicApiKeySsmParam}"
                 - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${SecretKeySsmParam}"
                 - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${AdminPasscodeSsmParam}"
-            # SecureString values are KMS-encrypted; decrypting them via the
-            # AWS-managed SSM key requires this alongside ssm:GetParameter.
+            # The one parameter the app may also write: the owner sets up
+            # their authenticator from the site.
             - Effect: Allow
-              Action: kms:Decrypt
+              Action: [ssm:GetParameter, ssm:PutParameter, ssm:AddTagsToResource]
+              Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${AdminTotpSsmParam}"
+            # SecureString values are KMS-encrypted; reading and writing them
+            # via the AWS-managed SSM key requires these alongside the SSM calls.
+            - Effect: Allow
+              Action: [kms:Decrypt, kms:Encrypt]
               Resource: "*"
               Condition:
                 StringEquals:
