@@ -997,6 +997,29 @@ def owner_security_new_recovery():
     return _owner_json({"ok": True, "recovery_codes": codes})
 
 
+@app.route("/api/owner/security/remove", methods=["POST"])
+def owner_security_remove():
+    if not is_owner():
+        abort(404)
+    if not owner_totp.enrolled() or not session.get("admin_mfa"):
+        return _owner_json({"error": "Sign in with your current code first."}, 403)
+    ip = _client_ip()
+    if _rate_limit_locked_seconds("admin", ip) > 0:
+        return _owner_json({"error": "Too many attempts. Please wait and try again."}, 429)
+    # A fresh code is required even in a signed-in session, so a browser left
+    # signed in can't turn the second step off on its own.
+    code = str((request.get_json(silent=True) or {}).get("code") or "").strip()
+    digits = "".join(ch for ch in code if ch.isdigit())
+    ok = _use_totp_code(code) if len(digits) == len(code.replace(" ", "")) else _use_recovery_code(code)
+    if not ok:
+        _record_rate_limit_failure("admin", ip, MAX_ADMIN_ATTEMPTS, ADMIN_LOCK_SECONDS)
+        return _owner_json({"error": "That code didn't work."}, 400)
+    owner_totp.delete_secret()
+    table_items.delete_item(Key={"id": TOTP_STATE_ID})
+    table_items.delete_item(Key={"id": TOTP_PENDING_ID})
+    return _owner_json({"ok": True})
+
+
 @app.route("/admin/logout", methods=["GET", "POST"])
 def admin_logout():
     end_admin_session()

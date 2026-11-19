@@ -20,7 +20,7 @@
     .key { font-family: 'Plex Mono', monospace; font-size: 15px; color: var(--bright); letter-spacing: 0.04em; word-break: break-all; }
     .codes { font-family: 'Plex Mono', monospace; font-size: 15px; color: var(--bright); columns: 2; padding-left: 20px; margin: 8px 0 16px; }
     .codes li { margin-bottom: 6px; }
-    .sec input[type=text] { border: 1px solid var(--line); background: var(--input); border-radius: 5px; padding: 9px 10px; min-height: 44px; font-family: 'Plex Mono', monospace; font-size: 16px; width: 12ch; letter-spacing: 0.1em; }
+    .sec input[type=text] { border: 1px solid var(--line); background: var(--input); border-radius: 5px; padding: 9px 10px; min-height: 44px; font-family: 'Plex Mono', monospace; font-size: 16px; width: 14ch; letter-spacing: 0.1em; }
     .sec .btn { min-height: 44px; }
     #body { margin-top: 20px; }
     .step { border-left: 2px solid var(--line); padding: 2px 0 2px 16px; margin: 0 0 22px; }
@@ -67,15 +67,32 @@
         '<h2 class="h3" style="margin-top:22px">Recovery codes</h2>' +
         "<p>Each one works once, if you lose your phone. Save them somewhere safe now: they won't be shown again.</p>" +
         '<ol class="codes" id="codes"></ol>' +
-        '<div class="actions"><button type="button" class="btn" id="copy">Copy them</button>' +
+        '<div class="actions"><button type="button" class="btn" id="download">Download as a text file</button>' +
+        '<button type="button" class="btn" id="copy">Copy them</button>' +
         '<button type="button" class="btn primary" id="done">I’ve saved them</button></div>';
       var list = document.getElementById("codes");
       codes.forEach(function (c) { var li = document.createElement("li"); li.textContent = c; list.appendChild(li); });
       document.getElementById("copy").onclick = function () {
         navigator.clipboard.writeText(codes.join("\n")).then(function () { document.getElementById("copy").textContent = "Copied"; });
       };
+      document.getElementById("download").onclick = function () {
+        // Built in the browser, so the codes never travel in a second request.
+        var made = new Date().toLocaleString("en-GB", { timeZone: "Asia/Singapore", day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true });
+        var text = "CtrlAltJay recovery codes\r\nMade " + made + " (Singapore time)\r\n\r\n" +
+          "Each code works once, in place of the code from your authenticator app.\r\n\r\n" +
+          codes.map(function (c, i) { return (i + 1) + ". " + c; }).join("\r\n") + "\r\n";
+        var url = URL.createObjectURL(new Blob([text], { type: "text/plain;charset=utf-8" }));
+        var a = document.createElement("a");
+        a.href = url;
+        a.download = "ctrlaltjay-recovery-codes.txt";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+        document.getElementById("download").textContent = "Downloaded";
+      };
       document.getElementById("done").onclick = load;
-      document.getElementById("copy").focus();
+      document.getElementById("download").focus();
     }
 
     function start() {
@@ -117,7 +134,9 @@
           "<p>" + s.recovery_left + " recovery code" + (s.recovery_left === 1 ? "" : "s") + " left.</p>" +
           (s.this_session_used_code
             ? '<div class="actions"><button type="button" class="btn" id="fresh">Get new recovery codes</button>' +
-              '<button type="button" class="btn" id="move">Move to a new phone</button></div><p class="err" id="err" role="alert"></p>'
+              '<button type="button" class="btn" id="move">Move to a new phone</button>' +
+              '<button type="button" class="btn danger" id="off">Turn off the authenticator</button></div>' +
+              '<div id="off-box"></div><p class="err" id="err" role="alert"></p>'
             : '<p class="hint">Sign out and back in with a code to change any of this.</p>');
         if (s.this_session_used_code) {
           document.getElementById("fresh").onclick = function () {
@@ -125,6 +144,28 @@
             call("POST", "/api/owner/security/recovery").then(function (r) { showCodes(r.recovery_codes, true); }).catch(failed);
           };
           document.getElementById("move").onclick = start;
+          document.getElementById("off").onclick = function () {
+            var box = document.getElementById("off-box");
+            box.innerHTML =
+              '<div class="step" style="margin-top:18px"><h2 class="h3">Turn off the authenticator</h2>' +
+              "<p>Signing in will go back to the passcode alone, and your recovery codes will stop working. Enter a code from your app, or a recovery code, to confirm.</p>" +
+              '<form id="off-form" class="qform"><label for="off-code" class="sr">Code</label>' +
+              '<input type="text" id="off-code" autocomplete="one-time-code" maxlength="12" required>' +
+              '<button type="submit" class="btn danger">Turn it off</button>' +
+              '<button type="button" class="btn" id="off-cancel">Keep it on</button></form></div>';
+            document.getElementById("off-cancel").onclick = function () { box.innerHTML = ""; document.getElementById("off").focus(); };
+            document.getElementById("off-form").onsubmit = function (e) {
+              e.preventDefault();
+              call("POST", "/api/owner/security/remove", { code: document.getElementById("off-code").value })
+                .then(function () {
+                  body.innerHTML = '<p class="ok">The authenticator is off. Signing in needs your passcode only. Remove the CtrlAltJay entry from your authenticator app too.</p>' +
+                    '<div class="actions"><button type="button" class="btn" id="back">Done</button></div>';
+                  document.getElementById("back").onclick = load;
+                  document.getElementById("back").focus();
+                }).catch(failed);
+            };
+            document.getElementById("off-code").focus();
+          };
         }
       }).catch(failed);
     }
