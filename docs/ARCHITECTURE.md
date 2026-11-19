@@ -24,7 +24,7 @@ CtrlAltJay is a single-page portfolio application built with Flask (Python) on t
 
 - **Entry point**: `app.py`
 - **WSGI server**: Gunicorn (configured in `Procfile`)
-- **Authentication**: Session-based admin auth with rate limiting (5 attempts, 10-min lockout)
+- **Authentication**: Owner sign-in with a passcode, rate limited (5 attempts, 10-min lockout). Each sign-in creates a server-side session row; a session ends when it reaches `ADMIN_SESSION_HOURS` (default 12) or on sign-out, even if the cookie was copied. See `SECURITY.md`.
 - **File uploads**: Saved to `static/uploads/` with timestamp prefix
 - **Security**: 11 response headers including CSP, HSTS, X-Frame-Options
 - **Mail**: Flask-Mail for contact form submissions
@@ -36,7 +36,7 @@ CtrlAltJay is a single-page portfolio application built with Flask (Python) on t
 | `/` | GET | — | Renders index.html with profile data |
 | `/api/public-data` | GET | — | Returns all projects, experiences, resume, skills |
 | `/admin/auth` | POST | — | Admin login with rate limiting |
-| `/admin/logout` | POST | — | Clears admin session |
+| `/admin/logout` | POST | — | Ends the owner session on the server and in the browser |
 | `/api/admin/items` | GET, POST | Admin | List/create portfolio items |
 | `/api/admin/items/<id>` | PUT, DELETE | Admin | Update/delete portfolio items |
 | `/api/admin/resume` | GET, POST | Admin | List/create resume entries |

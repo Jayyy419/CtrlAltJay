@@ -8,7 +8,7 @@ import hmac
 import uuid
 import urllib.error
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from email.utils import format_datetime
 from functools import wraps
@@ -23,6 +23,7 @@ from flask import (
     Flask,
     Response,
     flash,
+    g,
     jsonify,
     redirect,
     render_template,
@@ -154,6 +155,10 @@ app.config["MAX_FORM_PARTS"] = 200  # cap multipart field count
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["SESSION_COOKIE_SECURE"] = os.getenv("FLASK_DEBUG", "").lower() not in ("1", "true", "t")
+# Owner sign-ins last this long. Flask also refuses any session cookie older
+# than PERMANENT_SESSION_LIFETIME, so the limit holds even for a copied cookie.
+ADMIN_SESSION_SECONDS = int(float(os.getenv("ADMIN_SESSION_HOURS", "12")) * 3600)
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(seconds=ADMIN_SESSION_SECONDS)
 
 mail = Mail(app)
 
@@ -220,10 +225,61 @@ def now_iso():
     return datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def _admin_session_row_id(sid):
+    # Only a hash is stored, so a read of the table cannot be replayed as a
+    # session.
+    return "__adminsession_" + hashlib.sha256(sid.encode()).hexdigest()
+
+
+def start_admin_session():
+    sid = secrets.token_urlsafe(32)
+    now = int(time.time())
+    table_items.put_item(Item={
+        "id": _admin_session_row_id(sid),
+        "created_at": now_iso(),
+        "expires_at": Decimal(now + ADMIN_SESSION_SECONDS),
+    })
+    session.clear()
+    session.permanent = True
+    session["is_admin"] = True
+    session["admin_sid"] = sid
+    session["admin_at"] = now
+
+
+def end_admin_session():
+    sid = session.get("admin_sid")
+    if sid:
+        table_items.delete_item(Key={"id": _admin_session_row_id(sid)})
+    for key in ("is_admin", "admin_sid", "admin_at"):
+        session.pop(key, None)
+
+
+def is_owner():
+    # The cookie alone is not enough: the session must also still exist on
+    # the server, so signing out ends it everywhere the cookie was copied to.
+    if "is_owner" in g:
+        return g.is_owner
+    ok = False
+    sid = session.get("admin_sid")
+    started = session.get("admin_at")
+    if session.get("is_admin") and sid:
+        row = table_items.get_item(Key={"id": _admin_session_row_id(sid)}).get("Item")
+        fresh = isinstance(started, int) and time.time() - started < ADMIN_SESSION_SECONDS
+        if row and fresh and int(row.get("expires_at", 0)) > time.time():
+            ok = True
+        elif row:
+            table_items.delete_item(Key={"id": row["id"]})
+    if not ok and session.get("is_admin"):
+        for key in ("is_admin", "admin_sid", "admin_at"):
+            session.pop(key, None)
+    g.is_owner = ok
+    return ok
+
+
 def login_required(view_func):
     @wraps(view_func)
     def wrapped(*args, **kwargs):
-        if not session.get("is_admin"):
+        if not is_owner():
             return redirect(url_for("index"))
         return view_func(*args, **kwargs)
 
@@ -248,7 +304,7 @@ def verify_admin_passcode(submitted_passcode):
 
 
 def unauthorized_admin_response():
-    if not session.get("is_admin"):
+    if not is_owner():
         return jsonify({"error": "Unauthorized"}), 403
     return None
 
@@ -623,7 +679,7 @@ def invalidate_public_data_cache():
 
 @app.route("/api/public-data")
 def api_public_data():
-    is_admin = bool(session.get("is_admin"))
+    is_admin = is_owner()
     now = time.time()
     cache_key = "admin" if is_admin else "public"
     cached = _public_data_cache.get(cache_key)
@@ -716,7 +772,7 @@ def rss_feed():
 
 @app.route("/api/admin/auth-status", methods=["GET"])
 def admin_auth_status():
-    return jsonify({"is_admin": bool(session.get("is_admin"))})
+    return jsonify({"is_admin": is_owner()})
 
 
 @app.route("/admin/auth", methods=["POST"])
@@ -736,7 +792,7 @@ def admin_auth():
         return jsonify({"error": "Passcode is required."}), 400
 
     if verify_admin_passcode(submitted_passcode):
-        session["is_admin"] = True
+        start_admin_session()
         _clear_rate_limit("admin", ip)
         return jsonify({"message": "Authenticated.", "redirect_url": url_for("index")})
 
@@ -751,7 +807,7 @@ def admin_auth():
 
 @app.route("/admin/logout", methods=["GET", "POST"])
 def admin_logout():
-    session.pop("is_admin", None)
+    end_admin_session()
     if request.method == "POST":
         resp = jsonify({"ok": True})
         resp.headers["Clear-Site-Data"] = '"cache", "storage"'
@@ -763,7 +819,7 @@ def admin_logout():
 
 @app.route("/admin")
 def admin_dashboard():
-    if session.get("is_admin"):
+    if is_owner():
         return redirect(url_for("index"))
     return redirect(url_for("index") + "?admin=login")
 
@@ -1400,7 +1456,7 @@ def internal_error(e):
 @app.route("/api/hit-count", methods=["GET", "POST"])
 def hit_count():
     if request.method == "POST":
-        field = "admin_hit_count" if session.get("is_admin") else "hit_count"
+        field = "admin_hit_count" if is_owner() else "hit_count"
         try:
             table_items.update_item(
                 Key={"id": SETTINGS_ID},
