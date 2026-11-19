@@ -42,6 +42,7 @@ import json
 
 from casebook import register_casebook
 from townhall import register_townhall
+from commit_city import register_commit_city
 import owner_totp
 
 try:
@@ -1658,6 +1659,7 @@ def robots():
 
 register_casebook(app, is_owner, dynamodb)
 register_townhall(app, is_owner, dynamodb)
+register_commit_city(app, dynamodb, _static_version)
 
 
 # ─── Error Pages ─────────────────────────────────────────────────────────────
