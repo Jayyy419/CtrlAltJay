@@ -1951,6 +1951,152 @@ function buildExtensionCard(skill, tier) {
   return card;
 }
 
+/* ===== Skill tree: each skill wired to the projects and roles that use it ===== */
+const SKILL_MAP_TIERS = ["Primary Stack", "Experienced", "Toolbox"];
+const STACK_VIEW_KEY = "stack-view";
+
+function skillMapTier(skill) {
+  const tier = skill.focus || "Other";
+  return tier === "Familiar" ? "Experienced" : tier;
+}
+
+function skillMapData() {
+  const items = [
+    ...state.projects.map((item) => ({ item, tab: "projects" })),
+    ...state.experiences.map((item) => ({ item, tab: "experiences" })),
+  ]
+    .map((entry) => ({ ...entry, skills: parseSkills(entry.item.skills).map((s) => s.toLowerCase()) }))
+    .filter((entry) => entry.skills.length);
+  const rank = (tier) => {
+    const i = SKILL_MAP_TIERS.indexOf(tier);
+    return i < 0 ? SKILL_MAP_TIERS.length : i;
+  };
+  const skills = state.skills
+    .map((skill) => ({
+      skill,
+      tier: skillMapTier(skill),
+      uses: items.filter((entry) => entry.skills.includes((skill.name || "").toLowerCase())),
+    }))
+    .filter((s) => s.uses.length)
+    .sort((a, b) => rank(a.tier) - rank(b.tier) || (a.skill.sort_order || 0) - (b.skill.sort_order || 0));
+  const used = new Set(skills.flatMap((s) => s.uses));
+  return { skills, items: items.filter((entry) => used.has(entry)) };
+}
+
+function skillMapCountText(uses) {
+  const projects = uses.filter((u) => u.tab === "projects").length;
+  const others = uses.length - projects;
+  const part = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+  if (!others) return part(projects, "project", "projects");
+  if (!projects) return part(others, "experience", "experiences");
+  return `${part(projects, "project", "projects")} and ${part(others, "experience", "experiences")}`;
+}
+
+function renderSkillMap() {
+  const skillsEl = document.getElementById("skill-map-skills");
+  const itemsEl = document.getElementById("skill-map-items");
+  if (!skillsEl || !itemsEl) return;
+  const data = skillMapData();
+  state.skillMapData = data;
+  skillsEl.innerHTML = "";
+  itemsEl.innerHTML = "";
+  if (!data.skills.length) {
+    document.getElementById("skill-map-status").textContent = "Skills will appear here once projects are tagged with them.";
+    return;
+  }
+
+  data.skills.forEach(({ skill }) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "skill-map-node skill-map-skill";
+    btn.dataset.skill = skill.name;
+    btn.textContent = skill.name;
+    btn.addEventListener("click", () => selectSkillMapSkill(skill.name));
+    skillsEl.appendChild(btn);
+  });
+  data.items.forEach((entry, i) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "skill-map-node skill-map-item";
+    btn.dataset.index = String(i);
+    btn.textContent = entry.item.title || "Untitled";
+    btn.addEventListener("click", () => openItemTab(entry.item, entry.tab));
+    itemsEl.appendChild(btn);
+  });
+
+  // Open on the busiest skill in the top tier: it sits near the top of the
+  // column, so its lines are on screen when the panel first appears.
+  const keep = data.skills.find((s) => s.skill.name === state.skillMapSelected);
+  const topTier = data.skills.filter((s) => s.tier === data.skills[0].tier);
+  const busiest = topTier.reduce((a, b) => (b.uses.length > a.uses.length ? b : a));
+  selectSkillMapSkill((keep || busiest).skill.name);
+}
+
+function selectSkillMapSkill(name) {
+  const data = state.skillMapData;
+  const chosen = data && data.skills.find((s) => s.skill.name === name);
+  if (!chosen) return;
+  state.skillMapSelected = name;
+  document.querySelectorAll("#skill-map-skills .skill-map-skill").forEach((btn) => {
+    const on = btn.dataset.skill === name;
+    btn.classList.toggle("is-selected", on);
+    btn.setAttribute("aria-pressed", on ? "true" : "false");
+  });
+  document.querySelectorAll("#skill-map-items .skill-map-item").forEach((btn) => {
+    btn.classList.toggle("is-linked", chosen.uses.includes(data.items[Number(btn.dataset.index)]));
+  });
+  document.getElementById("skill-map-status").textContent = `${name}: used in ${skillMapCountText(chosen.uses)}`;
+  drawSkillMapLines();
+}
+
+function drawSkillMapLines() {
+  const graph = document.getElementById("skill-map-graph");
+  const svg = document.getElementById("skill-map-lines");
+  if (!graph || !svg) return;
+  svg.innerHTML = "";
+  const box = graph.getBoundingClientRect();
+  if (!box.width || getComputedStyle(svg).display === "none") return;
+  const from = graph.querySelector(".skill-map-skill.is-selected");
+  if (!from) return;
+  const a = from.getBoundingClientRect();
+  const x1 = a.right - box.left;
+  const y1 = a.top + a.height / 2 - box.top;
+  svg.setAttribute("viewBox", `0 0 ${box.width} ${box.height}`);
+  graph.querySelectorAll(".skill-map-item.is-linked").forEach((to) => {
+    const b = to.getBoundingClientRect();
+    const x2 = b.left - box.left;
+    const y2 = b.top + b.height / 2 - box.top;
+    const bend = Math.max(40, (x2 - x1) / 2);
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", `M${x1},${y1} C${x1 + bend},${y1} ${x2 - bend},${y2} ${x2},${y2}`);
+    svg.appendChild(path);
+  });
+}
+
+function setStackView(view) {
+  const map = view !== "list";
+  document.getElementById("skill-map").hidden = !map;
+  document.getElementById("stack-list").hidden = map;
+  document.querySelectorAll(".stack-view-btn").forEach((btn) => {
+    btn.setAttribute("aria-pressed", btn.dataset.stackView === (map ? "map" : "list") ? "true" : "false");
+  });
+  try { localStorage.setItem(STACK_VIEW_KEY, map ? "map" : "list"); } catch (e) { /* storage blocked: keep the default */ }
+  if (map) drawSkillMapLines();
+}
+
+function initSkillMap() {
+  document.querySelectorAll(".stack-view-btn").forEach((btn) => {
+    btn.addEventListener("click", () => setStackView(btn.dataset.stackView));
+  });
+  let saved = "map";
+  try { saved = localStorage.getItem(STACK_VIEW_KEY) || "map"; } catch (e) { /* storage blocked: keep the default */ }
+  setStackView(saved);
+  const graph = document.getElementById("skill-map-graph");
+  // Lines are measured from the laid-out nodes, so they are redrawn whenever
+  // the graph changes size, including when the Stack tab is first shown.
+  if (graph && "ResizeObserver" in window) new ResizeObserver(() => drawSkillMapLines()).observe(graph);
+}
+
 function initStackSearch() {
   const input = document.getElementById("stack-search");
   if (!input) return;
@@ -2631,6 +2777,7 @@ async function bootstrap() {
   initSidebarResize();
   initMinimap();
   initStackSearch();
+  initSkillMap();
   initSmartSearch("projects-smart-search-btn", "projects-search", () => state.projects, "projects-grid", () => state.rerenderProjects());
   initSmartSearch("experiences-smart-search-btn", "experiences-search", () => state.experiences, "experiences-grid", () => state.rerenderExperiences());
   initTabbarScroll();
@@ -2648,6 +2795,7 @@ async function bootstrap() {
   updateDraftIndicator();
   renderResume();
   renderSkills();
+  renderSkillMap();
   renderIdeFileTreeItems();
   renderResumeFileTree();
   renderStackFileTree();
