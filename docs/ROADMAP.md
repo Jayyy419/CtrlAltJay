@@ -24,6 +24,7 @@
 ## Next
 - Optionally read PORTFOLIO.md, DECISIONS.md and CHANGELOG.md from listed repos as more evidence for Casebook, through the Town hall collector so the token stays with it.
 - Skill tags on older portfolio items, so the skill tree shows every skill that has evidence.
+- Move the Lambda function from python3.11 (Amazon Linux 2) to python3.12 or later (Amazon Linux 2023), then update Pillow to 13.0.0 or later. Pillow 12.2.0 has open advisories, including JPEG decoder bugs; the only path that decodes images is the owner-only upload in the admin panel.
 - An automated test suite in the repo. Changes so far were checked with moto-backed scripts and Playwright outside the repo.
 
 ## Later

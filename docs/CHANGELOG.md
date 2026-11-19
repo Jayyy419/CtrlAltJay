@@ -2,6 +2,12 @@
 
 All notable changes to the CtrlAltJay portfolio are documented here.
 
+## 20 Nov 2026: Dependency security update
+
+### Security
+- Werkzeug 3.1.8 to 3.1.9, for PYSEC-2026-4312.
+- Pillow stays on 12.2.0 for now. The advisories against it are fixed in 12.3.0 and 13.0.0, but neither ships a wheel that installs on the python3.11 Lambda runtime (Amazon Linux 2). Moving to Pillow 13 waits on moving the function to python3.12 or later.
+
 ## 20 Nov 2026: Sentrix description
 
 ### Fixed
