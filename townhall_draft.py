@@ -12,6 +12,7 @@ import re
 from datetime import datetime, timezone
 
 import claude_budget
+from casebook_research import upkeep_usage
 
 MODEL = os.getenv("TOWN_DRAFT_MODEL", "claude-opus-5-5")
 MAX_USD_PER_MONTH = float(os.getenv("TOWN_DRAFT_MAX_USD_PER_MONTH", "1"))
@@ -109,6 +110,7 @@ def draft_stop(town, api_key, repo_name, description, stop, position, titles, cl
             messages=[{"role": "user", "content": brief(repo_name, description, stop, position, titles)}],
         ) as stream:
             message = stream.get_final_message()
+        upkeep_usage.report(message)
         usage = message.usage
         cost = ((usage.input_tokens or 0) * PRICE_INPUT + (usage.output_tokens or 0) * PRICE_OUTPUT) / 1_000_000
         if message.stop_reason == "refusal":

@@ -2,6 +2,21 @@
 
 Significant choices about how CtrlAltJay works, newest first, with what was considered and set aside.
 
+## 20 Nov 2026: Claude token counts are reported to Upkeep after each call
+
+**Decided:**
+- One helper, `casebook_research/upkeep_usage.py`, reports every Claude response to Upkeep straight after it arrives, with Python's standard library: a 3-second timeout, no retries, every failure swallowed.
+- It lives in `casebook_research/` because that function is packaged from its own folder and nothing outside it is included; the app (packaged from the repo root) imports it from there, so there's one copy.
+- The key is an optional SSM SecureString read lazily, only when `UPKEEP_USAGE_URL` is set, and once per container. A missing parameter means no reports rather than an error, the same way the authenticator check stays off until its parameter exists.
+- Only the model name and token counts are sent. The cost figures Casebook and Town hall show are still worked out here from the same responses.
+
+**Why:** Upkeep shows the owner's Claude spend across every project in one place, and each app reports its own counts. Sending synchronously keeps the report from being stranded when Lambda freezes the process after the handler returns; the timeout bounds what that can add to a request.
+
+**Set aside:**
+- Batching a request's reports and sending them at the end. Most requests make one call, and research runs for minutes, so a report per call is simpler and loses less if a run is cut short.
+- A Lambda layer for the shared file, which would be one more resource for a single small module.
+- Reading the key at cold start like the other secrets, which would cost an SSM call on every cold start even while reporting is off.
+
 ## 19 Nov 2026: Casebook research runs in two passes and checks its own labels
 
 **Decided:**

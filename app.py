@@ -45,6 +45,7 @@ from townhall import register_townhall
 from commit_city import register_commit_city
 from source_map import register_source_map
 import owner_totp
+from casebook_research import upkeep_usage
 
 try:
     from PIL import Image as PILImage
@@ -2233,6 +2234,7 @@ def api_chat():
             system=system_prompt,
             messages=clean_history + [{"role": "user", "content": message}],
         )
+        upkeep_usage.report(response)
         reply = "".join(block.text for block in response.content if getattr(block, "type", "") == "text").strip()
         if not reply:
             reply = "Sorry, I couldn't come up with a good answer to that — try rephrasing, or use the Contact tab."
@@ -2321,6 +2323,7 @@ def api_semantic_search():
             max_tokens=300,
             messages=[{"role": "user", "content": prompt}],
         )
+        upkeep_usage.report(response)
         text = "".join(block.text for block in response.content if getattr(block, "type", "") == "text").strip()
         text = re.sub(r"^```(?:json)?|```$", "", text, flags=re.MULTILINE).strip()
         try:

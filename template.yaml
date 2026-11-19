@@ -76,6 +76,19 @@ Parameters:
     Description: >
       SecureString holding the read-only GitHub token for Commit City and
       Source Map. Only the TownCollectorFunction role can read it.
+  UpkeepUsageUrl:
+    Type: String
+    Default: ""
+    Description: >
+      Upkeep's origin, with no trailing slash. Each Claude response's model
+      name and token counts are reported there so Upkeep can show the month's
+      spend. Empty, or with no key in UpkeepUsageKeySsmParam, nothing is sent.
+  UpkeepUsageKeySsmParam:
+    Type: String
+    Default: /ctrlaltjay/upkeep-usage-key
+    Description: >
+      SecureString holding the usage key Upkeep issued for this site. Until it
+      exists, usage reporting stays off.
   CasebookModel:
     Type: String
     Default: claude-opus-5-5
@@ -205,6 +218,8 @@ Resources:
           # pricing page as checked on 19 Nov 2026 for Opus 5.5.
           TOWN_DRAFT_PRICE_INPUT: "4"
           TOWN_DRAFT_PRICE_OUTPUT: "20"
+          UPKEEP_USAGE_URL: !Ref UpkeepUsageUrl
+          UPKEEP_USAGE_KEY_SSM_PARAM: !Ref UpkeepUsageKeySsmParam
       FunctionUrlConfig:
         # NONE, not AWS_IAM. CloudFront's OAC does not sign the request body
         # and Lambda function URLs reject UNSIGNED-PAYLOAD, so every POST is
@@ -242,6 +257,7 @@ Resources:
                 - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${AnthropicApiKeySsmParam}"
                 - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${SecretKeySsmParam}"
                 - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${AdminPasscodeSsmParam}"
+                - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${UpkeepUsageKeySsmParam}"
             # The one parameter the app may also write and delete: the owner
             # sets up, replaces and turns off their authenticator from the site.
             - Effect: Allow
@@ -398,6 +414,8 @@ Resources:
           CASEBOOK_PRICE_CACHE_READ: "0.2"
           CASEBOOK_PRICE_CACHE_WRITE: "5"
           CASEBOOK_PRICE_SEARCH: "0.01"
+          UPKEEP_USAGE_URL: !Ref UpkeepUsageUrl
+          UPKEEP_USAGE_KEY_SSM_PARAM: !Ref UpkeepUsageKeySsmParam
       Policies:
         - DynamoDBCrudPolicy: { TableName: !Ref CasebooksTable }
         - DynamoDBReadPolicy: { TableName: !Ref StoriesTable }
@@ -407,7 +425,9 @@ Resources:
         - Statement:
             - Effect: Allow
               Action: ssm:GetParameter
-              Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${CasebookApiKeySsmParam}"
+              Resource:
+                - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${CasebookApiKeySsmParam}"
+                - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${UpkeepUsageKeySsmParam}"
             - Effect: Allow
               Action: kms:Decrypt
               Resource: "*"
