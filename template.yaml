@@ -70,6 +70,12 @@ Parameters:
       SecureString holding the owner's authenticator secret. The app writes it
       when the owner sets up an authenticator; until it exists, sign-in is the
       passcode alone.
+  GithubTokenSsmParam:
+    Type: String
+    Default: /ctrlaltjay/github-token
+    Description: >
+      SecureString holding the read-only GitHub token for Commit City and
+      Source Map. Only the TownCollectorFunction role can read it.
   CasebookModel:
     Type: String
     Default: claude-opus-5-5
@@ -168,6 +174,9 @@ Resources:
           CASEBOOKS_TABLE: !Ref CasebooksTable
           STORIES_TABLE: !Ref StoriesTable
           CASEBOOK_RESEARCH_FUNCTION: !Ref CasebookResearchFunction
+          TOWN_TABLE: !Ref TownTable
+          PUBLIC_CITY_TABLE: !Ref PublicCityTable
+          TOWN_COLLECTOR_FUNCTION: !Ref TownCollectorFunction
           CASEBOOK_MAX_USD_PER_CASE: !Ref CasebookMaxUsdPerCase
           CASEBOOK_MAX_USD_PER_MONTH: !Ref CasebookMaxUsdPerMonth
       FunctionUrlConfig:
@@ -185,6 +194,9 @@ Resources:
         - DynamoDBCrudPolicy: { TableName: !Ref CasebooksTable }
         - DynamoDBCrudPolicy: { TableName: !Ref StoriesTable }
         - LambdaInvokePolicy: { FunctionName: !Ref CasebookResearchFunction }
+        - DynamoDBCrudPolicy: { TableName: !Ref TownTable }
+        - DynamoDBCrudPolicy: { TableName: !Ref PublicCityTable }
+        - LambdaInvokePolicy: { FunctionName: !Ref TownCollectorFunction }
         - S3CrudPolicy: { BucketName: !Sub "ctrlaltjay-static-${AWS::AccountId}" }
         - Statement:
             - Effect: Allow
@@ -256,6 +268,84 @@ Resources:
       Tags:
         - { Key: Project, Value: CtrlAltJay }
         - { Key: Environment, Value: Production }
+
+  # ── Town hall (Commit City and Source Map) ──────────────────────────────
+  # Owner-only: every repo the token can see, stats snapshots, tours and the
+  # approvals log. Retained for the same reason as the Casebook tables.
+  TownTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: ctrlaltjay-town
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - { AttributeName: pk, AttributeType: S }
+        - { AttributeName: sk, AttributeType: S }
+      KeySchema:
+        - { AttributeName: pk, KeyType: HASH }
+        - { AttributeName: sk, KeyType: RANGE }
+      SSESpecification: { SSEEnabled: true }
+      PointInTimeRecoverySpecification: { PointInTimeRecoveryEnabled: true }
+      Tags:
+        - { Key: Project, Value: CtrlAltJay }
+        - { Key: Environment, Value: Production }
+
+  # The only Town hall data public pages read: what the owner has published.
+  PublicCityTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: ctrlaltjay-public-city
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - { AttributeName: pk, AttributeType: S }
+        - { AttributeName: sk, AttributeType: S }
+      KeySchema:
+        - { AttributeName: pk, KeyType: HASH }
+        - { AttributeName: sk, KeyType: RANGE }
+      SSESpecification: { SSEEnabled: true }
+      PointInTimeRecoverySpecification: { PointInTimeRecoveryEnabled: true }
+      Tags:
+        - { Key: Project, Value: CtrlAltJay }
+        - { Key: Environment, Value: Production }
+
+  # Pulls repo stats from GitHub. Its own role is the only one that can read
+  # the GitHub token, and it can't touch the public table.
+  TownCollectorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: ctrlaltjay-town-collector
+      CodeUri: town_collector/
+      Handler: collector.handler
+      Timeout: 900
+      MemorySize: 256
+      Environment:
+        Variables:
+          TOWN_TABLE: !Ref TownTable
+          GITHUB_TOKEN_SSM_PARAM: !Ref GithubTokenSsmParam
+      Policies:
+        - DynamoDBCrudPolicy: { TableName: !Ref TownTable }
+        - Statement:
+            - Effect: Allow
+              Action: ssm:GetParameter
+              Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${GithubTokenSsmParam}"
+            - Effect: Allow
+              Action: kms:Decrypt
+              Resource: "*"
+              Condition:
+                StringEquals:
+                  kms:ViaService: !Sub "ssm.${AWS::Region}.amazonaws.com"
+      Events:
+        Daily:
+          Type: ScheduleV2
+          Properties:
+            Name: ctrlaltjay-town-collector-daily
+            Description: Daily Commit City stats refresh
+            ScheduleExpression: cron(0 9 * * ? *)
+            ScheduleExpressionTimezone: Asia/Singapore
+            Input: '{"action": "refresh", "trigger": "schedule"}'
 
   # Runs research outside the request path: the app invokes it asynchronously
   # and it writes progress back to the casebook. It has its own role so it is

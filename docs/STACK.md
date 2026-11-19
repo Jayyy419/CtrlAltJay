@@ -13,6 +13,8 @@ Versions are from `requirements.txt` and `template.yaml` at the time of writing.
 | Edge | CloudFront, plus one CloudFront Function and a KeyValueStore | HTTPS on the custom domain, and the off-switch holding page with its owner preview link. |
 | Infrastructure as code | AWS SAM (CloudFormation) | One template for the app, tables, edge and research worker. |
 | Email | Amazon SES | Contact form delivery without an SMTP password. |
+| Scheduling | EventBridge Scheduler | Runs the Town hall collector daily in Singapore time without a server. |
+| GitHub data | GitHub REST API, version 2022-11-28, through Python's standard library | Repo stats for Commit City; no extra dependency for a handful of calls. |
 | AI | Claude API (`anthropic` 0.119) | The site chat, and Casebook research. Model IDs are read from configuration. |
 | Front end | Vanilla JavaScript, custom CSS, Tailwind (CDN) | No build step. |
 | Fonts | IBM Plex Sans and Mono, self-hosted | Matches the code-editor look without a font request to a third party. |

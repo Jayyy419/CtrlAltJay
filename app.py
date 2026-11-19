@@ -41,6 +41,7 @@ from werkzeug.utils import secure_filename
 import json
 
 from casebook import register_casebook
+from townhall import register_townhall
 import owner_totp
 
 try:
@@ -919,6 +920,8 @@ def owner_tools():
          "desc": "Authenticator app and recovery codes"},
         {"href": "/owner/casebook", "icon": "briefcase-outline", "title": "Casebook",
          "desc": "Interview and application prep"},
+        {"href": "/owner/townhall", "icon": "business-outline", "title": "Town hall",
+         "desc": "Commit City and Source Map"},
     ])
 
 
@@ -1654,6 +1657,7 @@ def robots():
 
 
 register_casebook(app, is_owner, dynamodb)
+register_townhall(app, is_owner, dynamodb)
 
 
 # ─── Error Pages ─────────────────────────────────────────────────────────────
