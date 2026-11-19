@@ -9,7 +9,7 @@ The personal portfolio at [ctrlaltjay.dev](https://ctrlaltjay.dev): projects, ex
 
 ## Run it locally
 
-Needs Python 3.11 and AWS credentials that can reach the DynamoDB tables (or a local mock).
+Needs Python 3.14 (the Lambda runtime) and AWS credentials that can reach the DynamoDB tables (or a local mock).
 
 ```bash
 python3 -m venv .venv && . .venv/bin/activate
