@@ -2,6 +2,13 @@
 
 All notable changes to the CtrlAltJay portfolio are documented here.
 
+## 19 Nov 2026: Casebook, step 3
+
+### Added
+- Casebook screens at `/owner/casebook`, owner-only: a case list, the "What's the case?" form, and a casebook view with Questions on the table, Your evidence (a coverage grid on laptops, a list on phones), Loose ends and Questions for them. Cost and the Day-of sheet button sit at the top right.
+- A sample casebook, clearly marked, so the screens can be tried before research exists.
+- The screen's script and styles are served from `/owner/casebook/` behind the owner check, not from the public `/static` folder.
+
 ## 19 Nov 2026: Casebook, step 2
 
 ### Added
