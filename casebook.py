@@ -9,7 +9,7 @@ import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from flask import Blueprint, abort, jsonify, request
+from flask import Blueprint, Response, abort, jsonify, render_template, request
 
 OCCASIONS = {
     "interview": "Internship or job interview",
@@ -32,6 +32,57 @@ STAR_FIELDS = ("situation", "task", "action", "result")
 TEXT_LIMITS = {"organisation": 120, "role": 160, "notes": 4000, "posting_url": 500, "title": 160}
 STORY_FIELD_LIMIT = 2000
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+UI_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "casebook_ui")
+UI_FILES = {"app.js": "text/javascript; charset=utf-8", "app.css": "text/css; charset=utf-8"}
+
+# Shown so the screens can be tried before research exists. Everything about
+# the organisation is invented; the evidence uses real portfolio titles.
+SAMPLE_CASEBOOK = {
+    "casebook": {
+        "id": "sample", "sample": True, "occasion": "interview", "organisation": "Accenture",
+        "role": "Technology Analyst Intern", "date": "2026-12-03", "format": "video",
+        "posting_url": "", "notes": "They said there'll be a case study.", "research_status": "done",
+        "cost_usd": 0.42, "searches": 9, "researched_at": "2026-11-19T09:03:00Z",
+    },
+    "competencies": ["Process change", "Client-facing", "Cloud", "Teamwork", "Stakeholders", "Ownership"],
+    "questions": [
+        {"kind": "motivation", "text": "Why Accenture, and why technology consulting?", "provenance": "reported",
+         "sources": [{"title": "Sample source (not real research)", "url": "", "date": "2026-10-12"}],
+         "why": "They want to see you've thought about client work, not just the tech.",
+         "evidence": [{"title": "Seads Singapore Website", "role": "lead"}, {"title": "Hall 7 Website", "role": "backup"}],
+         "star": None},
+        {"kind": "behavioural", "text": "Tell us about a time you changed how a team worked.", "provenance": "posting",
+         "requirement": "improve client processes",
+         "why": "The role is about changing how clients work, so they want a real example.",
+         "evidence": [{"title": "Power Automate & Office Scripts Data Pipeline", "role": "lead"},
+                      {"title": "Data Analyst / Automation Engineer", "role": "backup"}],
+         "star": {"situation": "Shangri-La's finance team retyped Excel request forms by hand.",
+                  "task": "Automate intake and approvals.",
+                  "action": "Built a Power Automate flow with an Office Script that maps each form into a standard template and routes approvals.",
+                  "result": ""}},
+        {"kind": "technical", "text": "Walk us through a system you moved to the cloud.", "provenance": "usual",
+         "why": "Common for analyst roles in a firm with a large cloud practice.",
+         "evidence": [{"title": "Enterprise Cloud Migration for Trading Platform", "role": "lead"}], "star": None},
+        {"kind": "case", "text": "A client's sign-ups dropped 20%. Where do you start?", "provenance": "usual",
+         "why": "Tests how you structure a vague problem out loud.", "evidence": [], "star": None},
+    ],
+    "evidence": [
+        {"title": "Power Automate & Office Scripts Data Pipeline", "covers": ["Process change", "Stakeholders"]},
+        {"title": "Enterprise Cloud Migration for Trading Platform", "covers": ["Cloud", "Teamwork"]},
+        {"title": "Seads Singapore Website", "covers": ["Client-facing", "Ownership"]},
+        {"title": "Hall 7 Website", "covers": ["Client-facing", "Ownership"]},
+    ],
+    "loose_ends": [
+        {"kind": "question", "text": "Nothing yet for a case question. Practise one sizing case and one diagnosis case."},
+        {"kind": "skill", "text": "The posting asks for SQL. No item shows it beyond a single tag."},
+        {"kind": "revise", "text": "Read up on the firm's latest annual results and its AI practice."},
+    ],
+    "questions_for_them": [
+        "What does a first client project usually look like for an intern?",
+        "How do analysts get feedback during a project?",
+        "Which teams would this role work with most?",
+    ],
+}
 
 bp = Blueprint("casebook", __name__)
 
@@ -137,6 +188,23 @@ def register_casebook(app, is_owner, dynamodb):
         if not item:
             abort(404)
         return item
+
+    @bp.route("/owner/casebook", methods=["GET"])
+    def casebook_page():
+        return render_template("casebook.html")
+
+    @bp.route("/owner/casebook/<name>", methods=["GET"])
+    def casebook_asset(name):
+        # The screen's code is served from here rather than /static so nothing
+        # about Casebook is public, not even its scripts.
+        if name not in UI_FILES:
+            abort(404)
+        with open(os.path.join(UI_DIR, name), encoding="utf-8") as fh:
+            return Response(fh.read(), mimetype=UI_FILES[name].split(";")[0], content_type=UI_FILES[name])
+
+    @bp.route("/api/owner/casebooks/sample", methods=["GET"])
+    def casebook_sample():
+        return jsonify(SAMPLE_CASEBOOK)
 
     @bp.route("/api/owner/casebook/options", methods=["GET"])
     def options():
