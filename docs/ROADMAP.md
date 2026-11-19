@@ -14,8 +14,17 @@
 6. Questions for them, the day-of sheet and PDF export.
 7. Drill (flashcards and feedback), only once the owner says go.
 
+## In progress: Commit City and Source Map
+1. ~~Read the codebase; confirm sign-in.~~ Done: an authenticator app code was added first.
+2. ~~Town hall shell, tables, the GitHub token and the collector with Refresh now.~~ Done.
+3. Commit City with seeded, clearly marked sample data. Design directions first.
+4. Real stats, repo modes, approval and the public snapshot.
+5. Source Map with a sample tour. Design directions first.
+6. Plotting tours in Town hall, the secret scan, publishing, stale checks.
+7. Draft help from the Claude API, only once the owner says go.
+
 ## Next
-- Optionally read PORTFOLIO.md, DECISIONS.md and CHANGELOG.md from listed repos through a read-only GitHub token, as more evidence for Casebook. Needs a token, so it waits for the owner.
+- Optionally read PORTFOLIO.md, DECISIONS.md and CHANGELOG.md from listed repos as more evidence for Casebook, through the Town hall collector so the token stays with it.
 - Skill tags on older portfolio items, so the skill tree shows every skill that has evidence.
 - An automated test suite in the repo. Changes so far were checked with moto-backed scripts and Playwright outside the repo.
 

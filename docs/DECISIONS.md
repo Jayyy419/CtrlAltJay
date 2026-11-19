@@ -52,6 +52,18 @@ Significant choices about how CtrlAltJay works, newest first, with what was cons
 
 **Also decided:** pasted job postings are never stored, only passed to a run. The casebook keeps the link and a summary in my own words.
 
+## 19 Nov 2026: Town hall keeps owner data and published data in separate tables
+
+**Decided:**
+- `ctrlaltjay-town` holds everything owner-side in one partition per repo (`META`, dated `STATS#` rows), plus collector runs, and later tours and the approvals log. `ctrlaltjay-public-city` holds only what the owner publishes. This adjusts the spec's starting model (separate repos, repo_stats, tours, tour_stops and approvals tables) the same way Casebook's was: rows read together live together.
+- A separate collector Lambda holds the GitHub token; the app never does.
+- Weekly history comes from `/stats/contributors`, which covers a repo's whole life, with commit paging as the fallback. `/stats/commit_activity` only covers a year.
+- Building width will use total bytes from `/languages`. It changes only when code is added or removed, unlike line counts, and it's the same number GitHub uses for its language bar.
+
+**Why:** public pages can be pointed at a table that, by construction, holds nothing unapproved. A mistake in a public query can't leak a hidden repo if the hidden repo was never in the table it reads.
+
+**Set aside:** static JSON in S3 for the public snapshot. A table keeps publishing and the approvals log in one transaction-friendly place, and needs no new bucket permissions.
+
 ## 19 Nov 2026: Owner sign-in adds an authenticator app code
 
 **Decided:** sign-in becomes the passcode plus a 6-digit code from an authenticator app (TOTP), with eight one-time recovery codes. This replaces the single-passcode decision below, now that Town hall will be able to browse private repos and publish from them.
