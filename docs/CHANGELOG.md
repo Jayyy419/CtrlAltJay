@@ -4,6 +4,9 @@ All notable changes to the CtrlAltJay portfolio are documented here.
 
 ## 20 Nov 2026: Claude spend reported to Upkeep
 
+### Changed
+- `UpkeepUsageUrl` now defaults to Upkeep's origin, so usage reporting only waits on the key in Parameter Store.
+
 ### Added
 - Every Claude response (site chat, smart search, Drill feedback, Town hall draft help and Casebook research) can report its model name and token counts to Upkeep, so the owner's portal shows the month's Claude spend for this site. Nothing else is sent: no prompts, answers, visitor details or IDs. It's off until `UpkeepUsageUrl` is set and the `/ctrlaltjay/upkeep-usage-key` parameter exists; see `docs/OPERATIONS.md`.
 - A first unit test suite (`tests/`, standard-library `unittest`), run by the deploy before it builds.
