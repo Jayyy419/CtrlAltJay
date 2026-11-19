@@ -10,9 +10,7 @@
 - Casebook step 4: evidence matching and coverage, STAR outlines with gaps, the story bank.
 - Casebook step 5: research with web search in the background, provenance checked in code, caps and cost.
 - Casebook step 6: questions for them you can edit and pick, the Day-of sheet (Boarding pass direction, picked from three) and Save as PDF.
-
-## In progress: Casebook
-7. Drill (flashcards and feedback), only once the owner says go.
+- Casebook step 7: Drill, with Flashcards and an Interview room (the owner picked both of three directions), self-rating that orders the next round, and capped Claude feedback.
 
 ## In progress: Commit City and Source Map
 1. ~~Read the codebase; confirm sign-in.~~ Done: an authenticator app code was added first.

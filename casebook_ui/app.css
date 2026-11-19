@@ -278,3 +278,70 @@ a.src { font-family: 'Plex Mono', monospace; font-size: 11px; color: var(--accen
   .pass-checks li { border-color: #777777; }
   .sample { border: 1px solid #000000; background: none; color: #000000; }
 }
+
+/* Drill */
+.dr-mode { display: flex; gap: 0; }
+.dr-mode .btn { border-radius: 0; }
+.dr-mode .btn:first-child { border-radius: 5px 0 0 5px; }
+.dr-mode .btn:last-child { border-radius: 0 5px 5px 0; border-left: 0; }
+.dr-mode .btn[aria-pressed="true"] { background: var(--accent-strong); border-color: var(--accent-strong); color: var(--on-accent); }
+.dr-use { font-family: 'Plex Mono', monospace; font-size: 12px; color: var(--reported); margin: 0 0 8px; }
+.dr-use span { color: var(--dim); }
+.dr-none { color: var(--gap); font-family: 'Plex Mono', monospace; font-size: 13px; margin: 0 0 8px; }
+.dr-why { color: var(--dim); font-size: 13px; margin: 10px 0 0; }
+.dr-rate { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 16px; }
+.dr-rate .btn { min-height: 48px; font-size: 13px; }
+.dr-rate .r-missed { color: var(--gap); } .dr-rate .r-shaky { color: var(--posting); } .dr-rate .r-got { color: var(--reported); }
+.dr-keys { text-align: center; }
+.dr-done { max-width: 640px; border: 1px solid var(--line); border-radius: 12px; padding: 22px 24px; background: var(--soft); }
+.dr-done h2 { color: var(--bright); margin: 0 0 8px; font-size: 18px; outline: none; }
+.fc-wrap { max-width: 660px; margin: 0 auto; }
+.fc-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; font-family: 'Plex Mono', monospace; font-size: 12px; color: var(--dim); }
+.fc-dots { display: flex; flex-wrap: wrap; gap: 6px; list-style: none; margin: 0; padding: 0; }
+.fc-dots li { width: 10px; height: 10px; border-radius: 50%; background: var(--line); }
+.fc-dots li.on { outline: 2px solid var(--accent); outline-offset: 2px; }
+.fc-dots li.r-got { background: var(--reported); } .fc-dots li.r-shaky { background: var(--posting); } .fc-dots li.r-missed { background: var(--gap); }
+.fc-card { background: var(--soft); border: 1px solid var(--line); border-radius: 14px; padding: 26px; min-height: 260px; }
+.fc-card .kind { font-family: 'Plex Mono', monospace; font-size: 11px; color: var(--kind); letter-spacing: 0.08em; text-transform: uppercase; }
+.fc-card h2 { font-size: 22px; color: var(--bright); line-height: 1.35; margin: 12px 0 18px; outline: none; }
+.fc-back { border-top: 1px dashed var(--line); padding-top: 14px; font-size: 14px; outline: none; }
+.fc-turn { display: flex; justify-content: center; margin-top: 16px; }
+.fc-turn .btn { min-height: 48px; min-width: 200px; font-size: 13px; }
+/* The interview room stays dark in either theme, like a quiet room. */
+.ir-room { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 22px; max-width: 1100px; }
+.ir-stage { background: #0f1219 radial-gradient(ellipse at 50% 0%, #1b2a4a, #0f1219 70%); color: #d8dce6; border: 1px solid #262b36; border-radius: 16px; padding: 24px; display: flex; flex-direction: column; align-items: center; text-align: center; min-width: 0; }
+.ir-who { font-family: 'Plex Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #9fc2ff; margin: 0; }
+.ir-stage h2 { font-size: 23px; line-height: 1.35; color: #ffffff; margin: 12px 0 18px; max-width: 540px; outline: none; }
+.ir-clock { position: relative; width: 150px; height: 150px; }
+.ir-clock svg { display: block; }
+.ir-time { position: absolute; inset: 0; display: grid; place-items: center; align-content: center; font-family: 'Plex Mono', monospace; color: #ffffff; font-size: 28px; }
+.ir-time small { font-size: 10px; color: #aab2c3; letter-spacing: 0.1em; }
+.ir-lab { align-self: flex-start; font-family: 'Plex Mono', monospace; font-size: 12px; color: #aab2c3; margin: 18px 0 6px; }
+.ir-stage textarea { width: 100%; background: #0a0c11; border: 1px solid #343b4c; border-radius: 10px; color: #ffffff; min-height: 130px; padding: 12px; resize: vertical; text-align: left; }
+.ir-stage textarea:focus-visible { outline: 2px solid #9fc2ff; }
+.ir-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; justify-content: center; }
+.ir-stage .btn { background: #1c2130; border-color: #343b4c; color: #ffffff; min-height: 44px; }
+.ir-stage .btn.primary { background: #0e63c4; border-color: #0e63c4; }
+.ir-stage .btn:focus-visible { outline: 2px solid #ffffff; }
+.ir-stage .dr-rate { width: 100%; }
+.ir-stage .r-missed { color: #ffb4a6; } .ir-stage .r-shaky { color: #e8e4a6; } .ir-stage .r-got { color: #7fe0cb; }
+.ir-stage .dr-keys { color: #aab2c3; }
+.ir-answer { width: 100%; text-align: left; background: #0a0c11; border: 1px solid #343b4c; border-radius: 10px; padding: 4px 14px 12px; }
+.ir-answer p { margin: 8px 0 0; white-space: pre-wrap; }
+.ir-answer .ir-lab { margin-top: 10px; }
+.ir-side { background: var(--soft); border: 1px solid var(--line); border-radius: 16px; padding: 20px 22px; min-width: 0; }
+.ir-side h2 { font-family: 'Plex Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); margin: 0 0 10px; outline: none; }
+.ir-side h3 { font-size: 13px; color: var(--bright); margin: 14px 0 4px; }
+.ir-side .ir-notes-h { margin-top: 22px; }
+.ir-facts { margin: 0 0 12px; padding-left: 18px; }
+.ir-star { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-bottom: 6px; outline: none; }
+.ir-star div { border: 1px solid var(--line); border-radius: 8px; padding: 8px 4px; text-align: center; font-family: 'Plex Mono', monospace; font-size: 11px; }
+.ir-star b { display: block; font-size: 16px; }
+.ir-star .ok b { color: var(--reported); } .ir-star .miss b { color: var(--posting); }
+.ir-fb { margin: 0; padding-left: 18px; } .ir-fb li { margin-bottom: 6px; }
+@media (max-width: 860px) {
+  .ir-room { grid-template-columns: minmax(0, 1fr); }
+  .ir-stage h2 { font-size: 20px; }
+  .fc-card { padding: 20px; } .fc-card h2 { font-size: 19px; }
+  .dr-mode .btn { min-height: 44px; }
+}

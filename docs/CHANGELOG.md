@@ -2,6 +2,18 @@
 
 All notable changes to the CtrlAltJay portfolio are documented here.
 
+## 19 Nov 2026: Casebook, step 7
+
+### Added
+- Drill, from the Drill button on any case. Two modes:
+  - Flashcards: answer out loud, turn the card to see your evidence and STAR outline, then rate it Missed it, Shaky or Got it (or press 1, 2, 3).
+  - Interview room: a two-minute countdown and a box to type your answer, then How it went (time and words) beside your notes, and the same rating.
+- Ratings are saved per question and decide the order: missed and shaky questions come first next round. Ratings on the sample case aren't saved.
+- "Get feedback from Claude" in the Interview room: which STAR parts came through, what went well and what to work on. It only runs when pressed, is capped at US$1 a month, and keeps neither your answer nor the feedback.
+
+### Changed
+- Town hall draft help and Drill feedback share one spending-cap helper (`claude_budget.py`).
+
 ## 19 Nov 2026: Casebook, step 6
 
 ### Added

@@ -10,9 +10,8 @@ import json
 import os
 import re
 from datetime import datetime, timezone
-from decimal import Decimal
 
-from botocore.exceptions import ClientError
+import claude_budget
 
 MODEL = os.getenv("TOWN_DRAFT_MODEL", "claude-opus-5-5")
 MAX_USD_PER_MONTH = float(os.getenv("TOWN_DRAFT_MAX_USD_PER_MONTH", "1"))
@@ -90,18 +89,11 @@ def draft_stop(town, api_key, repo_name, description, stop, position, titles, cl
         raise DraftError("Draft help isn't set up: there's no Claude API key.")
     if MAX_USD_PER_MONTH <= 0:
         raise DraftError("Draft help is switched off (the monthly cap is zero).")
-    reserve = Decimal(str(round(_worst_case(), 6)))
     key = {"pk": "SPEND", "sk": f"DRAFT#{_month()}"}
     try:
-        town.update_item(
-            Key=key, UpdateExpression="ADD spent_usd :r",
-            ConditionExpression="attribute_not_exists(spent_usd) OR spent_usd <= :limit",
-            ExpressionAttributeValues={":r": reserve, ":limit": Decimal(str(round(MAX_USD_PER_MONTH - _worst_case(), 6)))},
-        )
-    except ClientError as err:
-        if err.response["Error"]["Code"] == "ConditionalCheckFailedException":
-            raise DraftError(f"This month's draft budget (US${MAX_USD_PER_MONTH:.2f}) is used up. It resets on the 1st (UTC).") from None
-        raise
+        claude_budget.reserve(town, key, MAX_USD_PER_MONTH, _worst_case())
+    except claude_budget.OverBudget:
+        raise DraftError(f"This month's draft budget (US${MAX_USD_PER_MONTH:.2f}) is used up. It resets on the 1st (UTC).") from None
     cost = 0.0
     try:
         if client_factory is None:
@@ -130,9 +122,7 @@ def draft_stop(town, api_key, repo_name, description, stop, position, titles, cl
     except Exception as exc:  # noqa: BLE001 - any API failure becomes one plain message
         raise DraftError("Claude couldn't be reached. Try again in a moment.") from exc
     finally:
-        # Swap the reservation for what the request really cost.
-        town.update_item(Key=key, UpdateExpression="ADD spent_usd :d, drafts :one",
-                         ExpressionAttributeValues={":d": Decimal(str(round(cost, 6))) - reserve, ":one": 1})
+        claude_budget.settle(town, key, cost, _worst_case(), "drafts")
     title, explanation = _tidy(data.get("title"), 80), _tidy(data.get("explanation"), 600)
     words = sorted({m.lower() for m in BANNED.findall(title + " " + explanation)})
     return {"title": title, "explanation": explanation, "cost": round(cost, 4), "check_words": words}
