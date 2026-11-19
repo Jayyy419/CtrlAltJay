@@ -6,7 +6,7 @@
   var statusEl = document.getElementById("cb-status");
   var state = {
     cases: [], options: null, view: null, data: null, tab: "questions", q: 0,
-    stories: [], story: null, pool: null, addingQuestion: false,
+    stories: [], story: null, pool: null, addingQuestion: false, researchOpen: false, poll: null,
   };
 
   var TABS = [
@@ -68,6 +68,7 @@
 
   function niceDate(iso) {
     if (!iso) return "";
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
     var p = iso.split("-");
     return parseInt(p[2], 10) + " " + MONTHS[parseInt(p[1], 10) - 1] + " " + p[0];
   }
@@ -121,7 +122,9 @@
       hidden: raw.hidden || [],
       stories: raw.stories || [],
       loose: raw.loose_ends || [],
-      theirs: raw.questions_for_them || [],
+      theirs: (raw.questions_for_them || []).map(function (t) { return typeof t === "string" ? { text: t, sources: [] } : t; }),
+      brief: raw.brief && Object.keys(raw.brief).length ? raw.brief : null,
+      research: raw.research || null,
     };
   }
 
@@ -151,9 +154,10 @@
 
     if (d.sample) {
       html += '<p class="sample-note">Made-up research so you can try the screens. The organisation details and sources are invented; the evidence uses your real portfolio items.</p>';
-    } else if (c.research_status !== "done") {
-      html += '<p class="sample-note">Research isn\'t switched on yet. For now the case works from your own material: add the usual questions, and your evidence is matched against what they look for.</p>';
+    } else {
+      html += researchPanel(d);
     }
+    if (d.brief) html += briefHtml(d.brief);
 
     html += '<div class="cb-tabs" role="tablist" aria-label="Casebook sections">';
     TABS.forEach(function (t) {
@@ -280,6 +284,65 @@
       storySel + select("ev-lead", "Lead with", lead) + select("ev-backup", "Back-up", backup) + "</div></details>";
   }
 
+  function money(n) {
+    return "US$" + Number(n || 0).toFixed(2);
+  }
+
+  function researchPanel(d) {
+    var r = d.research;
+    var c = d.casebook;
+    if (!r) return "";
+    if (r.status === "queued" || r.status === "running") {
+      return '<div class="research live" role="status"><span class="spin" aria-hidden="true"></span><div><b>Building the case.</b> ' +
+        esc(r.progress || "Starting") + ". " + money(r.run_cost) + " so far." +
+        '<div class="hint">You can leave this page. It keeps going, and the case fills in when it\'s done.</div></div></div>';
+    }
+    var html = "";
+    if (r.status === "failed") {
+      html += '<p class="research-err" role="alert">' + esc(r.error || "Research stopped without finishing.") +
+        (r.run_cost ? " That run cost " + money(r.run_cost) + "." : "") + "</p>";
+    }
+    var limits = "Up to " + money(r.available) + " for this run. " + money(r.spent_month) + " of " + money(r.per_month) + " used this month.";
+    if (!state.researchOpen) {
+      var lead = c.research_status === "done" ? "" :
+        '<p class="sample-note">Not researched yet. Building the case adds what people report being asked, what the posting points to and what\'s usual, each labelled with where it came from. Your own material works without it.</p>';
+      return html + lead + '<div class="actions research-bar"><button type="button" class="btn primary" data-act="research-open"' +
+        (r.available < 0.5 ? " disabled" : "") + ">" + (c.research_status === "done" ? "Research again" : "Build the case") + "</button>" +
+        '<span class="hint">' + (r.available < 0.5 ? "This month's research budget is used up. It resets on the 1st." : esc(limits)) + "</span></div>";
+    }
+    return html + '<form class="research" id="research-form"><div style="flex:1;min-width:0">' +
+      "<b>Build the case</b><p class=\"hint\" style=\"margin:4px 0 10px\">Research searches the web for what " + esc(c.organisation) +
+      " says it values, the format, questions people report being asked, and recent news. " + esc(limits) + "</p>" +
+      '<label for="r-posting">Paste the posting (optional)</label>' +
+      '<textarea id="r-posting" rows="5" maxlength="20000" placeholder="' + (c.posting_url ? "The link you gave will be read too." : "Or add a link with Edit details.") + '"></textarea>' +
+      '<div class="hint">Read once for this run and never kept.</div>' +
+      '<div class="actions" style="margin-top:12px"><button type="submit" class="btn primary">Build the case</button>' +
+      '<button type="button" class="btn" data-act="research-cancel">Cancel</button></div></div></form>';
+  }
+
+  function sourceLinks(sources) {
+    return (sources || []).map(function (s) {
+      var label = esc(s.title) + (s.date ? ", " + esc(niceDate(s.date)) : "");
+      return s.url ? ' <a class="src" href="' + esc(s.url) + '" rel="noopener noreferrer" target="_blank">' + label + "</a>" : "";
+    }).join("");
+  }
+
+  function briefHtml(b) {
+    var parts = [["values", "What they say they value"], ["format", "The format"], ["recent", "Recent news"]];
+    var html = '<details class="brief" open><summary>What research found</summary><div class="brief-grid">';
+    parts.forEach(function (p) {
+      var items = b[p[0]] || [];
+      html += '<div><h3 class="h3">' + p[1] + "</h3>" + (items.length ? "<ul>" + items.map(function (f) {
+        return "<li>" + esc(f.text) + sourceLinks(f.sources) + "</li>";
+      }).join("") + "</ul>" : '<p class="hint">Nothing found.</p>') + "</div>";
+    });
+    if (b.posting_summary) html += '<div><h3 class="h3">The posting, in short</h3><p>' + esc(b.posting_summary) + "</p></div>";
+    if (b.not_found && b.not_found.length) {
+      html += '<div><h3 class="h3">Couldn\'t find</h3><ul>' + b.not_found.map(function (t) { return "<li>" + esc(t) + "</li>"; }).join("") + "</ul></div>";
+    }
+    return html + "</div></details>";
+  }
+
   function sourceText(q) {
     if (q.provenance === "reported" && q.sources && q.sources.length) {
       return q.sources.map(function (s) {
@@ -288,7 +351,7 @@
       }).join("");
     }
     if (q.provenance === "posting" && q.requirement) {
-      return "<span>Posting asks to &ldquo;" + esc(q.requirement) + "&rdquo;</span>";
+      return "<span>The posting says &ldquo;" + esc(q.requirement) + "&rdquo;</span>";
     }
     return "";
   }
@@ -384,7 +447,7 @@
 
   function renderTheirs(d) {
     if (!d.theirs.length) return '<div class="empty">No questions for them yet. These get drafted from what research finds about the team and the role.</div>';
-    return '<ol class="qft">' + d.theirs.map(function (t) { return "<li>" + esc(t) + "</li>"; }).join("") + "</ol>";
+    return '<ol class="qft">' + d.theirs.map(function (t) { return "<li>" + esc(t.text) + sourceLinks(t.sources) + "</li>"; }).join("") + "</ol>";
   }
 
   function reloadCase(keepQuestionId) {
@@ -397,7 +460,42 @@
       }
       state.data = data;
       renderCase();
+      watchResearch();
     });
+  }
+
+  function running(d) {
+    return d && d.research && (d.research.status === "queued" || d.research.status === "running");
+  }
+
+  // While a run is going, the case is re-read every few seconds. Re-rendering
+  // would steal focus and lose half-typed input, so only the panel updates
+  // until the run ends.
+  function watchResearch() {
+    if (state.poll || !running(state.data)) return;
+    state.poll = setInterval(function () {
+      var d = state.data;
+      if (!d || !running(d) || state.view !== "case/" + d.casebook.id) {
+        clearInterval(state.poll);
+        state.poll = null;
+        return;
+      }
+      api("GET", "/api/owner/casebooks/" + d.casebook.id).then(function (raw) {
+        if (!state.data || state.data.casebook.id !== raw.casebook.id) return;
+        var fresh = normalise(raw, false);
+        if (running(fresh)) {
+          state.data.research = fresh.research;
+          var panel = main.querySelector(".research.live");
+          if (panel) panel.outerHTML = researchPanel(state.data);
+          return;
+        }
+        clearInterval(state.poll);
+        state.poll = null;
+        state.data = fresh;
+        renderCase();
+        say(fresh.research.status === "done" ? "Case built." : "Research stopped.");
+      }).catch(function () {});
+    }, 4000);
   }
 
   function currentQuestion() {
@@ -639,6 +737,7 @@
     var view = location.hash.slice(1) || (state.cases.length ? "case/" + state.cases[0].id : "sample");
     state.view = view;
     state.addingQuestion = false;
+    state.researchOpen = false;
     renderList();
     if (view === "new") {
       renderForm(null);
@@ -670,6 +769,7 @@
       renderCase();
       say("");
       focusMain();
+      if (!data.sample) watchResearch();
     }).catch(function (err) {
       if (err.status === 404 && view !== "sample") {
         main.innerHTML = '<div class="empty">That case isn\'t here any more. It may have been closed.</div>';
@@ -802,7 +902,15 @@
     }
     if (!(el = t.closest("[data-act]"))) return;
     var name = el.getAttribute("data-act");
-    if (name === "sheet") {
+    if (name === "research-open") {
+      state.researchOpen = true;
+      renderCase();
+      refocus("#r-posting");
+    } else if (name === "research-cancel") {
+      state.researchOpen = false;
+      renderCase();
+      refocus('[data-act="research-open"]');
+    } else if (name === "sheet") {
       say("The day-of sheet arrives in a later update.");
     } else if (name === "edit") {
       renderForm(state.data.casebook);
@@ -894,6 +1002,17 @@
           state.q = state.data.questions.length;
           return reloadCase();
         }).then(function () { say("Question added."); refocus("#q-detail"); }).catch(failed);
+    } else if (form.id === "research-form") {
+      e.preventDefault();
+      var btn = form.querySelector("button[type=submit]");
+      btn.disabled = true;
+      say("Starting research...");
+      api("POST", "/api/owner/casebooks/" + state.data.casebook.id + "/research", { posting_text: document.getElementById("r-posting").value })
+        .then(function () {
+          state.researchOpen = false;
+          return reloadCase();
+        }).then(function () { say("Research started."); })
+        .catch(function (err) { btn.disabled = false; failed(err); });
     } else if (form.id === "comp-form") {
       e.preventDefault();
       var v = document.getElementById("comp-new").value.trim();

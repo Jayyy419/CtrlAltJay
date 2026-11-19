@@ -8,9 +8,9 @@
 - Casebook step 2: tables, owner-only API, research worker shell, key separation.
 - Casebook step 3: the case form and casebook view, with a marked sample casebook.
 - Casebook step 4: evidence matching and coverage, STAR outlines with gaps, the story bank.
+- Casebook step 5: research with web search in the background, provenance checked in code, caps and cost.
 
 ## In progress: Casebook
-5. Research with web search as a background job, with provenance labels, sources, caps and cost.
 6. Questions for them, the day-of sheet and PDF export.
 7. Drill (flashcards and feedback), only once the owner says go.
 
