@@ -63,6 +63,22 @@ Parameters:
     Description: >
       SecureString holding the Claude API key Casebook research uses. Only
       the CasebookResearchFunction role can read it; the main app cannot.
+  CasebookModel:
+    Type: String
+    Default: claude-opus-5-5
+    Description: Claude model Casebook research runs on.
+  CasebookMaxSearches:
+    Type: Number
+    Default: 25
+    Description: Most web searches one research run may make.
+  CasebookMaxUsdPerCase:
+    Type: Number
+    Default: 3
+    Description: Most one research run may spend, in US dollars.
+  CasebookMaxUsdPerMonth:
+    Type: Number
+    Default: 10
+    Description: Most all research may spend in a calendar month (UTC), in US dollars.
 
 Globals:
   Function:
@@ -144,6 +160,8 @@ Resources:
           CASEBOOKS_TABLE: !Ref CasebooksTable
           STORIES_TABLE: !Ref StoriesTable
           CASEBOOK_RESEARCH_FUNCTION: !Ref CasebookResearchFunction
+          CASEBOOK_MAX_USD_PER_CASE: !Ref CasebookMaxUsdPerCase
+          CASEBOOK_MAX_USD_PER_MONTH: !Ref CasebookMaxUsdPerMonth
       FunctionUrlConfig:
         # NONE, not AWS_IAM. CloudFront's OAC does not sign the request body
         # and Lambda function URLs reject UNSIGNED-PAYLOAD, so every POST is
@@ -242,6 +260,15 @@ Resources:
           CASEBOOKS_TABLE: !Ref CasebooksTable
           STORIES_TABLE: !Ref StoriesTable
           CASEBOOK_API_KEY_SSM_PARAM: !Ref CasebookApiKeySsmParam
+          CASEBOOK_MODEL: !Ref CasebookModel
+          CASEBOOK_MAX_SEARCHES: !Ref CasebookMaxSearches
+          # US dollars per million tokens, and per search, from Anthropic's
+          # pricing page as checked on 19 Nov 2026.
+          CASEBOOK_PRICE_INPUT: "4"
+          CASEBOOK_PRICE_OUTPUT: "20"
+          CASEBOOK_PRICE_CACHE_READ: "0.2"
+          CASEBOOK_PRICE_CACHE_WRITE: "5"
+          CASEBOOK_PRICE_SEARCH: "0.01"
       Policies:
         - DynamoDBCrudPolicy: { TableName: !Ref CasebooksTable }
         - DynamoDBReadPolicy: { TableName: !Ref StoriesTable }

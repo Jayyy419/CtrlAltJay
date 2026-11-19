@@ -2,6 +2,15 @@
 
 All notable changes to the CtrlAltJay portfolio are documented here.
 
+## 19 Nov 2026: Casebook, step 5
+
+### Added
+- "Build the case": research on Claude Opus 5.5 with web search, run in the background with live progress. You can leave the page and come back.
+- What research found: what the organisation says it values, the format, recent news, what couldn't be found and a short summary of the posting, each with source links and dates.
+- Researched questions labelled Reported (with sources and dates), From the posting (quoting the requirement) or Usual for this kind of role. The labels are checked before anything is stored.
+- Questions for them and topics to revise from research. Topics show in Loose ends.
+- Caps: US$3 per run and US$10 per month by default, with the cost of each case and the month's total shown.
+
 ## 19 Nov 2026: Casebook, step 4
 
 ### Added

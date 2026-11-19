@@ -3,12 +3,14 @@
 Everything here sits behind the owner session. Signed-out requests get an
 empty 404, so the routes look the same as ones that don't exist.
 """
+import json
 import os
 import re
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
+import boto3
 from flask import Blueprint, Response, abort, jsonify, render_template, request
 
 import casebook_evidence as ce
@@ -38,6 +40,14 @@ ID_RE = re.compile(r"^[0-9a-f]{12}$")
 REF_RE = re.compile(r"^(item|resume|story):[0-9A-Za-z-]{1,64}$")
 MAX_COMPETENCIES = 12
 MAX_QUESTIONS = 40
+MAX_USD_PER_CASE = float(os.getenv("CASEBOOK_MAX_USD_PER_CASE", "3"))
+MAX_USD_PER_MONTH = float(os.getenv("CASEBOOK_MAX_USD_PER_MONTH", "10"))
+# Below this a run can't do enough searching to be worth starting.
+MIN_RUN_USD = 0.5
+# A run that hasn't finished in this long has died; the worker's own limit
+# is 15 minutes.
+STALE_RUN = timedelta(minutes=20)
+POSTING_TEXT_LIMIT = 20000
 UI_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "casebook_ui")
 UI_FILES = {"app.js": "text/javascript; charset=utf-8", "app.css": "text/css; charset=utf-8"}
 
@@ -194,6 +204,36 @@ def register_casebook(app, is_owner, dynamodb):
             return list(meta["competencies"])
         return list(ce.DEFAULT_COMPETENCIES.get(meta.get("occasion"), []))
 
+    research_fn = os.getenv("CASEBOOK_RESEARCH_FUNCTION", "ctrlaltjay-casebook-research")
+    lambda_client = boto3.client("lambda")
+
+    def _month_spent():
+        month = datetime.now(timezone.utc).strftime("%Y-%m")
+        row = casebooks.get_item(Key={"pk": "SPEND", "sk": month}).get("Item") or {}
+        return float(row.get("spent_usd") or 0)
+
+    def _research_state(meta):
+        status = meta.get("research_status", "not_started")
+        started = meta.get("research_started_at", "")
+        if status in ("queued", "running") and started:
+            began = datetime.strptime(started, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+            if datetime.now(timezone.utc) - began > STALE_RUN:
+                status = "failed"
+        spent = _month_spent()
+        return {
+            "status": status,
+            "progress": meta.get("research_progress", ""),
+            "error": meta.get("research_error", "") if status == "failed" and meta.get("research_error")
+            else ("Research stopped without finishing." if status == "failed" else ""),
+            "started_at": started,
+            "run_cost": float(meta.get("research_run_cost") or 0),
+            "run_searches": int(meta.get("research_run_searches") or 0),
+            "per_case": MAX_USD_PER_CASE,
+            "per_month": MAX_USD_PER_MONTH,
+            "spent_month": round(spent, 2),
+            "available": round(min(MAX_USD_PER_CASE, MAX_USD_PER_MONTH - spent), 2),
+        }
+
     def _view(meta, rows):
         pool = _pool()
         by_ref = {e["ref"]: e for e in pool}
@@ -201,6 +241,13 @@ def register_casebook(app, is_owner, dynamodb):
         hidden = list(meta.get("hidden") or [])
         overrides = meta.get("overrides") or {}
         scored = ce.coverage(pool, comps, overrides, hidden)
+        sources = {int(r["id"]): {"id": int(r["id"]), "title": r.get("title", ""), "url": r.get("url", ""),
+                                  "date": r.get("date", ""), "supports": r.get("supports", "")}
+                   for r in rows if r["sk"].startswith("SRC#")}
+
+        def cite(ids):
+            return [sources[int(i)] for i in ids or [] if int(i) in sources]
+
         q_rows = sorted((r for r in rows if r["sk"].startswith("Q#")), key=lambda r: (r.get("created_at", ""), r["sk"]))
         # Questions keep their own competencies even if the case list changes,
         # so evidence is picked against both.
@@ -215,7 +262,7 @@ def register_casebook(app, is_owner, dynamodb):
             questions.append({
                 "id": q["id"], "kind": q.get("kind"), "text": q.get("text"), "provenance": q.get("provenance"),
                 "why": q.get("why", ""), "competencies": q.get("competencies") or [],
-                "sources": q.get("sources") or [], "requirement": q.get("requirement", ""),
+                "sources": cite(q.get("source_ids")), "requirement": q.get("requirement", ""),
                 "chosen": bool(q.get("evidence_refs")), "story_id": q.get("story_id", ""),
                 "evidence": [{"ref": r, "title": by_ref[r]["title"], "type": by_ref[r]["type"],
                               "role": "lead" if i == 0 else "backup"} for i, r in enumerate(refs)],
@@ -227,6 +274,8 @@ def register_casebook(app, is_owner, dynamodb):
                 missing = [f for f in ce.STAR_FIELDS if not star[f]]
                 if missing:
                     loose.append({"kind": "story", "text": f"\u201c{lead['title']}\u201d still needs its {', '.join(missing)}."})
+        for topic in meta.get("research_topics") or []:
+            loose.append({"kind": "revise", "text": topic})
         for comp in comps:
             if not any(comp in s["covers"] for s in scored):
                 loose.append({"kind": "skill", "text": f"Nothing in your material shows {comp} yet."})
@@ -242,7 +291,12 @@ def register_casebook(app, is_owner, dynamodb):
             "hidden": [{"ref": r, "title": by_ref[r]["title"]} for r in hidden if r in by_ref],
             "stories": [{"id": e["id"], "title": e["title"]} for e in pool if e["type"] == "story"],
             "loose_ends": loose,
-            "questions_for_them": [],
+            "questions_for_them": [{"text": t.get("text", ""), "sources": cite(t.get("source_ids"))}
+                                   for t in meta.get("questions_for_them") or []],
+            "brief": {k: ([{"text": f.get("text", ""), "sources": cite(f.get("source_ids"))} for f in v]
+                          if k in ("values", "format", "recent") else v)
+                      for k, v in meta["research_brief"].items()} if meta.get("research_brief") else None,
+            "research": _research_state(meta),
         }
 
     @bp.before_request
@@ -372,6 +426,39 @@ def register_casebook(app, is_owner, dynamodb):
             ReturnValues="ALL_NEW",
         )["Attributes"]
         return jsonify(_plain(updated))
+
+    @bp.route("/api/owner/casebooks/<case_id>/research", methods=["POST"])
+    def casebook_research(case_id):
+        if not ID_RE.match(case_id):
+            abort(404)
+        meta = _plain(_meta(case_id))
+        state = _research_state(meta)
+        if state["status"] in ("queued", "running"):
+            return jsonify({"error": "Research is already running for this case."}), 409
+        budget = state["available"]
+        if budget < MIN_RUN_USD:
+            return jsonify({"error": f"This month's research budget is used up (US${state['spent_month']:.2f} of "
+                                     f"US${MAX_USD_PER_MONTH:.2f}). It resets on the 1st."}), 400
+        posting_text = str((request.get_json(silent=True) or {}).get("posting_text") or "").strip()[:POSTING_TEXT_LIMIT]
+        run_id = uuid.uuid4().hex
+        casebooks.update_item(
+            Key={"pk": f"CASE#{case_id}", "sk": "META"},
+            UpdateExpression=("SET research_status = :q, research_run = :r, research_started_at = :t, "
+                              "research_progress = :p, research_error = :e, research_run_cost = :z, "
+                              "research_run_searches = :n, posting_provided = :pp"),
+            ExpressionAttributeValues={":q": "queued", ":r": run_id, ":t": _now(), ":p": "Waiting to start",
+                                       ":e": "", ":z": Decimal("0"), ":n": 0,
+                                       ":pp": bool(posting_text) or bool(meta.get("posting_provided"))},
+        )
+        # The pasted posting goes to the run in the invocation and is never
+        # written to a table.
+        lambda_client.invoke(
+            FunctionName=research_fn,
+            InvocationType="Event",
+            Payload=json.dumps({"action": "research", "case_id": case_id, "run_id": run_id,
+                                "budget_usd": budget, "posting_text": posting_text}).encode(),
+        )
+        return jsonify({"ok": True, "budget": budget}), 202
 
     @bp.route("/api/owner/casebooks/<case_id>/coverage", methods=["PUT"])
     def casebook_coverage(case_id):
