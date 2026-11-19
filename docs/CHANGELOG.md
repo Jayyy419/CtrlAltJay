@@ -2,6 +2,14 @@
 
 All notable changes to the CtrlAltJay portfolio are documented here.
 
+## 20 Nov 2026: Python 3.14 and Pillow 13
+
+### Security
+- Pillow 12.2.0 to 13.0.0. That clears every pip-audit finding against Pillow, including the JPEG decoder overflows.
+
+### Changed
+- The Lambda functions run on python3.14 (Amazon Linux 2023) instead of python3.11 (Amazon Linux 2, which reached end of life in June 2026). python3.11 had no Pillow 13 wheel and is deprecated on 30 Jun 2027. The deploy and site power workflows build with Python 3.14, and the deploy's syntax check now runs on that version.
+
 ## 20 Nov 2026: Dependency updates
 
 ### Changed

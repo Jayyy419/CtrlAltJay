@@ -141,13 +141,22 @@ aws s3 sync static/ "s3://$(aws cloudformation describe-stacks \
 
 `--use-container` matters: dependencies must resolve against the real Lambda
 runtime image, not whatever happens to match the machine running the build.
-Pillow is the one that bites — it is pinned to 12.2.0 because 12.3.0 ships no
-cp311 x86_64 manylinux wheel, so pip falls back to the sdist and tries to
-compile it in a build container with no toolchain. (EB's build image *does*
-have a compiler, which is why 12.3.0 worked there and hid the problem.)
-Pillow 13.0.0 has the same gap: its only Linux x86_64 wheels need glibc 2.27
-or later, and the python3.11 runtime image is Amazon Linux 2 (glibc 2.26). It
-needs the function on python3.12 or later first.
+Pillow is the one that bites. From 12.3.0 on, its Linux x86_64 wheels need
+glibc 2.27 or later. The function first ran on python3.11, whose runtime and
+build image are Amazon Linux 2 (glibc 2.26), so pip fell back to the sdist and
+tried to compile it in a build container with no toolchain. (EB's build image
+*does* have a compiler, which is why 12.3.0 worked there and hid the problem.)
+Pillow was held at 12.2.0 until the function moved to python3.14 on Amazon
+Linux 2023 (glibc 2.34), where Pillow 13 installs from a wheel. Before
+changing the runtime or a compiled dependency, check that every pinned
+package has a wheel for that Python and glibc, for example:
+
+```bash
+pip download --only-binary=:all: --python-version 3.14 --implementation cp \
+  --abi cp314 --platform manylinux_2_34_x86_64 --platform manylinux_2_28_x86_64 \
+  --platform manylinux_2_27_x86_64 --platform manylinux2014_x86_64 \
+  -d /tmp/wheels -r requirements.txt
+```
 
 The function is x86_64, matching the CI runner, so this builds natively. It
 was briefly arm64 — ~20% cheaper per GB-second — but that forces the build
