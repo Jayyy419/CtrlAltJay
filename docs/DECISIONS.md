@@ -59,6 +59,14 @@ Significant choices about how CtrlAltJay works, newest first, with what was cons
 - Private buildings never show as boarded up, because the archived flag isn't on that list either.
 - Approving or moving a repo to the drawer republishes straight away, so hiding something takes effect at once. New daily stats wait for "Publish latest stats", so nothing changes on the public site without an owner action.
 
+## 19 Nov 2026: The Day-of sheet is a boarding pass, saved as PDF by printing
+
+**Decided:** the owner picked the bold "Boarding pass" direction over a two-column crib sheet and an answer grid. It's one card, phone first, since it's what's open on the day. The sheet only shows what the casebook already stores: the opening line is one the owner writes, stories are the first three questions with evidence and an outline, and empty STAR parts stay as "[your result here]" and the like.
+
+**PDF:** "Save as PDF" opens the browser's print dialog with a print layout that hides everything but the pass, in black on white. The owner chose this over a server-built file, which would have needed a PDF library and an embedded font in the Lambda package. The PDF never leaves the owner's device unless they share it.
+
+**Questions for them:** they stay on the case's `META` row, each with an id (derived from the text for ones research wrote), an "own" flag and an "On the sheet" flag. A research re-run replaces only research's own questions, keeps the owner's and their picks, and skips any the owner removed (kept in `theirs_dismissed`).
+
 ## 19 Nov 2026: Draft help for tour stops
 
 **Decided:** a "Draft with Claude" button on each plotted stop suggests a title and explanation, on Opus 5.5, with a cap of US$1 a month, both chosen by the owner and set as stack parameters (`TownDraftModel`, `TownDraftMaxUsdPerMonth`). It uses the site chat assistant's API key, which the app can already read, so no new secret or permission was needed.

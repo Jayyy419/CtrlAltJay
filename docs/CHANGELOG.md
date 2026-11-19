@@ -2,6 +2,17 @@
 
 All notable changes to the CtrlAltJay portfolio are documented here.
 
+## 19 Nov 2026: Casebook, step 6
+
+### Added
+- Questions for them: add your own, edit or remove any, and mark the ones you want "On the sheet". A new research run keeps your own questions and your picks, and doesn't bring back ones you removed.
+- "Open with" on the case form: a line or two you'll open with, shown at the top of the Day-of sheet.
+- The Day-of sheet, as a boarding pass: organisation, role, date, format and a countdown in Singapore time, then Open with, up to three stories with their STAR outlines (gaps stay as gaps), Ask them, Know before you go and Last checks. Made for a phone on the day.
+- Save as PDF prints the sheet on its own in ink-friendly black and white, through the browser's print dialog.
+
+### Fixed
+- The Sign-in security link in the Casebook sidebar is 44px tall on phones.
+
 ## 19 Nov 2026: Source Map, step 7
 
 ### Added
