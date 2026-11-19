@@ -22,7 +22,9 @@ from dotenv import load_dotenv
 from flask import (
     Flask,
     Response,
+    abort,
     flash,
+    make_response,
     g,
     jsonify,
     redirect,
@@ -39,6 +41,7 @@ from werkzeug.utils import secure_filename
 import json
 
 from casebook import register_casebook
+import owner_totp
 
 try:
     from PIL import Image as PILImage
@@ -233,7 +236,12 @@ def _admin_session_row_id(sid):
     return "__adminsession_" + hashlib.sha256(sid.encode()).hexdigest()
 
 
-def start_admin_session():
+TOTP_PENDING_SECONDS = 300
+TOTP_STATE_ID = "__admintotp_state"
+TOTP_PENDING_ID = "__admintotp_pending"
+
+
+def start_admin_session(with_code=False):
     sid = secrets.token_urlsafe(32)
     now = int(time.time())
     table_items.put_item(Item={
@@ -246,13 +254,14 @@ def start_admin_session():
     session["is_admin"] = True
     session["admin_sid"] = sid
     session["admin_at"] = now
+    session["admin_mfa"] = bool(with_code)
 
 
 def end_admin_session():
     sid = session.get("admin_sid")
     if sid:
         table_items.delete_item(Key={"id": _admin_session_row_id(sid)})
-    for key in ("is_admin", "admin_sid", "admin_at"):
+    for key in ("is_admin", "admin_sid", "admin_at", "admin_mfa"):
         session.pop(key, None)
 
 
@@ -267,12 +276,15 @@ def is_owner():
     if session.get("is_admin") and sid:
         row = table_items.get_item(Key={"id": _admin_session_row_id(sid)}).get("Item")
         fresh = isinstance(started, int) and time.time() - started < ADMIN_SESSION_SECONDS
-        if row and fresh and int(row.get("expires_at", 0)) > time.time():
+        # Once an authenticator is set up, a session from the passcode alone
+        # no longer counts.
+        code_ok = session.get("admin_mfa") or not owner_totp.enrolled()
+        if row and fresh and code_ok and int(row.get("expires_at", 0)) > time.time():
             ok = True
         elif row:
             table_items.delete_item(Key={"id": row["id"]})
     if not ok and session.get("is_admin"):
-        for key in ("is_admin", "admin_sid", "admin_at"):
+        for key in ("is_admin", "admin_sid", "admin_at", "admin_mfa"):
             session.pop(key, None)
     g.is_owner = ok
     return ok
@@ -794,6 +806,12 @@ def admin_auth():
         return jsonify({"error": "Passcode is required."}), 400
 
     if verify_admin_passcode(submitted_passcode):
+        if owner_totp.enrolled():
+            # The passcode alone starts nothing; it only opens a short window
+            # to enter the code.
+            session.clear()
+            session["admin_pending_at"] = int(time.time())
+            return jsonify({"needs_code": True})
         start_admin_session()
         _clear_rate_limit("admin", ip)
         return jsonify({"message": "Authenticated.", "redirect_url": url_for("index")})
@@ -805,6 +823,166 @@ def admin_auth():
         return jsonify({"error": "Too many attempts. Please wait and try again."}), 429
 
     return jsonify({"error": "Invalid passcode.", "remaining_attempts": remaining_attempts}), 401
+
+
+def _use_recovery_code(code):
+    row = table_items.get_item(Key={"id": TOTP_STATE_ID}).get("Item") or {}
+    hashes = list(row.get("recovery") or [])
+    digest = owner_totp.recovery_hash(code)
+    if digest not in hashes:
+        return False
+    hashes.remove(digest)
+    try:
+        table_items.update_item(
+            Key={"id": TOTP_STATE_ID},
+            UpdateExpression="SET recovery = :new",
+            ConditionExpression="contains(recovery, :used)",
+            ExpressionAttributeValues={":new": hashes, ":used": digest},
+        )
+    except table_items.meta.client.exceptions.ConditionalCheckFailedException:
+        return False
+    return True
+
+
+def _use_totp_code(code):
+    secret = owner_totp.current_secret()
+    row = table_items.get_item(Key={"id": TOTP_STATE_ID}).get("Item") or {}
+    last = int(row.get("last_step", -1))
+    step = owner_totp.matching_step(secret, code, last)
+    if step is None:
+        return False
+    try:
+        # Recording the step only if it's newer means two requests racing
+        # with the same code can't both win.
+        table_items.update_item(
+            Key={"id": TOTP_STATE_ID},
+            UpdateExpression="SET last_step = :s",
+            ConditionExpression="attribute_not_exists(last_step) OR last_step < :s",
+            ExpressionAttributeValues={":s": step},
+        )
+    except table_items.meta.client.exceptions.ConditionalCheckFailedException:
+        return False
+    return True
+
+
+@app.route("/admin/auth/code", methods=["POST"])
+def admin_auth_code():
+    ip = _client_ip()
+    remaining_lock = _rate_limit_locked_seconds("admin", ip)
+    if remaining_lock > 0:
+        return jsonify({"error": "Too many attempts. Please wait and try again.", "retry_in": remaining_lock}), 429
+    pending = session.get("admin_pending_at")
+    if not isinstance(pending, int) or time.time() - pending > TOTP_PENDING_SECONDS or not owner_totp.enrolled():
+        session.pop("admin_pending_at", None)
+        return jsonify({"error": "That took too long. Enter your passcode again.", "restart": True}), 401
+    code = str((request.get_json(silent=True) or {}).get("code") or "").strip()
+    digits = "".join(ch for ch in code if ch.isdigit())
+    ok = _use_totp_code(code) if len(digits) == len(code.replace(" ", "")) else _use_recovery_code(code)
+    if ok:
+        session.pop("admin_pending_at", None)
+        start_admin_session(with_code=True)
+        _clear_rate_limit("admin", ip)
+        return jsonify({"message": "Authenticated.", "redirect_url": url_for("index")})
+    locked_out, remaining_attempts = _record_rate_limit_failure(
+        "admin", ip, MAX_ADMIN_ATTEMPTS, ADMIN_LOCK_SECONDS
+    )
+    if locked_out:
+        session.pop("admin_pending_at", None)
+        return jsonify({"error": "Too many attempts. Please wait and try again.", "restart": True}), 429
+    return jsonify({"error": "That code didn't work.", "remaining_attempts": remaining_attempts}), 401
+
+
+@app.route("/owner/security", methods=["GET"])
+def owner_security_page():
+    if not is_owner():
+        abort(404)
+    resp = make_response(render_template("owner_security.html"))
+    resp.headers["Cache-Control"] = "no-store, private"
+    resp.headers["X-Robots-Tag"] = "noindex, nofollow, noarchive"
+    return resp
+
+
+def _owner_json(payload, status=200):
+    resp = jsonify(payload)
+    resp.status_code = status
+    resp.headers["Cache-Control"] = "no-store, private"
+    resp.headers["X-Robots-Tag"] = "noindex, nofollow, noarchive"
+    return resp
+
+
+@app.route("/api/owner/security", methods=["GET"])
+def owner_security_status():
+    if not is_owner():
+        abort(404)
+    row = table_items.get_item(Key={"id": TOTP_STATE_ID}).get("Item") or {}
+    return _owner_json({
+        "enrolled": owner_totp.enrolled(),
+        "recovery_left": len(row.get("recovery") or []),
+        "this_session_used_code": bool(session.get("admin_mfa")),
+    })
+
+
+@app.route("/api/owner/security/start", methods=["POST"])
+def owner_security_start():
+    if not is_owner():
+        abort(404)
+    # Replacing an existing authenticator needs a session that was itself
+    # signed in with a code, so the passcode alone can never swap it out.
+    if owner_totp.enrolled() and not session.get("admin_mfa"):
+        return _owner_json({"error": "Sign in with your current code first."}, 403)
+    secret = owner_totp.new_secret()
+    table_items.put_item(Item={
+        "id": TOTP_PENDING_ID,
+        "secret": secret,
+        "expires_at": Decimal(int(time.time()) + 600),
+        "sid_hash": hashlib.sha256(session["admin_sid"].encode()).hexdigest(),
+    })
+    return _owner_json({
+        "qr_svg": owner_totp.qr_svg(owner_totp.otpauth_uri(secret)),
+        "key": " ".join(secret[i:i + 4] for i in range(0, len(secret), 4)),
+    })
+
+
+@app.route("/api/owner/security/confirm", methods=["POST"])
+def owner_security_confirm():
+    if not is_owner():
+        abort(404)
+    if owner_totp.enrolled() and not session.get("admin_mfa"):
+        return _owner_json({"error": "Sign in with your current code first."}, 403)
+    pending = table_items.get_item(Key={"id": TOTP_PENDING_ID}).get("Item")
+    sid_hash = hashlib.sha256(session["admin_sid"].encode()).hexdigest()
+    if not pending or int(pending.get("expires_at", 0)) < time.time() or pending.get("sid_hash") != sid_hash:
+        return _owner_json({"error": "That setup expired. Start again.", "restart": True}, 400)
+    code = str((request.get_json(silent=True) or {}).get("code") or "")
+    step = owner_totp.matching_step(pending["secret"], code)
+    if step is None:
+        return _owner_json({"error": "That code didn't match. Check the time on your phone and try the next one."}, 400)
+    owner_totp.save_secret(pending["secret"])
+    codes = owner_totp.new_recovery_codes()
+    table_items.put_item(Item={
+        "id": TOTP_STATE_ID,
+        "last_step": step,
+        "recovery": [owner_totp.recovery_hash(c) for c in codes],
+        "enrolled_at": now_iso(),
+    })
+    table_items.delete_item(Key={"id": TOTP_PENDING_ID})
+    session["admin_mfa"] = True
+    return _owner_json({"ok": True, "recovery_codes": codes})
+
+
+@app.route("/api/owner/security/recovery", methods=["POST"])
+def owner_security_new_recovery():
+    if not is_owner():
+        abort(404)
+    if not owner_totp.enrolled() or not session.get("admin_mfa"):
+        return _owner_json({"error": "Sign in with your current code first."}, 403)
+    codes = owner_totp.new_recovery_codes()
+    table_items.update_item(
+        Key={"id": TOTP_STATE_ID},
+        UpdateExpression="SET recovery = :r",
+        ExpressionAttributeValues={":r": [owner_totp.recovery_hash(c) for c in codes]},
+    )
+    return _owner_json({"ok": True, "recovery_codes": codes})
 
 
 @app.route("/admin/logout", methods=["GET", "POST"])
