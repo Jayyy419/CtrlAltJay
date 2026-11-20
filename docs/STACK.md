@@ -21,3 +21,4 @@ Versions are from `requirements.txt` and `template.yaml` at the time of writing.
 | Front end | Vanilla JavaScript, custom CSS, Tailwind (CDN) | No build step. |
 | Fonts | IBM Plex Sans and Mono, self-hosted | Matches the code-editor look without a font request to a third party. |
 | CI/CD | GitHub Actions with OIDC into AWS | No long-lived AWS keys in GitHub. |
+| Tests | Python `unittest` with moto 5.2.5 (`requirements-dev.txt`) | Fakes DynamoDB, SSM and Lambda in memory, so tests need no AWS account and cost nothing. |

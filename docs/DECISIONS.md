@@ -74,6 +74,14 @@ Significant choices about how CtrlAltJay works, newest first, with what was cons
 - Private buildings never show as boarded up, because the archived flag isn't on that list either.
 - Approving or moving a repo to the drawer republishes straight away, so hiding something takes effect at once. New daily stats wait for "Publish latest stats", so nothing changes on the public site without an owner action.
 
+## 20 Nov 2026: Tests run one module per process
+
+**Decided:** each test module walks through a flow in order (sign in, set something up, check what the public sees) and reports every failed step by name through `subTest`. Modules run in separate processes through `tests/run_all.py`, because the app reads settings such as whether an authenticator is enrolled when it's imported, and moto keeps its fake AWS per process.
+
+**Set aside:** one shared process with fixtures reset between tests. It would need the app's import-time settings reworked first. Screen checks with Playwright stay manual for now (on the roadmap).
+
+**Data:** the tests use made-up portfolio rows only; nothing from the live tables is copied into the repo.
+
 ## 19 Nov 2026: Drill has two modes and capped Claude feedback
 
 **Decided:** the owner liked both the Flashcards and the Interview room directions, so Drill has both behind a mode switch; the choice is remembered on the device. A third direction, a practice list, was set aside. Both modes share one rating scale and one order.

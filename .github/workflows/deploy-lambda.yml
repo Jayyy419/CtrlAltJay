@@ -42,8 +42,10 @@ jobs:
       - name: Sanity check Python syntax on the runtime's version
         run: python3 -m py_compile app.py lambda_handler.py casebook.py casebook_evidence.py casebook_drill.py claude_budget.py owner_totp.py townhall.py townhall_tours.py townhall_draft.py secret_scan.py commit_city.py source_map.py casebook_research/research.py casebook_research/upkeep_usage.py town_collector/collector.py
 
-      - name: Unit tests
-        run: python3 -m unittest discover -s tests
+      - name: Tests
+        run: |
+          python3 -m pip install --quiet -r requirements.txt -r requirements-dev.txt
+          python3 tests/run_all.py
 
       - name: Configure AWS credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v4
