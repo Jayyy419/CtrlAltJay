@@ -25,7 +25,16 @@ tagged_home, tagged_ue, fns, tables, buckets, zones, dists, apps, apis, clusters
     return_exceptions=True,
 )
 # The account ID comes from any ARN, which saves an STS call (and a service).
-acct = next(m["ResourceARN"].split(":")[4] for m in tagged_home.get("ResourceTagMappingList", []) if m["ResourceARN"].split(":")[4])
+# Several sources, so a failed call or an account with nothing tagged yet still works.
+arns = []
+for t in (tagged_home, tagged_ue):
+    if not err(t):
+        arns += [m["ResourceARN"] for m in t.get("ResourceTagMappingList", [])]
+if not err(fns):
+    arns += [f["FunctionArn"] for f in fns.get("Functions", [])]
+if not err(clusters):
+    arns += [x["DBClusterArn"] for x in clusters.get("DBClusters", [])]
+acct = next((a.split(":")[4] for a in arns if len(a.split(":")) > 4 and a.split(":")[4]), None)
 have = set()
 for t in (tagged_home, tagged_ue):
     if not err(t):
@@ -34,7 +43,7 @@ for t in (tagged_home, tagged_ue):
 found = {}
 if not err(fns):
     found["lambda"] = [f["FunctionArn"] for f in fns.get("Functions", [])]
-if not err(tables):
+if not err(tables) and acct:
     found["dynamodb"] = [f"arn:aws:dynamodb:{HOME}:{acct}:table/{t}" for t in tables.get("TableNames", [])]
 if not err(buckets):
     found["s3"] = [f"arn:aws:s3:::{b['Name']}" for b in buckets.get("Buckets", [])]
