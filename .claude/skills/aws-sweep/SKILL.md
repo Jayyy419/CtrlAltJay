@@ -66,7 +66,8 @@ anything that costs money, the Environment for a project not in the registry, an
 3. **`scripts/untagged.py`**: resources the tagging API can't see because they were never
    tagged (Lambda, DynamoDB, S3, Route 53 zones, CloudFront, Amplify, HTTP APIs, RDS, DSQL).
 4. **`scripts/regions.py`** twice (`HALF = 0`, then `1`): EC2, EBS, Elastic IPs, NAT gateways,
-   stacks and Lambdas in every enabled region, so nothing hides outside the home regions.
+   stacks, Lambdas and RDS/Aurora databases in every enabled region, so nothing hides outside
+   the home regions.
 5. **`scripts/home.py`** four times (`REGION` ap-southeast-1 / us-east-1, `PART` a / b): idle
    Lambdas, log groups kept forever or left by deleted functions, secrets, customer KMS keys,
    alarms, SNS topics and pending subscriptions, provisioned or empty tables, ECR storage and
@@ -96,7 +97,7 @@ Use plain words. Say "about $3 a month", not usage-type names. Ask the questions
 | CtrlAltJay | Production | CtrlAltJay | workflows pass `--tags Project=CtrlAltJay Environment=Production` | ctrlaltjay-monthly |
 | Sentrix | Production | Sentrix | `backend/samconfig.toml` `tags`; FallAlert-* resources are Sentrix | sentrix-monthly ($20) |
 | SeadsSingapore | Production | SeadsSingapore | created by CLI, see `backend/interest-form/README.md` | seads-monthly-budget ($30, emails Seads ops) |
-| NTUHall7 | Production | NTUHall7 | not checked yet | hall7-site-monthly ($7.50, emails the hall) |
+| NTUHall7 | Production | NTUHall7 | `infra/aws-hall7.yaml`, `infra/aws-hosting.yaml`; stack tags per `docs/OPERATIONS.md` | hall7-site-monthly ($7.50, emails the hall) |
 | Recallibur | Development | Recallibur | `.github/workflows/deploy.yml` `--tags`, `infra/bootstrap.yaml` | recallibur-monthly |
 | Tiraameowsu | Development | Tiraameowsu | `.github/workflows/deploy.yml` `--tags` | tiraameowsu-monthly |
 | Misu | Development | MisU | `infra/cloudfront.yaml` and stack tags | misu-monthly |
