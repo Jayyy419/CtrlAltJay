@@ -2,6 +2,12 @@
 
 All notable changes to the CtrlAltJay portfolio are documented here.
 
+## 20 Nov 2026: Claude SDK 2.11
+
+### Changed
+- `anthropic` 0.119.0 to 2.11.0 in the app and the research worker. Every Claude call (site chat, smart search, Casebook research, Drill feedback, Town hall draft help) now uses API version 2026-10-21 and sends the key as `Authorization: Bearer`. No code change was needed: nothing sent `temperature`, `top_p` or `top_k`, documents or citations in user turns, or used `httpx` directly. Replaces Dependabot #141.
+- The SDK is now under the Apache 2.0 licence (it was MIT up to 1.x).
+
 ## 20 Nov 2026: Test suite
 
 ### Added

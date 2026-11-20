@@ -74,6 +74,12 @@ Significant choices about how CtrlAltJay works, newest first, with what was cons
 - Private buildings never show as boarded up, because the archived flag isn't on that list either.
 - Approving or moving a repo to the drawer republishes straight away, so hiding something takes effect at once. New daily stats wait for "Publish latest stats", so nothing changes on the public site without an owner action.
 
+## 20 Nov 2026: Straight to Claude SDK 2.x
+
+**Decided:** the owner chose 2.11.0 over stopping at the newest 1.x. 2.x moves every call to API version 2026-10-21, which removes `temperature`, `top_p` and `top_k`, refuses documents in assistant turns and citations in user turns, and changes some Admin API fields. None of those are used here, so the move needed only the pin. The SDK's own changes (the `httpx2` HTTP library, message types split by role, the key sent as `Authorization: Bearer`, one credential per client) don't touch this code either: every client is built with a single `api_key` and no custom HTTP client or proxy.
+
+**Checked:** the test suite, plus a run of the real 2.11.0 SDK against a local fake transport that recorded each request shape the site sends (chat, the research search loop with a paused turn handed back, and structured-output streams), and a live chat request after deploy.
+
 ## 20 Nov 2026: Tests run one module per process
 
 **Decided:** each test module walks through a flow in order (sign in, set something up, check what the public sees) and reports every failed step by name through `subTest`. Modules run in separate processes through `tests/run_all.py`, because the app reads settings such as whether an authenticator is enrolled when it's imported, and moto keeps its fake AWS per process.
