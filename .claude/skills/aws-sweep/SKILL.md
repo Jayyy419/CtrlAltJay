@@ -119,9 +119,9 @@ Don't raise these again unless they change:
 - **Legacy tags** left in place: `app=shelfmark`, `project=fairfare` (stack rewrites it on the
   next deploy), Capital's `Stage`. Only `Project` and `Environment` are cost allocation tags.
 - **Pinwheel's Aurora** pauses when idle and costs only on days it's used.
-- **Billing alarms** (us-east-1) read per-service metrics named without spaces (`AmazonRDS`,
-  `AmazonS3`). `TranscribeCostSpike` was found on 20 Nov 2026 watching `Amazon Transcribe`, a
-  name that never matches, so it can't fire; flag it until it's fixed.
+- **`TranscribeCostSpike`** (Recallibur, $11) shows no data in months without Transcribe
+  charges: the billing metric only exists once a service has charges. It was made by hand,
+  not by a template.
 - **Schedules** every 5 minutes (Upkeep KeepWarm and health checks, Misu tick, Tiraameowsu
   order expiry) are inside the Lambda free tier.
 
@@ -141,3 +141,7 @@ Don't raise these again unless they change:
   repo's template or deploy command sets them too, hence the repo PRs.
 - Cost reports aren't retroactive: spend before a tag was added stays untagged.
 - Budgets are free. Cost Explorer is $0.01 a request.
+- Per-service billing metrics (us-east-1, `AWS/Billing`) name the service by its price-list code,
+  not its display name: `AmazonRDS`, `awskms`, `awswaf`, `transcribe`. Check a new billing
+  alarm's `ServiceName` against `pricing DescribeServices` before trusting it. One watched
+  `Amazon Transcribe` and could never fire until it was fixed on 20 Nov 2026.
