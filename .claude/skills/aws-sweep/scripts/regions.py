@@ -1,8 +1,9 @@
 # Every enabled region: anything that runs or bills on its own, wherever it hides.
 # EC2 instances, EBS volumes, Elastic IPs, NAT gateways, CloudFormation stacks,
-# Lambda functions. Only regions with something in them are reported.
-# Read-only. About 6 calls per region (about 100 for 17 regions), so it is
-# split into two halves: set HALF = 0, run, then set HALF = 1 and run again.
+# Lambda functions, RDS/Aurora clusters and instances. Only regions with
+# something in them are reported. Read-only. About 8 calls per region (about
+# 140 for 17 regions), so it is split into two halves: set HALF = 0, run, then
+# set HALF = 1 and run again.
 HALF = 0
 HOME = {"ap-southeast-1", "us-east-1"}  # covered in depth by home.py
 
@@ -20,13 +21,15 @@ def tagmap(tags):
 
 async def one(region):
     c = lambda svc, op, **p: call_boto3(service_name=svc, operation_name=op, region_name=region, params=p or None)
-    inst, vols, eips, nats, stacks, fns = await asyncio.gather(
+    inst, vols, eips, nats, stacks, fns, dbc, dbi = await asyncio.gather(
         c("ec2", "DescribeInstances"),
         c("ec2", "DescribeVolumes"),
         c("ec2", "DescribeAddresses"),
         c("ec2", "DescribeNatGateways", Filter=[{"Name": "state", "Values": ["available", "pending"]}]),
         c("cloudformation", "ListStacks", StackStatusFilter=LIVE),
         c("lambda", "ListFunctions"),
+        c("rds", "DescribeDBClusters"),
+        c("rds", "DescribeDBInstances"),
         return_exceptions=True,
     )
     out = {}
@@ -61,6 +64,18 @@ async def one(region):
             out["lambda_total"] = len(fns["Functions"])
         else:
             out["lambda"] = [{"name": x["FunctionName"], "runtime": x.get("Runtime"), "modified": x["LastModified"][:10]} for x in fns["Functions"]]
+    # Databases bill by the hour, so outside the home regions any cluster or instance is news.
+    if not home:
+        if isinstance(dbc, Exception) or isinstance(dbi, Exception):
+            out["rds_error"] = str(dbc if isinstance(dbc, Exception) else dbi)[:120]
+        else:
+            db = [{"cluster": x["DBClusterIdentifier"], "engine": x.get("Engine"), "status": x.get("Status"),
+                   "created": str(x.get("ClusterCreateTime"))[:10], "Project": tagmap(x.get("TagList")).get("Project")}
+                  for x in dbc.get("DBClusters", [])]
+            db += [{"instance": x["DBInstanceIdentifier"], "class": x.get("DBInstanceClass"), "status": x.get("DBInstanceStatus"),
+                    "Project": tagmap(x.get("TagList")).get("Project")}
+                   for x in dbi.get("DBInstances", []) if not x.get("DBClusterIdentifier")]
+            if db: out["databases"] = db
     return region, out
 
 
