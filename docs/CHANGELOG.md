@@ -2,6 +2,11 @@
 
 All notable changes to the CtrlAltJay portfolio are documented here.
 
+## 20 Nov 2026: Guestbook endpoint removed
+
+### Removed
+- `/api/notes` and the owner's `/api/admin/notes` routes. The guestbook's page was taken out on 15 Oct and nothing called them since. No notes were stored; the one leftover rate-limit record was deleted.
+
 ## 20 Nov 2026: Claude spend reported to Upkeep
 
 ### Changed
