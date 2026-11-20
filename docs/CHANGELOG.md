@@ -2,6 +2,13 @@
 
 All notable changes to the CtrlAltJay portfolio are documented here.
 
+## 20 Nov 2026: Test suite
+
+### Added
+- 13 test modules in `tests/`: owner sessions, authenticator sign-in, Casebook (API, evidence, research worker and its API, questions for them, Drill), Town hall (collector, approval and publishing, tours, draft help), Source Map and the secret check. AWS is faked with moto; Claude and GitHub with stand-ins.
+- `tests/run_all.py` runs each module in its own process. A Tests workflow runs it on every pull request, and the deploy runs it before anything ships.
+- `requirements-dev.txt` (moto), kept out of the Lambda package.
+
 ## 20 Nov 2026: Guestbook endpoint removed
 
 ### Removed

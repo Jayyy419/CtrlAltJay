@@ -49,6 +49,11 @@ Environment variable names and what they do are in `.env.example`. Secrets are S
 - The same function answers two synchronous calls from the app while the owner plots a tour: the file list and one file's lines. Each daily run also checks plotted tours and marks stops whose lines changed as "Needs a look"; the run's `needs_look` count says how many were newly marked. A failure in that check is recorded on the run (`stale_check`) without failing the stats.
 - The schedule can't carry tags (EventBridge Scheduler schedules don't support them); everything else the stack creates is tagged `Project=CtrlAltJay`.
 
+## Tests
+
+- `python3 tests/run_all.py` runs every module in its own process; pass part of a name to run fewer. The Tests workflow runs it on each pull request, and the deploy workflow runs it before building, so a failing test stops a deploy.
+- Nothing in the suite calls AWS, Claude or GitHub. moto fakes AWS, and the Claude and GitHub clients are replaced with stand-ins.
+
 ## Monitoring and cost
 
 - A $25 AWS billing alarm covers the whole account.
