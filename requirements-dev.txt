@@ -1,0 +1,2 @@
+# Only for running the tests; not packaged into the Lambda.
+moto==5.2.5

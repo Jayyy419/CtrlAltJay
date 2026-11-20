@@ -18,7 +18,7 @@ cp .env.example .env    # fill in SECRET_KEY and an admin passcode at minimum
 flask --app app run     # http://127.0.0.1:5000
 ```
 
-Unit tests cover the Upkeep usage reporter so far: `python3 -m unittest discover -s tests`. Other changes have been checked with moto-backed scripts and Playwright (see `docs/ROADMAP.md`).
+Tests: `pip install -r requirements.txt -r requirements-dev.txt`, then `python3 tests/run_all.py` (add a word to run only matching modules, such as `python3 tests/run_all.py townhall`). AWS is faked with moto and Claude and GitHub with small stand-ins, so the tests need no keys and spend nothing. Each module runs in its own process because some sign in with an authenticator enrolled and some don't. They run on every pull request and again before each deploy. Screen checks (layout at 390px and 1280px, contrast, keyboard) were done with Playwright by hand and aren't in the suite yet.
 
 ## Deploy
 
