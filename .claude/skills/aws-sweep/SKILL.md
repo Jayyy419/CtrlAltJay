@@ -1,0 +1,141 @@
+---
+name: aws-sweep
+description: Sweep the owner's AWS account end to end (costs and spikes, orphaned or idle resources, Project/Environment tags, budgets and alerts, security basics) and keep it as cheap as it can be. Use when asked to sweep, audit or clean up AWS, check AWS costs or tags, or "do the usual AWS checks".
+---
+
+# AWS sweep
+
+One AWS account (`140023398409`, already public in `template.yaml`) hosts every project. Home
+region is `ap-southeast-1`; `us-east-1` holds billing alarms, CloudFront certificates and global
+services. This skill finds what costs money, what is left over, and what is tagged wrong, then
+fixes what is safe and asks about the rest.
+
+It needs the AWS MCP connector (`run_script`). Each script in `scripts/` is read-only (except
+`edge.py` asking IAM for a credential report) and is passed whole as `run_script`'s `code`.
+
+## Rules
+
+These come from the owner and hold on every sweep.
+
+- **Read first, change second.** Run every check, report, then act.
+- **Never delete or change anything without the owner's OK,** apart from the safe fixes listed
+  below. Show the list, wait for approval, then do exactly what was approved.
+- **Only add missing tags. Never overwrite an existing value.** Report anything that refuses a tag.
+- **Don't touch the Sentrix WAF** (`FallAlert-API-WAF`, about $9 a month). The owner keeps it.
+- **Don't delete anything belonging to a project that isn't live yet** (Sentrix and other
+  pre-launch work), even if it looks idle. Idle Lambdas and empty on-demand tables cost nothing.
+- **MindWeave is kept so it can be revived.** Leave it as long as it costs next to nothing.
+- **Never print a secret value.** Mask email addresses (`ja***@domain`). No account IDs, emails
+  or ARNs in any repo doc.
+- **Check that a resource exists before acting on a tagging-API result.** The tagging API keeps
+  listing deleted resources for a while (seen with Cognito pools and a Lightsail IP).
+- **Question your own findings before reporting them.** Two early "findings" were wrong: a WAF
+  "attached to nothing" (the API only lists load balancers by default) and SNS topics "with no
+  subscriber" (one page of results). The scripts now handle both; keep the habit.
+- **Repo changes follow that repo's CLAUDE.md.** Most say: no AI marks anywhere, commit as the
+  owner's GitHub identity, update docs and CHANGELOG in the same change.
+
+### Safe to do without asking
+
+- Add a missing `Project` or `Environment` tag where the registry below gives the value.
+- Create a budget for a project that has none: copy `upkeep-monthly` ($5 a month, email at 80%
+  of actual and 100% of forecast, same subscriber), tag it with the project's tags.
+- Fix a budget whose filter can't match (for example a tag key that isn't a cost allocation tag).
+
+Everything else needs the owner: deletions, retention or capacity changes, removing monitoring,
+anything that costs money, the Environment for a project not in the registry, and repo PRs.
+
+## Steps
+
+1. **`scripts/costs.py`**: month to date, last month, three-month trend, forecast, each
+   service's last day against its 7-day average (`spikes_last_day`), Cost Anomaly Detection,
+   spend by Project, Environment, region and usage type, cost allocation tags and every budget
+   with its alerts. About 11 Cost Explorer requests at $0.01 each.
+2. **`scripts/tags.py`**: every tagged resource in every region against `EXPECTED` (keep it in
+   step with the registry). Lists missing `Project`/`Environment`, unknown projects, wrong
+   Environment and legacy keys.
+3. **`scripts/untagged.py`**: resources the tagging API can't see because they were never
+   tagged (Lambda, DynamoDB, S3, Route 53 zones, CloudFront, Amplify, HTTP APIs, RDS, DSQL).
+4. **`scripts/regions.py`** twice (`HALF = 0`, then `1`): EC2, EBS, Elastic IPs, NAT gateways,
+   stacks and Lambdas in every enabled region, so nothing hides outside the home regions.
+5. **`scripts/home.py`** four times (`REGION` ap-southeast-1 / us-east-1, `PART` a / b): idle
+   Lambdas, log groups kept forever or left by deleted functions, secrets, customer KMS keys,
+   alarms, SNS topics and pending subscriptions, provisioned or empty tables, ECR storage and
+   lifecycle policies, and every schedule with its target.
+6. **`scripts/edge.py`**: hosted zones, health checks and their paid extras, CloudFront,
+   certificates not in use, S3 sizes and empty buckets, Amplify apps and branches, HTTP APIs,
+   WAF and what it protects, GuardDuty, and IAM users, keys and MFA from the credential report.
+
+If a script hits a limit, split it, don't trim what it checks.
+
+## Report
+
+Lead with the money: this month so far, the forecast, last month, and the biggest services.
+Then three lists, each item with its project and monthly cost:
+
+- **Fixed** (the safe fixes, done): tags added, budgets created.
+- **Needs your OK**: each proposed deletion or change, what it saves, what it risks.
+- **Left alone on purpose**: things that look odd but are known (see below), so the owner
+  isn't asked again.
+
+Use plain words. Say "about $3 a month", not usage-type names. Ask the questions in one go.
+
+## Project registry
+
+| Project tag | Environment | Repo | Where deploys set the tags | Budget |
+| --- | --- | --- | --- | --- |
+| CtrlAltJay | Production | CtrlAltJay | workflows pass `--tags Project=CtrlAltJay Environment=Production` | ctrlaltjay-monthly |
+| Sentrix | Production | Sentrix | `backend/samconfig.toml` `tags`; FallAlert-* resources are Sentrix | sentrix-monthly ($20) |
+| SeadsSingapore | Production | SeadsSingapore | created by CLI, see `backend/interest-form/README.md` | seads-monthly-budget ($30, emails Seads ops) |
+| NTUHall7 | Production | NTUHall7 | not checked yet | hall7-site-monthly ($7.50, emails the hall) |
+| Recallibur | Development | Recallibur | `.github/workflows/deploy.yml` `--tags`, `infra/bootstrap.yaml` | recallibur-monthly |
+| Tiraameowsu | Development | Tiraameowsu | `.github/workflows/deploy.yml` `--tags` | tiraameowsu-monthly |
+| Misu | Development | MisU | `infra/cloudfront.yaml` and stack tags | misu-monthly |
+| MindWeave | Development | MindWeave | kept for revival; no deploys | mindweave-monthly ($1) |
+| Pinwheel | Development | Pinwheel | stack tags; update command in `docs/OPERATIONS.md` | pinwheel-monthly ($10) |
+| Upkeep | Development | Upkeep | `infra/app.yml`, `infra/certificate.yml` | upkeep-monthly |
+| Fairfare | Development | Fairfare | `scripts/deploy.sh` `--tags` | fairfare-monthly |
+| Shelfmark | Development | Shelfmark | no stack; tag by hand per `docs/OPERATIONS.md` | shelfmark-monthly |
+| Capital | Development | Capital | `pipeline.yml` `--tags`, `infra/bootstrap.yaml`, `infra/certificates.yaml` | capital-monthly (made by its stack) |
+| Curio | Development | Curio | `infra/app.yml`, `infra/certificate.yml` | curio-monthly |
+| Haystack | Development | Haystack | `infra/haystack.yaml` (owner deploys it) | haystack-monthly |
+| Shared, VPC-Default | Shared | none | account-level (default VPC, alerts, anomaly monitor) | account-total-monthly ($30, whole account) |
+
+A `Project` value not in this table is a new project: ask the owner for its Environment, add a
+row here and to `EXPECTED` in `scripts/tags.py`, give it a budget, and offer a repo PR so its
+deploys set both tags.
+
+## Known and intentional
+
+Don't raise these again unless they change:
+
+- **Sentrix WAF** about $9 a month, protects the FallAlert API's `Prod` stage. Kept on purpose.
+- **Sentrix (FallAlert)**: about 56 Lambdas with no calls in 30 days, many empty tables,
+  schedules every 2 to 15 minutes. Pre-launch; all inside free tiers.
+- **Route 53**: three hosted zones at $0.50 each, all in use. The two Seads health checks were
+  removed on 20 Nov 2026 to save about $3 a month; outages now show only on Upkeep's dashboard
+  (site only, no email).
+- **`curio-data`** is provisioned at 10/10, inside DynamoDB's always-free 25/25. Deliberate.
+- **Legacy tags** left in place: `app=shelfmark`, `project=fairfare` (stack rewrites it on the
+  next deploy), Capital's `Stage`. Only `Project` and `Environment` are cost allocation tags.
+- **Pinwheel's Aurora** pauses when idle and costs only on days it's used.
+- **`TranscribeCostSpike`** alarm shows no data in months with no Transcribe charges.
+- **Schedules** every 5 minutes (Upkeep KeepWarm and health checks, Misu tick, Tiraameowsu
+  order expiry) are inside the Lambda free tier.
+
+## How the AWS tools behave
+
+- `run_script` allows 100 calls, 10 services and 60 seconds per run. Run per-item calls with
+  `asyncio.gather`; one by one they time out.
+- Don't pass page-size parameters (`ResourcesPerPage`, `MaxResults`): they stop the automatic
+  pagination after one page. `sns:ListSubscriptions` and `wafv2:ListWebACLs` don't paginate
+  automatically at all, so the scripts go per topic or per ACL.
+- `__import__` is blocked; import at the top.
+- The tagging API's `TagResources` takes 20 ARNs at a time and fails for some types. Use the
+  service's own call for: API Gateway v2 stages (`apigatewayv2 TagResource`), Roles Anywhere
+  (`rolesanywhere TagResource`), budgets (`budgets TagResource`), RDS clusters
+  (`rds AddTagsToResource` with the cluster ARN), Amplify branches, and DynamoDB when throttled.
+- A stack update resets tags to what the stack sets. Tags added by hand survive only if the
+  repo's template or deploy command sets them too, hence the repo PRs.
+- Cost reports aren't retroactive: spend before a tag was added stays untagged.
+- Budgets are free. Cost Explorer is $0.01 a request.
