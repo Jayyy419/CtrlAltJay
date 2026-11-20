@@ -2,6 +2,11 @@
 
 All notable changes to the CtrlAltJay portfolio are documented here.
 
+## 20 Nov 2026: AWS sweep skill
+
+### Added
+- `.claude/skills/aws-sweep`: a Claude Code skill that sweeps the AWS account the portfolio shares with the other projects. It checks costs and day-to-day spikes, resources left over or idle in every region, `Project` and `Environment` tags (including resources that were never tagged), budgets and their alerts, and IAM sign-in basics. It fixes only what is safe (missing tags from its project registry, a budget for a project without one) and asks before deleting or changing anything else. Its scripts are read-only and run through the AWS MCP connector.
+
 ## 20 Nov 2026: Claude SDK 2.11
 
 ### Changed
