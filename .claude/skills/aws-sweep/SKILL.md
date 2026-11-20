@@ -119,7 +119,9 @@ Don't raise these again unless they change:
 - **Legacy tags** left in place: `app=shelfmark`, `project=fairfare` (stack rewrites it on the
   next deploy), Capital's `Stage`. Only `Project` and `Environment` are cost allocation tags.
 - **Pinwheel's Aurora** pauses when idle and costs only on days it's used.
-- **`TranscribeCostSpike`** alarm shows no data in months with no Transcribe charges.
+- **Billing alarms** (us-east-1) read per-service metrics named without spaces (`AmazonRDS`,
+  `AmazonS3`). `TranscribeCostSpike` was found on 20 Nov 2026 watching `Amazon Transcribe`, a
+  name that never matches, so it can't fire; flag it until it's fixed.
 - **Schedules** every 5 minutes (Upkeep KeepWarm and health checks, Misu tick, Tiraameowsu
   order expiry) are inside the Lambda free tier.
 
